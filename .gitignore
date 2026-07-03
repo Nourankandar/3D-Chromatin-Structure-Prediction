@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.env
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# AI Data & Weights
+*.pth
+*.ckpt
+*.h5
+*.fasta
+*.bw
+ai_engine/data/
+
+pdb_cache/
+
+genome_reference
+
+docs
+best_model.pt

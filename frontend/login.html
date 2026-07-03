@@ -1,0 +1,29 @@
+<div id="login-view">
+    <div class="login-card">
+        <div class="emblem">🧬</div>
+        <h2 class="login-title">CHROMOGEN</h2>
+        
+        <div id="login-form-block">
+            <label>معرف المشرف</label>
+            <input type="text" id="adminUser" placeholder="أدخل اسم المستخدم">
+            
+            <label>كلمة المرور</label>
+            <input type="password" id="adminPass" placeholder="••••••••">
+            
+            <button type="button" onclick="handleLogin()" style="width: 100%; margin-top: 20px;">دخول إلى النظام</button>
+
+            <p style="text-align: center; margin-top: 20px; cursor: pointer;">
+                <a onclick="togglePasswordReset(true)" style="color: var(--ivory-muted); font-size: 11px; text-decoration: none; letter-spacing: 1px;">نسيت كلمة المرور؟</a>
+            </p>
+        </div>
+        
+        <div id="reset-form-block" style="display: none;">
+            <h3 style="color: var(--gold); font-size: 14px; margin-bottom: 15px;">استعادة كلمة المرور</h3>
+            <label>البريد الإلكتروني المسجل</label>
+            <input type="email" id="adminEmail" placeholder="admin@biotreatment.lab">
+            
+            <button onclick="handleResetPassword()" style="width: 100%; margin-top: 15px;">إرسال رابط الاستعادة</button>
+            <button class="btn-outline" onclick="togglePasswordReset(false)" style="width: 100%; margin-top: 10px;">← العودة للدخول</button>
+        </div>
+    </div>
+</div>

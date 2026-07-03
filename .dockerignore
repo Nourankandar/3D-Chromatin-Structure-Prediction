@@ -1,0 +1,53 @@
+# ==== بيئات Python ====
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# ==== أسرار وإعدادات حساسة ====
+.env
+backend/.env
+*.env.local
+
+# ==== قاعدة البيانات (رح تنجاب عبر volume، ما لازم تنسخ وقت البناء) ====
+db.sqlite3
+backend/db.sqlite3
+
+# ==== ملفات Media/الناتجة (رح تنجاب عبر volume) ====
+backend/media/
+media/
+
+# ==== الجينوم المرجعي (ضخم، منفصل عبر volume، ما لازم يدخل الصورة) ====
+genome_reference/
+
+# ==== Git ====
+.git/
+.gitignore
+
+# ==== الفرونت إند (إذا مبني بـ container منفصل خاص فيه) ====
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# ==== أدوات تطوير/IDE ====
+.vscode/
+.idea/
+.continue/
+*.swp
+.DS_Store
+
+# ==== ملفات اختبار ====
+test/
+docs/
+*.md
+!README.md
+
+# ==== Docker نفسه (ما في داعي ينسخ نفسه لجوا نفسه) ====
+Dockerfile
+docker-compose.yml
+.dockerignore

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chromogen · Lab System</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- مكتبات التأثيرات البصرية (Hologram Bloom) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+    
+</head>
+<body>
+    <canvas id="particle-canvas" style="position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
+
+    <div id="login-container"></div>
+    <div id="dashboard-container" style="display: none;"></div>
+    <div id="viewer-container" style="display: none;"></div>
+
+    <script>
+        // نظام حقن الواجهات
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                const loginRes = await fetch('login.html');
+                document.getElementById('login-container').innerHTML = await loginRes.text();
+
+                const dashRes = await fetch('dashboard.html');
+                document.getElementById('dashboard-container').innerHTML = await dashRes.text();
+
+                const viewRes = await fetch('viewer.html');
+                document.getElementById('viewer-container').innerHTML = await viewRes.text();
+                
+                console.log("تم تحميل الواجهات بنجاح!");
+            } catch (error) {
+                console.error("فشل في التحميل:", error);
+            }
+        });
+
+        // سكربت الجسيمات (Particles)
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        resize(); window.addEventListener('resize', resize);
+        for(let i=0; i<60; i++){
+            particles.push({ x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight, vx: (Math.random()-.5)*.3, vy: (Math.random()-.5)*.3, r: Math.random()*1.5+.3, alpha: Math.random()*.4+.1 });
+        }
+        function draw(){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            particles.forEach(p => {
+                p.x+=p.vx; p.y+=p.vy;
+                if(p.x<0) p.x=canvas.width; if(p.x>canvas.width) p.x=0;
+                if(p.y<0) p.y=canvas.height; if(p.y>canvas.height) p.y=0;
+                ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fillStyle=`rgba(201,168,76,${p.alpha})`; ctx.fill();
+            });
+            for(let i=0; i<particles.length; i++){
+                for(let j=i+1; j<particles.length; j++){
+                    const dist = Math.hypot(particles[i].x-particles[j].x, particles[i].y-particles[j].y);
+                    if(dist<120){
+                        ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y); ctx.lineTo(particles[j].x,particles[j].y);
+                        ctx.strokeStyle=`rgba(201,168,76,${.08*(1-dist/120)})`; ctx.lineWidth=.5; ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard_v3.js"></script>
+    <script src="js/viewer.js"></script>
+    <div id="toast-container"></div>
+    <div id="dna-loader-overlay">
+    <div class="dna-spinner">🧬</div>
+    <div class="loading-text">جاري معالجة البيانات...</div>
+</div>
+</body>
+</html>

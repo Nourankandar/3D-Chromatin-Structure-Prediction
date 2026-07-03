@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Chromogen · 3D Ultra Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css_hic/hic_style.css">
+</head>
+<body>
+
+<div id="loading"><div class="spin"></div><p id="load-msg">جاري تحميل المحرك...</p></div>
+<div id="tip"></div>
+
+<div id="isolate-overlay">
+  <canvas id="isolate-canvas"></canvas>
+  <div class="iso-info">
+    <div style="color:var(--gold-light);font-family:var(--font-display);font-weight:700;margin-bottom:10px;font-size:18px;letter-spacing:1px;" id="iso-title">TAD معزول</div>
+    <div class="row"><span>النقاط</span><span class="val hi" id="iso-pts">—</span></div>
+    <div class="row"><span>الكثافة</span><span class="val" id="iso-den">—</span></div>
+    <hr style="border-color:var(--border);margin:12px 0">
+    <div style="font-size:9px;color:var(--ivory-muted);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">تحكم بالكاميرا</div>
+    <div style="font-size:10px;color:var(--ivory);line-height:2.2;font-family:var(--font-mono);">
+      🖱 سحب = تدوير<br>
+      🖱 يمين = تحريك<br>
+      ⚙ عجلة = تكبير
+    </div>
+    <hr style="border-color:var(--border);margin:12px 0">
+    <button class="btn on" id="iso-rot" style="width:100%;margin-bottom:6px">⏸ إيقاف الدوران</button>
+    <button class="btn" id="iso-reset" style="width:100%;margin-bottom:6px">🎯 إعادة التوجيه</button>
+    <button class="btn" id="iso-png" style="width:100%;margin-bottom:10px">💾 حفظ كصورة</button>
+    <button class="btn" style="width:100%;border-color:var(--ivory-muted);color:var(--ivory-muted)" onclick="exitIsolate()">← العودة للمشهد</button>
+  </div>
+</div>
+
+<header>
+  <div class="brand">
+    <div class="dot"></div>
+    <div>
+      <div class="logo">CHROMOGEN <span>ULTRA 3D</span></div>
+      <div class="sub" id="hdr-info">حمّل ملف JSON للعرض</div>
+    </div>
+  </div>
+  <div class="hbar">
+    <button class="btn" onclick="document.getElementById('fi').click()">📂 استيراد JSON</button>
+    <input type="file" id="fi" accept=".json" onchange="loadJSON(this)">
+    <div class="sep"></div>
+    <span class="lbl">سُمك</span>
+    <input type="range" min="1" max="25" value="7" oninput="setRadius(this.value)">
+    <span class="lbl">سرعة</span>
+    <input type="range" min="0" max="12" value="2" oninput="rotSpd=this.value/10000">
+    <div class="sep"></div>
+    <button class="btn on"  id="btnR"     onclick="toggleRot()">⏸</button>
+    <button class="btn on"  id="btnGlow"  onclick="toggleEffect('glow')">✨ توهج</button>
+    <button class="btn"     id="btnBound" onclick="toggleEffect('bounds')">📍 حدود TAD</button>
+    <button class="btn warn"id="btnRmsd"  onclick="toggleEffect('rmsd')">⚠ تباين RMSD</button>
+    <button class="btn"     onclick="resetCam()">🎯</button>
+    <button class="btn"     onclick="exportPNG()">💾 PNG</button>
+  </div>
+</header>
+
+<div class="main">
+<div class="panel">
+
+  <div class="sec">
+    <h4>المعلومات الجينية</h4>
+    <div class="row"><span>الكروموسوم</span><span class="val hi" id="p-chrom">—</span></div>
+    <div class="row"><span>البداية</span>   <span class="val" id="p-start">—</span></div>
+    <div class="row"><span>النهاية</span>   <span class="val" id="p-end">—</span></div>
+    <div class="row"><span>الدقة</span>     <span class="val" id="p-res">—</span></div>
+    <div class="row"><span>النقاط</span>    <span class="val" id="p-pts">—</span></div>
+    <div class="row"><span>TADs</span>      <span class="val hi" id="p-tads">—</span></div>
+    <div style="font-size:9px;color:var(--ivory-muted);margin-top:8px;text-transform:uppercase;letter-spacing:1px;">دقة الخوارزمية (MDS Stress)</div>
+    <div class="bar"><div class="bar-fill" id="stress-bar" style="width:0%;background:var(--gold)"></div></div>
+    <div style="font-size:9px;color:var(--ivory-muted);font-family:var(--font-mono);" id="stress-val">—</div>
+  </div>
+
+  <div class="sec">
+    <h4>هيكل العرض</h4>
+    <button class="btn on" id="btnSm" style="width:100%;margin-bottom:6px"
+            onclick="switchMode('smooth',this)">🧬 خيط ناعم مستمر</button>
+    <button class="btn" id="btnRw" style="width:100%"
+            onclick="switchMode('raw',this)">• نقاط دقيقة (Raw)</button>
+  </div>
+
+  <div class="sec">
+    <h4>التحليل اللوني</h4>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;padding:4px 0;">
+      <div style="width:24px;height:24px;border-radius:50%;border:2px solid transparent; cursor:pointer;background:conic-gradient(#f97316,#818cf8,#f97316)" class="clr on" onclick="setClr('plasma',this)" title="بلازما حراري"></div>
+      <div style="width:24px;height:24px;border-radius:50%;border:2px solid transparent; cursor:pointer;background:conic-gradient(#06b6d4,#10b981,#06b6d4)" class="clr" onclick="setClr('cool',this)" title="تدرج بارد"></div>
+      <div style="width:24px;height:24px;border-radius:50%;border:2px solid transparent; cursor:pointer;background:conic-gradient(#22c55e,#ef4444,#22c55e)" class="clr" onclick="setClr('health',this)" title="صحة/مرض"></div>
+      <div style="width:24px;height:24px;border-radius:50%;border:2px solid transparent; cursor:pointer;background:linear-gradient(135deg,#c9a84c,#e8c97a)" class="clr" onclick="setClr('density',this)" title="كثافة (ذهبي)"></div>
+      <div style="width:24px;height:24px;border-radius:50%;border:2px solid transparent; cursor:pointer;background:conic-gradient(#c9a84c,#818cf8,#e8c97a,#c9a84c)" class="clr" onclick="setClr('tad',this)" title="ألوان TAD المنفصلة"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h4>قائمة مناطق TAD</h4>
+    <div id="tad-list" style="margin-top: 5px;"></div>
+  </div>
+
+  <div class="sec" style="margin-top: auto;">
+    <h4>بيانات النقطة المحددة</h4>
+    <div class="row"><span>المنطقة</span>   <span class="val hi" id="s-reg">—</span></div>
+    <div class="row"><span>المجموعة</span>        <span class="val" id="s-tad">—</span></div>
+    <div class="row"><span>الكثافة</span>      <span class="val" id="s-den">—</span></div>
+    <div class="row"><span>الانحراف</span><span class="val" id="s-dev">—</span></div>
+    <div class="row"><span>X</span><span class="val" id="s-x">—</span></div>
+    <div class="row"><span>Y</span><span class="val" id="s-y">—</span></div>
+    <div class="row"><span>Z</span><span class="val" id="s-z">—</span></div>
+  </div>
+
+</div>
+<div id="cv">
+  <div class="hint">🖱 سحب: تدوير | ⚙ عجلة: تكبير | 🖱 يمين: تحريك | 👆 تمرير: عرض التفاصيل</div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script src="js_hic/hic.js"></script>
+</body>
+</html>
