@@ -164,7 +164,12 @@ class GenomicPipelineManager:
             # (منستخدم بيانات المريض لو موجودة، وإلا بيانات السليم كمرجع للموقع)
             motif_info = patient_info or control_info
 
-            pdb_path = fetch_pdb_file(protein_id)
+            # مهم: fetch_pdb_file() بتبحث بـ UniProt عن طريق اسم الجين/البروتين
+            # (protein_name)، مش عن طريق jaspar_id (protein_id) — لأنه UniProt
+            # ما بيفهم معرّفات JASPAR أصلاً. لو ما لقينا اسم لأي سبب، منرجع
+            # لاستخدام الـ jaspar_id كحل احتياطي بدل ما ينهار الكود بالكامل.
+            protein_name_for_lookup = motif_info.get("protein_name") or protein_id
+            pdb_path = fetch_pdb_file(protein_name_for_lookup)
             docking_coords = calculate_spatial_docking(pdb_path, motif_info)
 
             delta_score = None

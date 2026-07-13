@@ -60,3 +60,14 @@ class AuthService:
         user_id = token.get("user_id", "Unknown")
         token.blacklist()
         logger.info("User ID %s logged out via token blacklisting.", user_id)
+
+    @staticmethod
+    def change_password(user: User, old_password: str, new_password: str) -> dict:
+        """Change password after verifying the old one. No email involved."""
+        if not user.check_password(old_password):
+            return {"status": "error", "message": "Old password is incorrect."}
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        logger.info("Password changed successfully for user: %s", user.username)
+        return {"status": "success", "message": "Password changed successfully."}

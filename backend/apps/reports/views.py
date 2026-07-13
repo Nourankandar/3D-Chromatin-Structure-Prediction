@@ -12,22 +12,28 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from rest_framework.mixins import RetrieveModelMixin, UpdateModelMixin, DestroyModelMixin
 from .models import AnalysisReport
 from .serializers import AnalysisReportSerializer
+from weasyprint import HTML
+from django.http import HttpResponse
+from django.template.loader import render_to_string
 
-
-class AnalysisReportViewSet(viewsets.ModelViewSet):
+class AnalysisReportViewSet(
+    RetrieveModelMixin,
+    UpdateModelMixin,
+    DestroyModelMixin,
+    viewsets.GenericViewSet
+):
     """
-    Full CRUD for AnalysisReport.
-
-    GET    /api/reports/                  -> list all reports
-    POST   /api/reports/                  -> create a report directly
-    GET    /api/reports/<id>/             -> retrieve a report
-    PUT    /api/reports/<id>/             -> replace a report
-    PATCH  /api/reports/<id>/             -> partially update a report
-    DELETE /api/reports/<id>/             -> delete a report
-    POST   /api/reports/<id>/regenerate/  -> re-queue the LLM report generation task
+    إدارة التقرير الطبي الخاص بكل تحليل (علاقة رأس لراس فقط).
+    تم إلغاء القوائم (List) والإنشاء المباشر (Create).
+    
+    GET    /api/reports/<id>/     -> جلب نص التقرير الخاص بهذا التحليل
+    PUT    /api/reports/<id>/     -> تعديل نص التقرير يدوياً من قبل الطبيب
+    PATCH  /api/reports/<id>/     -> تعديل جزئي للتقرير
+    DELETE /api/reports/<id>/     -> حذف التقرير
+    POST   /api/reports/<id>/regenerate/ -> إعادة إرسال طلب توليد التقرير للسيليري بالخلفية
     """
 
     queryset = AnalysisReport.objects.select_related(
@@ -35,95 +41,74 @@ class AnalysisReportViewSet(viewsets.ModelViewSet):
     ).all()
     serializer_class = AnalysisReportSerializer
     permission_classes = [IsAuthenticated]
-    search_fields = ['detected_disease', 'status']
-    ordering_fields = ['created_at', 'updated_at', 'status']
 
     @action(detail=True, methods=["post"], url_path="regenerate")
     def regenerate(self, request, pk=None):
         report = self.get_object()
 
-        from apps.genomics.tasks import generate_llm_report_task
+        # حارس الأمان: نتحقق من حالة التحليل الأساسي (InputData) المرتبط بهذا التقرير
+        input_data = report.output_data.input_data
+        if input_data.status in ["pending", "processing"]:
+            return Response(
+                {
+                    "error": "Cannot regenerate report while the genomic pipeline is still running."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        # 1. نقلب حالة التقرير في الداتا فوراً ليعرض الفرونت إند مؤشر التحميل
+        report.status = "generating"
+        report.summary_text = "AI clinical engine is regenerating chromatin folds analysis..."
+        report.save(update_fields=["status", "summary_text"])
+
+        # 2. نرسل المهمة للسيليري بأمان لأننا تأكدنا أن المسار السابق منتهي
+        from apps.genomics.tasks import generate_llm_report_task
         generate_llm_report_task.delay(report.output_data_id)
 
         return Response(
             {
-                "message": "Report regeneration queued",
+                "message": "Report regeneration queued successfully.",
                 "report_id": report.id,
-                "output_data_id": report.output_data_id,
+                "status": "generating"
             },
             status=status.HTTP_202_ACCEPTED,
         )
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Legacy endpoints, kept for the bundled frontend which calls these directly
-# by output_id rather than report id.
-# ─────────────────────────────────────────────────────────────────────────────
-class ReportDetailAPIView(APIView):
-    """GET /api/reports/<output_id>/report/ — look up a report by its OutputData id."""
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, output_id):
-        try:
-            report = AnalysisReport.objects.select_related("output_data").get(output_data_id=output_id)
-        except AnalysisReport.DoesNotExist:
-            return Response({"error": "Report not found for this output"}, status=status.HTTP_404_NOT_FOUND)
-
-        return Response(AnalysisReportSerializer(report).data, status=status.HTTP_200_OK)
-
-
-class ReportUpdateDeleteAPIView(APIView):
-    """PUT/DELETE /api/reports/report/<report_id>/"""
-
-    permission_classes = [IsAuthenticated]
-
-    def _get_report(self, report_id):
-        try:
-            return AnalysisReport.objects.get(pk=report_id)
-        except AnalysisReport.DoesNotExist:
-            return None
-
-    def put(self, request, report_id):
-        report = self._get_report(report_id)
-        if not report:
-            return Response({"error": "Report not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = AnalysisReportSerializer(report, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def delete(self, request, report_id):
-        report = self._get_report(report_id)
-        if not report:
-            return Response({"error": "Report not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        report.delete()
-        return Response({"message": "Report deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
-
-
-class RegenerateLLMReportAPIView(APIView):
-    """POST /api/reports/report/<report_id>/regenerate/"""
-
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, report_id):
-        try:
-            report = AnalysisReport.objects.select_related("output_data").get(pk=report_id)
-        except AnalysisReport.DoesNotExist:
-            return Response({"error": "Report not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        from apps.genomics.tasks import generate_llm_report_task
-
-        generate_llm_report_task.delay(report.output_data_id)
-
-        return Response(
-            {
-                "message": "Report regeneration queued",
-                "report_id": report.id,
-                "output_data_id": report.output_data_id,
-            },
-            status=status.HTTP_202_ACCEPTED,
-        )
+    
+    @action(detail=True, methods=["get"], url_path="export-pdf")
+    def export_pdf(self, request, pk=None):
+        """
+        Exports the clinical analysis report as a high-fidelity, professional English PDF.
+        The HTML template is separated into an external file to maintain clean code architecture.
+        """
+        report = self.get_object()
+        
+        # حارس أمان للتأكد من اكتمال التقرير
+        if report.status != "completed" or not report.summary_text:
+            return Response(
+                {"error": "The clinical report is not ready or still generating. PDF export aborted."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        output_data = report.output_data
+        input_data = output_data.input_data
+        
+        # تحضير قاموس البيانات (Context) المترجم للإنكليزية لتمريره إلى القالب
+        context = {
+            "patient_name": input_data.patient.name if hasattr(input_data, 'patient') and input_data.patient else "N/A",
+            "patient_code": f"PT-2026-{input_data.patient.id}" if hasattr(input_data, 'patient') and input_data.patient else "N/A",
+            "cell_type_name": input_data.cell_type.name if hasattr(input_data, 'cell_type') and input_data.cell_type else "N/A",
+            "analysis_date": report.created_at.strftime('%B %d, %Y'),
+            "output_id": output_data.id,
+            "detected_disease": report.detected_disease if report.detected_disease else "No significant structural variation detected.",
+            "summary_text": report.summary_text
+        }
+        
+        # 1. قراءة الـ HTML الخارجي من مجلد الـ templates ودمجه بالبيانات
+        html_string = render_to_string("genomics/medical_report_pdf.html", context)
+        
+        # 2. إنشاء الـ HTTP Response المخصص لملفات الـ PDF وتحويله عبر WeasyPrint
+        response = HttpResponse(content_type="application/pdf")
+        response["Content-Disposition"] = f"attachment; filename=Clinical_Report_Output_{output_data.id}.pdf"
+        
+        HTML(string=html_string).write_pdf(response)
+        return response

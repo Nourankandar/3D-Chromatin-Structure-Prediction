@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Clinical Analysis Report</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm 15mm;
+            background-color: #fafbfd;
+            @bottom-left {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 9pt;
+                color: #718096;
+            }
+            @bottom-right {
+                content: "3D Chromatin Folding & AI Clinical Engine";
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 9pt;
+                color: #718096;
+            }
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #2d3748;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            font-size: 11pt;
+        }
+
+        .header-container {
+            border-bottom: 3px solid #1a365d;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        .hospital-title {
+            font-size: 22pt;
+            color: #1a365d;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+            text-align: left;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .report-title {
+            font-size: 13pt;
+            color: #4a5568;
+            text-align: left;
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .patient-card {
+            display: table;
+            width: 100%;
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            padding: 15px;
+        }
+
+        .card-row {
+            display: table-row;
+        }
+
+        .card-cell {
+            display: table-cell;
+            padding: 6px 15px;
+            vertical-align: middle;
+            width: 50%;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #2b6cb0;
+            text-transform: uppercase;
+            font-size: 9.5pt;
+            display: inline-block;
+            width: 140px;
+        }
+
+        .value {
+            color: #2d3748;
+        }
+
+        .section-heading {
+            font-size: 12pt;
+            color: #1a365d;
+            font-weight: bold;
+            border-left: 4px solid #3182ce;
+            padding-left: 10px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            page-break-after: avoid;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background-color: #ebf8ff;
+            color: #2b6cb0;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 9pt;
+            border: 1px solid #bee3f8;
+            text-transform: uppercase;
+        }
+
+        .disease-box {
+            background-color: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-left: 4px solid #e53e3e;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 25px;
+        }
+
+        .disease-box .title {
+            color: #9b2c2c;
+            font-weight: bold;
+            font-size: 11.5pt;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .summary-content {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            border-radius: 4px;
+            text-align: justify;
+            white-space: pre-wrap;
+        }
+
+        .footer-signatures {
+            display: table;
+            width: 100%;
+            margin-top: 60px;
+            page-break-inside: avoid;
+        }
+
+        .signature-cell {
+            display: table-cell;
+            width: 50%;
+            text-align: center;
+        }
+
+        .signature-line {
+            width: 180px;
+            border-bottom: 1px solid #a0aec0;
+            margin: 35px auto 8px auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="hospital-title">Damascus University</div>
+        <div class="report-title">Faculty of Information Engineering — AI & Bioinformatics Genomic Laboratory</div>
+    </div>
+
+    <div class="section-heading">Patient & Laboratory Metadata</div>
+    <div class="patient-card">
+        <div class="card-row">
+            <div class="card-cell"><span class="label">Patient Name:</span> <span class="value">{{ patient_name }}</span></div>
+            <div class="card-cell"><span class="label">Medical ID:</span> <span class="value">{{ patient_code }}</span></div>
+        </div>
+        <div class="card-row">
+            <div class="card-cell"><span class="label">Cell Type:</span> <span class="value">{{ cell_type_name }}</span></div>
+            <div class="card-cell"><span class="label">Report Status:</span> <span class="status-badge">Verified & Complete</span></div>
+        </div>
+        <div class="card-row">
+            <div class="card-cell"><span class="label">Analysis Date:</span> <span class="value">{{ analysis_date }}</span></div>
+            <div class="card-cell"><span class="label">Output Reference:</span> <span class="value">#OUT-{{ output_id }}</span></div>
+        </div>
+    </div>
+
+    <div class="section-heading">Detected Condition / Clinical Diagnosis</div>
+    <div class="disease-box">
+        <div class="title">Preliminary Chromatin Structural Assessment:</div>
+        <div>{{ detected_disease }}</div>
+    </div>
+
+    <div class="section-heading">AI-Generated Clinical Summary & Structural Analysis</div>
+    <div class="summary-content">{{ summary_text }}</div>
+
+    <div class="footer-signatures">
+        <div class="signature-cell">
+            <div>Attending Laboratory Supervisor</div>
+            <div class="signature-line"></div>
+            <div style="font-size: 8.5pt; color:#718096;">Biomedical Informatics Division</div>
+        </div>
+        <div class="signature-cell">
+            <div>Automated AI Engine Verification</div>
+            <div class="signature-line"></div>
+            <div style="font-size: 8.5pt; color:#718096;">System Certified Digital Report</div>
+        </div>
+    </div>
+
+</body>
+</html>

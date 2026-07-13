@@ -7,10 +7,9 @@ class AnalysisReport(models.Model):
     """The AI-generated clinical report tied to one pipeline OutputData."""
 
     REPORT_STATUS = [
-        ('draft', 'Draft (Pending Review)'),
-        ('generating', 'Generating'),
-        ('published', 'Published'),
-        ('approved', 'Approved'),
+        ('draft', 'Draft (Pending Generation)'),
+        ('generating', 'Generating via LLM'),
+        ('completed', 'Completed (Ready)'),
         ('failed', 'Failed'),
     ]
 

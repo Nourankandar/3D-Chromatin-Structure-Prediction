@@ -1,51 +1,3 @@
-<<<<<<< HEAD
-from django.shortcuts import render
-import json
-from django.contrib.auth import authenticate, login, logout
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-
-@csrf_exempt
-def api_login_view(request):
-    if request.method == 'POST':
-        try:
-            # قراءة البيانات القادمة من الفرونت إند (Axios)
-            data = json.loads(request.body)
-            username = data.get('username')
-            password = data.get('password')
-            
-            # التحقق من الحساب في قاعدة بيانات دجانغو
-            user = authenticate(request, username=username, password=password)
-            
-            if user is not None:
-                if user.is_staff or user.is_superuser:  # شرط أساسي: يجب أن يكون آدمن/موظف معمل
-                    login(request, user)
-                    return JsonResponse({
-                        "status": "success", 
-                        "message": "أهلاً بك يا آدمن، تم تسجيل الدخول بنجاح!"
-                    })
-                else:
-                    return JsonResponse({
-                        "status": "error", 
-                        "message": "عذراً، هذا الحساب لا يملك صلاحيات الآدمن."
-                    }, status=403)
-            else:
-                return JsonResponse({
-                    "status": "error", 
-                    "message": "اسم المستخدم أو كلمة المرور غير صحيحة."
-                }, status=401)
-                
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-            
-    return JsonResponse({"status": "error", "message": "الطريقة غير مسموحة"}, status=405)
-
-
-@csrf_exempt
-def api_logout_view(request):
-    logout(request)
-    return JsonResponse({"status": "success", "message": "تم تسجيل الخروج بنجاح."})
-=======
 """
 apps/accounts/views.py
 REST endpoints for authentication: signup, login, logout, "who am I".
@@ -59,7 +11,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import LoginSerializer, LogoutSerializer, SignupSerializer, UserSerializer
+from .serializers import *
 from .services import AuthService
 
 
@@ -142,11 +94,30 @@ class LogoutAPIView(APIView):
         )
 
 
-class MeAPIView(APIView):
-    """GET /api/auth/me/ — return the currently authenticated user."""
+class MyAccountAPIView(APIView):
+    """GET /api/auth/MyAccountAPIView/ — return the currently authenticated user."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return Response(UserSerializer(request.user).data, status=status.HTTP_200_OK)
->>>>>>> 1e8459bade3a2f5bc26fb6c95ac9cd8e18aa2bb0
+
+
+class ChangePasswordAPIView(APIView):
+    """POST /api/auth/change-password/ — change password using the old one."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = AuthService.change_password(
+            request.user,
+            serializer.validated_data["old_password"],
+            serializer.validated_data["new_password"],
+        )
+
+        if result["status"] == "success":
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
