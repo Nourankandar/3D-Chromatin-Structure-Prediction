@@ -301,7 +301,7 @@ def convert_hic_to_3d_coords(
         as_string=False,
     )
 
-    relative_folder = "genomics/spatial_coordinates/"
+    relative_folder = "genomics/coordinates_3d/json/"
     absolute_folder = os.path.join(settings.MEDIA_ROOT, relative_folder)
     os.makedirs(absolute_folder, exist_ok=True)
 

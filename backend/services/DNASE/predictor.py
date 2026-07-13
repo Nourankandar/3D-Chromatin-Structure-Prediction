@@ -4,7 +4,7 @@ import numpy as np
 from django.conf import settings
 
 # استدعاء دالة التنبؤ الحقيقية من الـ ai_engine المستقل تماماً
-from ai_engine.models.Dnase.predictor import predict_dnase_accessibility
+from ai_engine.models.Dnase.DNASEpredictor import predict_dnase_accessibility
 
 def read_fasta_file(file_path: str) -> str:
     """
@@ -42,7 +42,7 @@ def predict_dnase_profiles(fasta_absolute_path: str, enformer_id: int) -> str:
     base_name = os.path.basename(fasta_absolute_path).split('.')[0]
     output_filename = f"{base_name}_track_{track_index}_dnase.npy"
     
-    relative_folder = 'genomics/predicted_dnase/'
+    relative_folder = 'genomics/raw_inputs/dnas_signals/'
     absolute_folder = os.path.join(settings.MEDIA_ROOT, relative_folder)
     os.makedirs(absolute_folder, exist_ok=True)
     

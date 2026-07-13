@@ -3,32 +3,16 @@ apps/patients/views.py
 Full REST CRUD for Patient, plus a nested `tests` action that returns
 every genomic test (InputData) belonging to a given patient.
 """
-
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-
 from apps.genomics.models import InputData
 from apps.genomics.serializers import InputDataSerializer
-
 from .models import Patient
 from .serializers import PatientSerializer
 
-
 class PatientViewSet(viewsets.ModelViewSet):
-    """
-    Full CRUD for patients.
-
-    GET    /api/patients/            -> list all patients
-    POST   /api/patients/            -> create a patient
-    GET    /api/patients/<id>/       -> retrieve a patient
-    PUT    /api/patients/<id>/       -> replace a patient
-    PATCH  /api/patients/<id>/       -> partially update a patient
-    DELETE /api/patients/<id>/       -> delete a patient
-    GET    /api/patients/<id>/tests/ -> list every genomic test for this patient
-    """
-
     queryset = Patient.objects.all().order_by("-created_at")
     serializer_class = PatientSerializer
     permission_classes = [IsAuthenticated]
@@ -45,7 +29,6 @@ class PatientViewSet(viewsets.ModelViewSet):
             .prefetch_related("output")
             .order_by("-created_at")
         )
-
         results = []
         for t in tests:
             entry = InputDataSerializer(t).data

@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-from ai_engine.models.Dnase.predictor import prepare_and_predict_dnase
+from ai_engine.models.Dnase.DNASEpredictor import prepare_and_predict_dnase
 
 print("🚀 بدء فحص موديل Enformer اللوكال مع بيانات وهمية...")
 

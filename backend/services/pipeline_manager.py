@@ -111,7 +111,7 @@ class GenomicPipelineManager:
             chromosome=coords["chromosome"],
             start=coords["start"],
             end=coords["end"],
-            output_dir=str(settings.MEDIA_ROOT) + "/genomics/reference_sequences/",
+            output_dir=str(settings.MEDIA_ROOT) + "/genomics/raw_inputs/fasta/",
             record_id=f"control_{self.input_data_id}",
         )
 

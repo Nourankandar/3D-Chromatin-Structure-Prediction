@@ -30,7 +30,10 @@ logger = logging.getLogger(__name__)
 
 MODEL_WINDOW_SIZE = 1280000
 MODEL_NUM_BINS = 256
-DEFAULT_RESOLUTION = 20000
+# مُصحَّح: 1,280,000 / 256 = 5000 بالضبط — لازم تطابق دقة الموديل الداخلية
+# (كانت 20000 بالغلط، وهاد كان يسبب 75% من الـ bins تضل صفر + ضياع كامل
+# للنوافذ اللاحقة بمنطق الدمج merge_hic_matrices)
+DEFAULT_RESOLUTION = 5000
 
 # ترتيب الترميز الثابت لقنوات الـ one-hot — لازم يتطابق مع يلي اتدرب عليه الموديل
 _BASE_TO_INDEX = {"A": 0, "C": 1, "G": 2, "T": 3}
@@ -128,11 +131,12 @@ def _pad_or_slice_signal(signal: np.ndarray, target_len: int) -> np.ndarray:
     return signal[:target_len]
 
 
-def merge_hic_matrices(matrices_list: list, total_bins: int, window_bins: int = 256, stride_bins: int = 256) -> np.ndarray:
+def merge_hic_matrices(matrices_list: list, total_bins: int, window_bins: int = 256, stride_bins: int = 128) -> np.ndarray:
     big_matrix = np.zeros((total_bins, total_bins), dtype=np.float32)
     weights_matrix = np.zeros((total_bins, total_bins), dtype=np.float32)
 
     for idx, mat in enumerate(matrices_list):
+        # الحساب يعتمد على الـ stride_bins الفعلي لتداخل المصفوفات
         start_bin = idx * stride_bins
         end_bin = start_bin + window_bins
 
@@ -148,6 +152,7 @@ def merge_hic_matrices(matrices_list: list, total_bins: int, window_bins: int = 
         big_matrix[start_bin:actual_end_i, start_bin:actual_end_j] += mat[:slice_i, :slice_j]
         weights_matrix[start_bin:actual_end_i, start_bin:actual_end_j] += 1.0
 
+    # حساب المتوسط بدقة في مناطق التداخل
     np.divide(big_matrix, weights_matrix, out=big_matrix, where=weights_matrix > 0)
     return big_matrix
 
@@ -203,20 +208,25 @@ def generate_hic_matrices(
         total_bins = final_bins
 
     else:
-        # ─── الحالة الثانية: أطول من نافذة الموديل — تقطيع ودمج ───
-        # ملاحظة: هون لازم نقطّع الـ DNA بنفس نقاط تقطيع الـ DNase تماماً
-        # حتى تبقى كل نافذة متوافقة بين القناتين (كانت المشكلة السابقة: DNA عشوائي لكل قطعة!)
+        # ─── الحالة الثانية: أطول من نافذة الموديل — تقطيع مع تداخل 50% ودمج ───
         full_dna_array = _resolve_dna_array(dna_input, total_length) if not isinstance(dna_input, np.ndarray) else dna_input
 
+        # جعل القفزة نصف حجم النافذة للتداخل
+        stride = MODEL_WINDOW_SIZE // 2 
         start_idx = 0
+        
         while start_idx < total_length:
             end_idx = start_idx + MODEL_WINDOW_SIZE
+
+            # لتجنب البادينغ الزائد في آخر نافذة، نثبت النهاية ونرجع بالبداية للخلف
+            if end_idx > total_length:
+                end_idx = total_length
+                start_idx = max(0, end_idx - MODEL_WINDOW_SIZE)
 
             chunk_dnase = raw_signal[start_idx:end_idx]
             if len(chunk_dnase) < MODEL_WINDOW_SIZE:
                 chunk_dnase = _pad_or_slice_signal(chunk_dnase, MODEL_WINDOW_SIZE)
 
-            # تقطيع DNA لنفس النافذة الزمنية بالضبط (بدل عشوائي منفصل لكل قطعة)
             dna_chunk = full_dna_array[:, :, start_idx:end_idx]
             if dna_chunk.shape[-1] < MODEL_WINDOW_SIZE:
                 fixed_chunk = np.zeros((1, 4, MODEL_WINDOW_SIZE), dtype=np.float32)
@@ -233,15 +243,18 @@ def generate_hic_matrices(
             sub_matrix = predict_hic(dna_chunk, binned_dnase_chunk)
             predicted_sub_matrices.append(sub_matrix)
 
+            if end_idx == total_length:
+                break
+
             start_idx += stride
 
-        stride_bins = MODEL_NUM_BINS
+        # stride_bins يعادل نصف عدد البينات للنافذة (128) ليوافق تداخل الـ 50%
+        stride_bins = MODEL_NUM_BINS // 2
         hic_matrix = merge_hic_matrices(predicted_sub_matrices, total_bins, MODEL_NUM_BINS, stride_bins)
-
     hic_matrix = (hic_matrix + hic_matrix.T) * 0.5
     np.fill_diagonal(hic_matrix, hic_matrix.max() if hic_matrix.max() > 0 else 1.0)
 
-    relative_folder = 'genomics/hic_matrices/'
+    relative_folder = 'genomics/hic_matrices/npz/'
     absolute_folder = os.path.join(settings.MEDIA_ROOT, relative_folder)
     os.makedirs(absolute_folder, exist_ok=True)
 

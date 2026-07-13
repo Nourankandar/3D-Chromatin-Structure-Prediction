@@ -35,8 +35,21 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
         manager = GenomicPipelineManager(input_data_id=input_data_id)
         results: dict = manager.run()
     except Exception as exc:
+        input_data.refresh_from_db()
+        if input_data.status == "cancelling":
+            logger.info("[Task] Pipeline stopped by user. Cleaning up InputData ID=%s", input_data_id)
+            
+            # 1. حذف ملف الـ FASTA من الديسك فوراً
+            if input_data.dna_sequence_file and input_data.dna_sequence_file.storage.exists(input_data.dna_sequence_file.name):
+                input_data.dna_sequence_file.delete(save=False)
+            
+            # 2. حذف سجل المدخلات من قاعدة البيانات
+            input_data.delete()
+            return {"status": "deleted", "message": "Cancelled and completely removed by user"}
+            
         logger.exception("[Task] Pipeline FAILED for InputData id=%s", input_data_id)
-        InputData.objects.filter(pk=input_data_id).update(status="failed")
+        input_data.status = "failed"
+        input_data.save(update_fields=["status"])
         raise self.retry(exc=exc)
 
     # NOTE: keys here must match what GenomicPipelineManager.run() returns,
@@ -67,6 +80,7 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
     default_retry_delay=60,
     name="apps.genomics.tasks.generate_llm_report_task",
 )
+
 def generate_llm_report_task(self, output_data_id: int) -> dict:
     """
     Generates (or regenerates) the AI clinical report for a completed
@@ -109,13 +123,16 @@ def generate_llm_report_task(self, output_data_id: int) -> dict:
 
         logger.error("[LLM Task] All retries exhausted for OutputData ID=%s", output_data_id)
         report.summary_text = f"Clinical report generation failed after retries: {exc}"
-        report.save(update_fields=["summary_text"])
+        report.status = "failed"  # تحديث الحالة هنا
+        report.save(update_fields=["summary_text", "status"])
         raise exc
 
     report.summary_text = markdown_result
     report.detected_disease = "Structural Chromatin Alteration Detected"
-    report.save()
+    report.status = "completed"  # التقرير أصبح جاهزاً
+    report.save(update_fields=["summary_text", "detected_disease", "status"])
 
+    
     action = "created" if created else "regenerated"
     logger.info("[LLM Task] Report successfully %s with ID=%s", action, report.id)
     return {"report_id": report.id, "action": action}

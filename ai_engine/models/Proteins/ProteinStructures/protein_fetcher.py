@@ -5,18 +5,16 @@ import os
 class ProteinStructureFetcher:
     def __init__(self, cache_dir=None):
         if cache_dir is None:
-            cache_dir = os.path.join(os.path.dirname(__file__), "pdb_cache")
-        self.cache_dir = cache_dir
-        os.makedirs(self.cache_dir, exist_ok=True)
+            cache_dir = os.path.dirname(__file__)
+        self.rcsb_dir = os.path.join(cache_dir, "rcsb")
+        self.alphafold_dir = os.path.join(cache_dir, "alphafold")
+        os.makedirs(self.rcsb_dir, exist_ok=True)
+        os.makedirs(self.alphafold_dir, exist_ok=True)
 
     def fetch(self, protein_name: str) -> str:
-        """
-        Input:  protein_name  مثل "CTCF" أو "Spz1"
-        Output: مسار ملف .pdb (من RCSB PDB أو AlphaFold كخيار احتياطي)
-        """
         protein_name_upper = protein_name.upper()
         
-        # ١. اسم البروتين → UniProt ID
+        # 1. تحويل اسم الجين إلى معرف UniProt ID
         print(f"[+] جاري البحث في UniProt عن الجين: {protein_name_upper}")
         queries = [
             f"gene:{protein_name_upper} AND organism_id:9606 AND reviewed:true",
@@ -41,9 +39,9 @@ class ProteinStructureFetcher:
                 continue
 
         if not uniprot_id:
-            raise ValueError(f"ما لقيت UniProt ID للبروتين: {protein_name}")
+            raise ValueError(f"لم يتم العثور على UniProt ID للبروتين: {protein_name}")
 
-        # ٢. محاولة جلب الهيكل من RCSB PDB
+        # 2. البحث في قاعدة البيانات التجريبية RCSB PDB
         print(f"[+] جاري البحث في RCSB PDB عن هيكل للمعرف: {uniprot_id}")
         pdb_id = None
         try:
@@ -64,48 +62,44 @@ class ProteinStructureFetcher:
                 timeout=20
             )
             if r.status_code == 200:
-                hits = r.json().get("result_set", [])
-                if hits:
-                    pdb_id = hits[0]["identifier"]
+                result_data = r.json()
+                if result_data and "result_set" in result_data and len(result_data["result_set"]) > 0:
+                    pdb_id = result_data["result_set"][0]["identifier"]
                     print(f"[+] تم العثور على معرّف الهيكل التجريبي (PDB ID): {pdb_id}")
-        except Exception:
-            print("[!] لم يتم العثور على هيكل تجريبي في RCSB PDB أو السيرفر لم يستجب.")
+        except Exception as e:
+            print(f"[!] لم نجد هيكل متبلور تجريبي، سننتقل للخيار البديل. السبب الفني: {e}")
 
-        # ٣. تنزيل الملف بناءً على المصدر المتاح
+        # 3. تنزيل الملف وحفظه محلياً في الكاش
         if pdb_id:
-            # تنزيل من RCSB PDB
             cache_path = os.path.join(self.cache_dir, f"{pdb_id}.pdb")
             if not os.path.exists(cache_path):
-                print(f"[+] جاري تنزيل ملف PDB الخاص بـ {pdb_id} من RCSB PDB...")
+                print(f"[+] جاري تنزيل ملف PDB المشتق مخبرياً لـ {pdb_id}...")
                 r = requests.get(f"https://files.rcsb.org/download/{pdb_id}.pdb", timeout=30)
                 r.raise_for_status()
                 with open(cache_path, "w") as f:
                     f.write(r.text)
             return cache_path
         else:
-            # خيار احتياطي متطور: التنزيل من AlphaFold API المستقر
-            print(f"[⚠️] لا يوجد هيكل متبلور لـ {protein_name_upper} في PDB. جاري التوجه لـ AlphaFold DB...")
+            # الحل الاحتياطي السريع والمضمون: نموذج الذكاء الاصطناعي AlphaFold
+            print(f"[⚠️] جاري جلب هيكل تنبؤي من AlphaFold DB للمعرف: {uniprot_id}")
             alphafold_path = os.path.join(self.cache_dir, f"AF-{uniprot_id}-F1.pdb")
             
             if not os.path.exists(alphafold_path):
-                # استعلام الـ API لمعرفة رابط الـ pdb الصحيح لـ Q9BXG8 حالياً
                 api_url = f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}"
                 try:
                     api_response = requests.get(api_url, timeout=20)
                     if api_response.status_code == 200 and api_response.json():
-                        # استخراج رابط ملف pdb الديناميكي من الـ API
                         af_url = api_response.json()[0]["pdbUrl"]
-                        print(f"[+] تم جلب رابط التحميل الحديث من AlphaFold: {af_url}")
+                        print(f"[+] رابط التحميل المستقر من AlphaFold: {af_url}")
                         
-                        # تحميل الملف الفعلي
                         r = requests.get(af_url, timeout=30)
                         r.raise_for_status()
                         with open(alphafold_path, "w") as f:
                             f.write(r.text)
-                        print(f"[+] تم تحميل هيكل AlphaFold بنجاح حفظه في الكاش!")
+                        print(f"[+] تم حفظ مصفوفة الذرات الفراغية بنجاح.")
                     else:
-                        raise ValueError("الـ API الخاص بـ AlphaFold لم يرجع أي بيانات للبروتين.")
+                        raise ValueError("لم يرجع سيرفر AlphaFold بيانات لهذا المعرف.")
                 except Exception as e:
-                    raise ValueError(f"فشل جلب هيكل للبروتين {protein_name_upper} من PDB ومن AlphaFold أيضاً. التفاصيل: {e}")
+                    raise ValueError(f"فشل جلب الملف للبروتين {protein_name_upper} من المصدرين: {e}")
             
             return alphafold_path

@@ -14,7 +14,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from rest_framework.decorators import action
 from .models import CellType, InputData, OutputData
 from .serializers import (
     CellTypeSerializer,
@@ -23,7 +23,7 @@ from .serializers import (
     OutputDataSerializer,
 )
 from .tasks import run_genomic_pipeline_task
-
+from rest_framework.filters import SearchFilter
 logger = logging.getLogger(__name__)
 
 
@@ -44,6 +44,7 @@ class CellTypeViewSet(viewsets.ModelViewSet):
     serializer_class = CellTypeSerializer
     permission_classes = [IsAuthenticated]
     search_fields = ['name']
+    filter_backends = [SearchFilter]
 
     def list(self, request, *args, **kwargs):
         # The frontend (dashboard_v3.js) expects {"cell_types": [...]}
@@ -53,22 +54,7 @@ class CellTypeViewSet(viewsets.ModelViewSet):
 
 
 class InputDataViewSet(viewsets.ModelViewSet):
-    """
-    Full CRUD for genomic test submissions (InputData).
-
-    GET    /api/genomics/inputs/        -> list all genomic tests
-    POST   /api/genomics/inputs/        -> create a test record directly (no pipeline trigger)
-    GET    /api/genomics/inputs/<id>/   -> retrieve a test
-    PUT    /api/genomics/inputs/<id>/   -> replace a test
-    PATCH  /api/genomics/inputs/<id>/   -> partially update a test
-    DELETE /api/genomics/inputs/<id>/   -> delete a test
-
-    NOTE: to actually run the prediction pipeline (upload a FASTA file and
-    queue the Celery task), use POST /api/genomics/run-test/ instead — this
-    plain CRUD endpoint is for direct data management / testing.
-    """
-
-    queryset = InputData.objects.select_related('patient', 'cell_type').all()
+    queryset = InputData.objects.select_related('patient', 'cell_type').prefetch_related('output').all()
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
     search_fields = ['chromosome', 'status']
@@ -79,20 +65,60 @@ class InputDataViewSet(viewsets.ModelViewSet):
             return InputDataCreateSerializer
         return InputDataSerializer
 
+    def list(self, request, *args, **kwargs):
+        # الشرط: patient_id إلزامي
+        patient_id = request.query_params.get('patient_id')
+        if not patient_id:
+            return Response(
+                {"error": "The 'patient_id' query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        queryset = self.filter_queryset(self.get_queryset()).filter(patient_id=patient_id)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
-class OutputDataViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    Outputs are produced exclusively by the pipeline, so this endpoint is
-    read-only — use it to inspect generated files for a given test.
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
-    GET /api/genomics/outputs/        -> list all pipeline outputs
-    GET /api/genomics/outputs/<id>/   -> retrieve a single output
-    """
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        
+        # بنأخذ البيانات الأساسية للـ Input
+        data = serializer.data
+        
+        # بنجيب الـ output المرتبط فيه لو موجود (بفضل الـ OneToOneField)
+        output_obj = getattr(instance, 'output', None)
+        if output_obj:
+            # استخدمنا السيريالايزر تبعك مباشرة
+            data['output'] = OutputDataSerializer(output_obj).data
+        else:
+            # لو كان لسا pending أو عم يعالج وما نزل له مخرجات
+            data['output'] = None
+            
+        return Response(data)
 
-    queryset = OutputData.objects.select_related('input_data__patient', 'input_data__cell_type').all()
-    serializer_class = OutputDataSerializer
-    permission_classes = [IsAuthenticated]
+    @action(detail=True, methods=["post"], url_path="stop")
+    def stop(self, request, pk=None):
+        input_data = self.get_object()
 
+        if input_data.status in ("completed", "failed", "cancelled"):
+            return Response(
+                {"error": f"Cannot stop — analysis already '{input_data.status}'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # نكتفي بوضع علم "طلب إلغاء" — الـ pipeline_manager رح يفحصه بين كل خطوة ويوقف الشغل فوراُ
+        input_data.status = "cancelling"
+        input_data.save(update_fields=["status"])
+
+        return Response(
+            {"message": "Cancellation requested", "input_data_id": input_data.id, "status": "cancelling"},
+            status=status.HTTP_202_ACCEPTED,
+        )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # POST /api/genomics/run-test/
@@ -115,13 +141,31 @@ class RunGenomicTestAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
+        # 1) التحقق فوراً: هل هناك أي تحليل شغال حالياً في الخلفية؟
+        active_statuses = [
+            'pending', 
+            'predicting_dnase', 
+            'generating_hic', 
+            'generating_hic_coords', 
+            'scanning_motifs', 
+            'cancelling'
+        ]
+        
+        has_active_test = InputData.objects.filter(status__in=active_statuses).exists()
+        
+        if has_active_test:
+            return Response(
+                {"error": "There is already a genomic test running. Please wait until it finishes or stop it before running a new one."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 2) إذا لم يكن هناك أي تحليل شغال، يكمل الكود الطبيعي تبعك:
         fasta_file = request.FILES.get("fasta_file") or request.FILES.get("dna_sequence_file")
         if not fasta_file:
             return Response(
                 {"error": "fasta_file is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         patient_id = request.data.get("patient_id") or request.data.get("patient")
         cell_type_id = request.data.get("cell_type_id") or request.data.get("cell_type")
         chromosome = request.data.get("chromosome")
@@ -172,15 +216,13 @@ class RunGenomicTestAPIView(APIView):
 class TestStatusAPIView(APIView):
     """
     Returns the current status of a test, for live dashboard polling.
-    Statuses: pending | predicting_dnase | generating_hic |
-              generating_hic_coords | scanning_motifs | completed | failed
     """
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request, input_id):
         try:
-            input_data = InputData.objects.select_related("patient", "cell_type").get(pk=input_id)
+            # جلب البيانات مع العلاقات بضربة واحدة سريعة
+            input_data = InputData.objects.select_related("patient", "cell_type").prefetch_related("output").get(pk=input_id)
         except InputData.DoesNotExist:
             return Response({"error": "InputData not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -191,89 +233,15 @@ class TestStatusAPIView(APIView):
             "chromosome": input_data.chromosome,
             "cell_type": input_data.cell_type.name,
             "created_at": input_data.created_at,
+            "output_data_id": None  # قيمة افتراضية
         }
 
-        if input_data.status == "completed":
-            try:
-                output = OutputData.objects.get(input_data=input_data)
-                response["output_data_id"] = output.id
-            except OutputData.DoesNotExist:
-                pass
+        # التحقق من وجود output مباشرة دون استعلام إضافي بفضل الـ prefetch
+        output_obj = getattr(input_data, 'output', None)
+        if input_data.status == "completed" and output_obj:
+            response["output_data_id"] = output_obj.id
 
         return Response(response, status=status.HTTP_200_OK)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# GET /api/genomics/visualization-data/<output_id>/
-# ─────────────────────────────────────────────────────────────────────────────
-class GetVisualizationDataAPIView(APIView):
-    """
-    The frontend's main data feed — assembles absolute URLs for the patient
-    vs. reference (split-view) files, plus the scanned-protein dictionary.
-    """
-
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request, output_id):
-        try:
-            output = OutputData.objects.select_related(
-                "input_data__patient",
-                "input_data__cell_type",
-                "input_data",
-            ).get(pk=output_id)
-        except OutputData.DoesNotExist:
-            return Response({"error": "OutputData not found"}, status=status.HTTP_404_NOT_FOUND)
-
-        input_data = output.input_data
-
-        def to_absolute_url(file_field):
-            if not file_field or not file_field.name:
-                return None
-            return request.build_absolute_uri(file_field.url)
-
-        base_media_url = request.build_absolute_uri(settings.MEDIA_URL)
-        proteins_payload = []
-        for protein_id, info in (output.affected_proteins or {}).items():
-            pdb_rel_path = info.get("pdb_file", "")
-            pdb_url = f"{base_media_url}{pdb_rel_path}" if pdb_rel_path else None
-
-            proteins_payload.append(
-                {
-                    "protein_id": protein_id,
-                    "pdb_url": pdb_url,
-                    "position": info.get("position"),
-                    "rotation": info.get("rotation"),
-                    "binding_score": info.get("binding_score"),
-                    "is_missing": info.get("is_missing", False),
-                }
-            )
-
-        response_data = {
-            "meta": {
-                "output_data_id": output.id,
-                "patient_name": input_data.patient.name,
-                "chromosome": input_data.chromosome,
-                "cell_type": input_data.cell_type.name,
-                "generated_at": output.generated_at,
-            },
-            "hic": {
-                "patient_matrix_url": to_absolute_url(output.hic_patient_file),
-                "reference_matrix_url": to_absolute_url(output.hic_control_file),
-            },
-            "dnase": {
-                "patient_dnase_url": to_absolute_url(input_data.predicted_dnase_patient),
-                "reference_dnase_url": to_absolute_url(input_data.predicted_dnase_control),
-            },
-            "coordinates_3d": {
-                "patient_xyz_json_url": to_absolute_url(output.coords_patient_file),
-                "reference_xyz_json_url": to_absolute_url(output.coords_control_file),
-                "format": "json",
-            },
-            "proteins": proteins_payload,
-        }
-
-        return Response(response_data, status=status.HTTP_200_OK)
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # GET /api/genomics/search-protein/?gene=<gene_name>

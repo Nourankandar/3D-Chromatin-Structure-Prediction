@@ -16,7 +16,7 @@ class GenomicMotifScanner:
 
     def _load_local_motifs(self):
         if not os.path.exists(self.jaspar_file_path):
-            raise FileNotFoundError(f"ملف JASPAR غير موجود: {self.jaspar_file_path}")
+            raise FileNotFoundError(f"ملف قاعدة البيانات JASPAR غير موجود في المسار: {self.jaspar_file_path}")
         with open(self.jaspar_file_path) as f:
             self.motifs_database = list(motifs.parse(f, "jaspar"))
 
@@ -25,18 +25,28 @@ class GenomicMotifScanner:
         detected = []
 
         for motif in self.motifs_database:
+            # استخدام حساب الاحتمالات اللوغاريتمية القياسي
             pssm = motif.counts.normalize(pseudocounts=0.5).log_odds()
             
             min_score = pssm.min
             max_score = pssm.max
             motif_threshold = min_score + threshold * (max_score - min_score)
 
+            # دالة البحث تعود بالموقع والمجموع (Score)
             for position, score in pssm.search(seq_obj, threshold=motif_threshold):
+                # التعامل مع الـ Strand العكسي وحساب موقعه بشكل دقيق وآمن بيولوجياً
+                if position >= 0:
+                    strand = "+"
+                    actual_pos = position
+                else:
+                    strand = "-"
+                    actual_pos = len(dna_sequence) + position # دمج الموقع السالب مع طول السلسلة
+
                 detected.append({
                     "protein_name": motif.name,    
                     "jaspar_id":    motif.matrix_id,
-                    "position": position if position >= 0 else len(dna_sequence) + position,
-                    "strand":   "+" if position >= 0 else "-",
-                    "score":    round(float(score), 2)
+                    "position":     actual_pos,
+                    "strand":       strand,
+                    "score":        round(float(score), 2)
                 })
         return detected

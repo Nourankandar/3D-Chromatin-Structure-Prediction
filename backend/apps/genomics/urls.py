@@ -1,35 +1,27 @@
-"""
-apps/genomics/urls.py
-"""
-
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
     CellTypeViewSet,
-    GetVisualizationDataAPIView,
     InputDataViewSet,
-    OutputDataViewSet,
     RunGenomicTestAPIView,
-    SearchProteinAPIView,
     TestStatusAPIView,
+    SearchProteinAPIView,  
 )
 
 router = DefaultRouter()
 router.register(r'cell-types', CellTypeViewSet, basename='celltype')
-router.register(r'outputs', OutputDataViewSet, basename='output')
-# InputData ("tests") registered at the router root so the resource lives at
-# /api/genomics/  (and is also mounted at /api/tests/ — see core/urls.py)
 router.register(r'', InputDataViewSet, basename='input')
 
 urlpatterns = [
     path("run-test/", RunGenomicTestAPIView.as_view(), name="run-test"),
+    
     path("test-status/<int:input_id>/", TestStatusAPIView.as_view(), name="test-status"),
-    path("visualization-data/<int:output_id>/", GetVisualizationDataAPIView.as_view(), name="visualization-data"),
+    
     path("search-protein/", SearchProteinAPIView.as_view(), name="search-protein"),
+    
     path('', include(router.urls)),
 ]
-
 # GET    /api/genomics/cell-types/                  -> list cell types ({"cell_types": [...]})
 # POST   /api/genomics/cell-types/                  -> create a cell type
 # GET    /api/genomics/cell-types/<id>/              -> retrieve a cell type
