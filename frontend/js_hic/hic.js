@@ -15,8 +15,8 @@ let isoScene,isoCamera,isoRenderer,isoRunning=false;
 function initThree(){
   const c=document.getElementById('cv');
   scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x080808); // خلفية أوبسيديان
-  scene.fog=new THREE.FogExp2(0x080808,.003);
+  scene.background=new THREE.Color(0x160A0D); // wine background
+  scene.fog=new THREE.FogExp2(0x160A0D,.003);
   camera=new THREE.PerspectiveCamera(55,c.clientWidth/c.clientHeight,.1,3000);
   updateCam();
   renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
@@ -33,14 +33,14 @@ function initThree(){
 }
 
 function addLights(s){
-  s.add(new THREE.AmbientLight(0x1e1e1e, 1.2)); // إضاءة محيطية دافئة
-  const dl=new THREE.DirectionalLight(0xe8c97a, 2.2); // إضاءة ذهبية رئيسية
+  s.add(new THREE.AmbientLight(0x241016, 1.2)); // warm ambient light
+  const dl=new THREE.DirectionalLight(0xEFE2D0, 2.2); // main key light (cream)
   dl.position.set(2,3,2); s.add(dl);
-  const dl2=new THREE.DirectionalLight(0x818cf8, 0.8); // لمسة زرقاء خفيفة للتباين
+  const dl2=new THREE.DirectionalLight(0x818cf8, 0.8); // subtle blue rim light for contrast
   dl2.position.set(-2,-1,3); s.add(dl2);
-  const dl3=new THREE.DirectionalLight(0xc9a84c, 0.6); // ذهبي داكن من الأسفل
+  const dl3=new THREE.DirectionalLight(0xD8C6A8, 0.6); // taupe fill light from below
   dl3.position.set(0,-3,-1); s.add(dl3);
-  const pl=new THREE.PointLight(0xc9a84c, 0.5, 300);
+  const pl=new THREE.PointLight(0xD8C6A8, 0.5, 300);
   pl.position.set(0,0,0); s.add(pl);
 }
 
@@ -49,13 +49,13 @@ function addStars(s){
   for(let i=0;i<1500;i++)
     pos.push((Math.random()-.5)*1500,(Math.random()-.5)*1500,(Math.random()-.5)*1500);
   g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
-  s.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xc9a84c,size:.3,transparent:true,opacity:.3}))); // جسيمات ذهبية خافتة
+  s.add(new THREE.Points(g,new THREE.PointsMaterial({color:0xD8C6A8,size:.3,transparent:true,opacity:.3}))); // dim taupe particles
 }
 
 // ══ Load JSON ══
 function loadJSON(input){
   const file=input.files[0]; if(!file) return;
-  document.getElementById('load-msg').textContent='جاري التحليل ومعالجة البيانات...';
+  document.getElementById('load-msg').textContent=tr('Analyzing and processing data...');
   document.getElementById('loading').style.display='flex';
   const reader=new FileReader();
   reader.onload=e=>{
@@ -64,7 +64,7 @@ function loadJSON(input){
       globalData=d;
       rawPts=d.coords_raw||[];
       smoothPts=d.coords_smooth||[];
-      if(rawPts.length<2) throw new Error('بيانات النقاط غير كافية لرسم المجسم');
+      if(rawPts.length<2) throw new Error(tr('Not enough point data to render the structure'));
 
       // تحديث panel
       document.getElementById('p-chrom').textContent=d.chrom||'—';
@@ -72,7 +72,7 @@ function loadJSON(input){
       document.getElementById('p-end').textContent  =d.end  ?(d.end/1e6).toFixed(2)+'M'  :'—';
       document.getElementById('p-res').textContent  =d.resolution?(d.resolution/1000)+'kb':'—';
       document.getElementById('p-pts').textContent  =rawPts.length+' | '+smoothPts.length;
-      document.getElementById('p-tads').textContent =(d.n_tads||'—')+' منطقة';
+      document.getElementById('p-tads').textContent =(d.n_tads||'—')+tr(' regions');
       document.getElementById('hdr-info').textContent=
         `${d.chrom} ${(d.start/1e6).toFixed(1)}M → ${(d.end/1e6).toFixed(1)}M`;
 
@@ -84,7 +84,7 @@ function loadJSON(input){
 
       buildTADList(d);
       buildScene();
-    }catch(err){alert('خطأ في الملف: '+err.message);console.error(err);}
+    }catch(err){alert(tr('File error: ')+err.message);console.error(err);}
     document.getElementById('loading').style.display='none';
   };
   reader.readAsText(file,'utf-8');
@@ -101,7 +101,7 @@ function buildTADList(d){
     const div=document.createElement('div');
     div.className='tad-item';
     div.id='tad-item-'+i;
-    const tColor = d.tad_colors[i] || '#c9a84c'; 
+    const tColor = d.tad_colors[i] || '#D8C6A8'; 
     div.innerHTML=
       `<div class="tad-dot" style="background:${tColor}"></div>`+
       `<span class="tad-label">TAD ${i+1}</span>`+
@@ -137,7 +137,7 @@ function buildScene(){
   }
   geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
   meshes.tube=new THREE.Mesh(geo,new THREE.MeshPhongMaterial(
-    {vertexColors:true,shininess:130,specular:new THREE.Color(0x3a3530)}));
+    {vertexColors:true,shininess:130,specular:new THREE.Color(0x3A1820)}));
   scene.add(meshes.tube);
 
   // ── Glow ──
@@ -171,7 +171,7 @@ function buildScene(){
     if(bPos.length>0){
       bGeo.setAttribute('position',new THREE.Float32BufferAttribute(bPos,3));
       meshes.bounds=new THREE.Points(bGeo,new THREE.PointsMaterial(
-        {color:0xc9a84c,size:4.5,transparent:true,opacity:.95,sizeAttenuation:true})); 
+        {color:0xD8C6A8,size:4.5,transparent:true,opacity:.95,sizeAttenuation:true})); 
       scene.add(meshes.bounds);
     }
   }
@@ -204,7 +204,7 @@ function buildScene(){
   const dp=[],dc=[];
   rawPts.forEach((p,i)=>{
     dp.push(p.x-rCx,p.y-rCy,p.z-rCz);
-    const col=globalData?.tad_colors?.[p.tad_id||0]||'#c9a84c';
+    const col=globalData?.tad_colors?.[p.tad_id||0]||'#D8C6A8';
     const rgb=hexToRgb(col);
     dc.push(rgb.r,rgb.g,rgb.b);
   });
@@ -240,11 +240,11 @@ function getClr(t,density,tadId,deviation){
     case 'density':
       return new THREE.Color().setHSL(.13,.6+density*.4, .2+density*.6);
     case 'tad':{
-      const pal=globalData?.tad_colors||['#c9a84c'];
-      const hex=pal[tadId%pal.length]||'#c9a84c';
+      const pal=globalData?.tad_colors||['#D8C6A8'];
+      const hex=pal[tadId%pal.length]||'#D8C6A8';
       return new THREE.Color(hex);
     }
-    default: return new THREE.Color(0xc9a84c);
+    default: return new THREE.Color(0xD8C6A8);
   }
 }
 
@@ -265,13 +265,13 @@ async function isolateTAD(tadId){
   document.getElementById('tad-item-'+tadId)?.classList.add('active');
 
   const overlay=document.getElementById('isolate-overlay');
-  const color=globalData.tad_colors?.[tadId]||'#c9a84c';
+  const color=globalData.tad_colors?.[tadId]||'#D8C6A8';
 
   document.getElementById('iso-title').textContent=`TAD ${tadId+1}`;
   document.getElementById('iso-title').style.color=color;
-  document.getElementById('iso-pts').textContent=pts.length+' نقطة';
+  document.getElementById('iso-pts').textContent=pts.length+tr(' points');
   const avgDen=(pts.reduce((s,p)=>s+(p.density||0),0)/pts.length*100).toFixed(0);
-  document.getElementById('iso-den').textContent=avgDen+'% كثافة';
+  document.getElementById('iso-den').textContent=avgDen+tr('% density');
 
   overlay.classList.add('visible');
 
@@ -286,7 +286,7 @@ async function isolateTAD(tadId){
   const ch=freshCanvas.clientHeight||window.innerHeight-52;
 
   isoScene=new THREE.Scene();
-  isoScene.background=new THREE.Color(0x080808);
+  isoScene.background=new THREE.Color(0x160A0D);
   addLights(isoScene);
 
   isoCamera=new THREE.PerspectiveCamera(55, cw/ch, 0.1, 1000);
@@ -306,7 +306,7 @@ async function isolateTAD(tadId){
     const curve=new THREE.CatmullRomCurve3(v3,false,'catmullrom',.5);
     const geo=new THREE.TubeGeometry(curve,v3.length*8,tubeR*1.4,16,false);
     const mat=new THREE.MeshPhongMaterial({color:new THREE.Color(color),shininess:160,
-      specular:new THREE.Color(0x3a3530)});
+      specular:new THREE.Color(0x3A1820)});
     isoScene.add(new THREE.Mesh(geo,mat));
 
     const geoG=new THREE.TubeGeometry(curve,v3.length*4,tubeR*4.5,8,false);
@@ -347,7 +347,7 @@ async function isolateTAD(tadId){
     isoDrag=true; isoRDrag=e.button===2;
     isoPrev={x:e.clientX,y:e.clientY};
     isoAutoRot=false;
-    document.getElementById('iso-rot').textContent='▶ تشغيل الدوران';
+    document.getElementById('iso-rot').textContent=tr('▶ Start rotation');
     document.getElementById('iso-rot').classList.remove('on');
     e.stopPropagation();
   });
@@ -378,7 +378,7 @@ async function isolateTAD(tadId){
 
   isoRotBtn.onclick=()=>{
     isoAutoRot=!isoAutoRot;
-    isoRotBtn.textContent=isoAutoRot?'⏸ إيقاف الدوران':'▶ تشغيل الدوران';
+    isoRotBtn.textContent=isoAutoRot?tr('⏸ Stop rotation'):tr('▶ Start rotation');
     isoRotBtn.classList.toggle('on',isoAutoRot);
   };
   isoResetBtn.onclick=()=>{
@@ -502,10 +502,10 @@ function doHover(e,c){
   if(hits.length>0){
     const idx=hits[0].index;
     const p=rawPts[idx];
-    const reg=p.region||`نقطة ${idx}`;
+    const reg=p.region||`${tr('Point ')}${idx}`;
     const den=p.density!=null?(p.density*100).toFixed(0)+'%':'—';
     const dev=p.deviation!=null?(p.deviation*100).toFixed(0)+'%':'—';
-    const tadColor=globalData?.tad_colors?.[p.tad_id||0]||'#c9a84c';
+    const tadColor=globalData?.tad_colors?.[p.tad_id||0]||'#D8C6A8';
     const devNum=p.deviation||0;
     const devClass=devNum>.7?'warn':devNum>.4?'gold':'ok';
 
@@ -515,11 +515,11 @@ function doHover(e,c){
     tip.innerHTML=
       `<strong style="color:var(--gold); font-family:var(--font-display); font-size:14px; letter-spacing:1px;">${reg}</strong><br>`+
       `<div style="height:1px; background:linear-gradient(90deg,var(--border),transparent); margin:6px 0;"></div>`+
-      `<span style="color:var(--ivory-muted)">المجموعة: </span>`+
+      `<span style="color:var(--ivory-muted)">${tr('Group: ')}</span>`+
       `<span style="color:${tadColor}; font-weight:bold;">■ ${(p.tad_id||0)+1}</span>`+
-      (p.is_boundary?` <span style="color:#fbbf24; font-size:10px;">(حد فاصِل)</span>`:'')+`<br>`+
-      `<span style="color:var(--ivory-muted)">الكثافة: </span><span style="color:${devNum>.5?'#e06060':'#6abf8a'}">${den}</span><br>`+
-      `<span style="color:var(--ivory-muted)">الانحراف: </span><span class="${devClass}" style="color:${devNum>.7?'#e06060':devNum>.4?'#eab308':'#6abf8a'}">${dev}</span>`;
+      (p.is_boundary?` <span style="color:#fbbf24; font-size:10px;">${tr('(Boundary)')}</span>`:'')+`<br>`+
+      `<span style="color:var(--ivory-muted)">${tr('Density: ')}</span><span style="color:${devNum>.5?'#e06060':'#6abf8a'}">${den}</span><br>`+
+      `<span style="color:var(--ivory-muted)">${tr('Deviation: ')}</span><span class="${devClass}" style="color:${devNum>.7?'#e06060':devNum>.4?'#eab308':'#6abf8a'}">${dev}</span>`;
 
     document.getElementById('s-reg').textContent=reg;
     document.getElementById('s-tad').textContent='TAD '+((p.tad_id||0)+1);

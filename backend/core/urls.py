@@ -27,9 +27,9 @@ from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/patients/', include('patients.urls')),
-    path('api/tests/', include('genomics.urls')),
-    path('api/reports/', include('reports.urls')),
-    path('api/auth/', include('accounts.urls')),
+    path('api/patients/', include('apps.patients.urls')),
+    path('api/tests/', include('apps.genomics.urls')),
+    path('api/reports/', include('apps.reports.urls')),
+    path('api/auth/', include('apps.accounts.urls')),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

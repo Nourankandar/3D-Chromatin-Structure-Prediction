@@ -1,90 +1,205 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<!doctype html>
+<html lang="en" dir="ltr" class="dark">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chromogen · Lab System</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <!-- مكتبات التأثيرات البصرية (Hologram Bloom) -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Helix — Genomic Analysis Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Cairo:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="css/chromogen.css?v=8">
 
-    <link rel="stylesheet" href="css/style.css">
-    
+
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
+
 <body>
-    <canvas id="particle-canvas" style="position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:0.4;"></canvas>
 
-    <div id="login-container"></div>
-    <div id="dashboard-container" style="display: none;"></div>
-    <div id="viewer-container" style="display: none;"></div>
+  <div id="toasts"></div>
 
-    <script>
-        // نظام حقن الواجهات
-        document.addEventListener("DOMContentLoaded", async () => {
-            try {
-                const loginRes = await fetch('login.html');
-                document.getElementById('login-container').innerHTML = await loginRes.text();
+  <!-- ============================ LANDING ============================ -->
+  <div id="screen-landing">
+    <header
+      style="position:sticky;top:0;z-index:40;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent);background:color-mix(in srgb,var(--background) 75%,transparent);backdrop-filter:blur(8px)">
+      <div class="wrap"
+        style="padding:0 1rem;height:64px;display:flex;align-items:center;justify-content:space-between">
+        <div class="logo"><span class="mark" data-icon="dna"></span>
+          <div>
+            <div class="name" data-t="brand"></div>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn outline sm js-lang"></button>
+          <button class="btn outline icon sm js-theme"></button>
+          <button class="btn lg" data-go="login"><span data-t="landing_cta"></span></button>
+        </div>
+      </div>
+    </header>
 
-                const dashRes = await fetch('dashboard.html');
-                document.getElementById('dashboard-container').innerHTML = await dashRes.text();
+    <section class="hero">
+      <div class="grid-bg mask" style="position:absolute;inset:0;opacity:.35;pointer-events:none"></div>
+      <div class="hero-dots" id="heroDots"></div>
+      <div class="inner">
+        <div class="reveal-load" style="position:relative;z-index:1">
+          <span class="pill"><span style="width:6px;height:6px;border-radius:999px;background:var(--primary)"
+              class="dot pulse"></span><span data-t="landing_status"></span></span>
+          <h1 style="margin-top:1.25rem"><span data-t="landing_hero_a"></span> <em data-t="landing_hero_b"></em> <span
+              data-t="landing_hero_c"></span></h1>
+          <p class="sub" data-t="landing_sub"></p>
+          <div class="row" style="margin-top:2rem;flex-wrap:wrap">
+            <button class="btn lg" data-go="login"><span data-t="landing_cta"></span></button>
+            <a class="btn lg outline" href="#features"><span data-t="landing_cta_secondary"></span></a>
+          </div>
+        </div>
+        <div style="position:relative;z-index:1">
+          <canvas id="helixCanvas" style="width:100%;height:440px;display:block"></canvas>
+        </div>
+      </div>
+    </section>
 
-                const viewRes = await fetch('viewer.html');
-                document.getElementById('viewer-container').innerHTML = await viewRes.text();
-                
-                console.log("تم تحميل الواجهات بنجاح!");
-            } catch (error) {
-                console.error("فشل في التحميل:", error);
-            }
-        });
+    <section class="section" id="features">
+      <div class="inner">
+        <h2 class="reveal" style="font-size:2rem;font-weight:600;letter-spacing:-.02em;margin-bottom:2.5rem"
+          data-t="landing_feature3_title"></h2>
+        <div class="features">
+          <div class="feature reveal" style="transition-delay:.05s">
+            <div class="ico" data-icon="dna"></div>
+            <h3 style="font-size:1.05rem;font-weight:500;margin-bottom:.5rem" data-t="landing_feature1_title"></h3>
+            <p class="sm-t muted" data-t="landing_feature1_desc"></p>
+          </div>
+          <div class="feature reveal" style="transition-delay:.13s">
+            <div class="ico" data-icon="search"></div>
+            <h3 style="font-size:1.05rem;font-weight:500;margin-bottom:.5rem" data-t="landing_feature2_title"></h3>
+            <p class="sm-t muted" data-t="landing_feature2_desc"></p>
+          </div>
+          <div class="feature reveal" style="transition-delay:.21s">
+            <div class="ico" data-icon="boxes"></div>
+            <h3 style="font-size:1.05rem;font-weight:500;margin-bottom:.5rem" data-t="landing_feature3_title"></h3>
+            <p class="sm-t muted" data-t="landing_feature3_desc"></p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        // سكربت الجسيمات (Particles)
-        const canvas = document.getElementById('particle-canvas');
-        const ctx = canvas.getContext('2d');
-        let particles = [];
-        function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        resize(); window.addEventListener('resize', resize);
-        for(let i=0; i<60; i++){
-            particles.push({ x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight, vx: (Math.random()-.5)*.3, vy: (Math.random()-.5)*.3, r: Math.random()*1.5+.3, alpha: Math.random()*.4+.1 });
-        }
-        function draw(){
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            particles.forEach(p => {
-                p.x+=p.vx; p.y+=p.vy;
-                if(p.x<0) p.x=canvas.width; if(p.x>canvas.width) p.x=0;
-                if(p.y<0) p.y=canvas.height; if(p.y>canvas.height) p.y=0;
-                ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fillStyle=`rgba(201,168,76,${p.alpha})`; ctx.fill();
-            });
-            for(let i=0; i<particles.length; i++){
-                for(let j=i+1; j<particles.length; j++){
-                    const dist = Math.hypot(particles[i].x-particles[j].x, particles[i].y-particles[j].y);
-                    if(dist<120){
-                        ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y); ctx.lineTo(particles[j].x,particles[j].y);
-                        ctx.strokeStyle=`rgba(201,168,76,${.08*(1-dist/120)})`; ctx.lineWidth=.5; ctx.stroke();
-                    }
-                }
-            }
-            requestAnimationFrame(draw);
-        }
-        draw();
-    </script>
+    <section class="section" style="background:color-mix(in srgb,var(--card) 40%,transparent)">
+      <div class="inner">
+        <h2 class="reveal" style="font-size:2rem;font-weight:600;letter-spacing:-.02em" data-t="landing_pipeline_title">
+        </h2>
+        <p class="muted reveal" style="transition-delay:.06s;margin:.75rem 0 2.5rem" data-t="landing_pipeline_desc"></p>
+        <div class="stages" id="landingStages"></div>
+        <p class="sm-t muted reveal" style="margin-top:1.5rem" data-t="pipeline_note"></p>
+      </div>
+    </section>
 
-    <script src="js/auth.js"></script>
-    <script src="js/dashboard_v3.js"></script>
-    <script src="js/viewer.js"></script>
-    <div id="toast-container"></div>
-    <div id="dna-loader-overlay">
-    <div class="dna-spinner">🧬</div>
-    <div class="loading-text">جاري معالجة البيانات...</div>
-</div>
+    <footer class="section">
+      <div class="inner" style="display:flex;flex-direction:column;align-items:center;gap:1.5rem;text-align:center">
+        <div class="logo"><span class="mark" data-icon="dna"></span>
+          <div class="name" data-t="brand"></div>
+        </div>
+        <h2 style="font-size:1.6rem;font-weight:600;letter-spacing:-.02em">
+          <span data-t="landing_hero_a"></span> <span data-t="landing_hero_b"></span> <span
+            data-t="landing_hero_c"></span>
+        </h2>
+        <button class="btn lg" data-go="login"><span data-t="landing_cta"></span></button>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ============================ LOGIN ============================ -->
+  <div id="screen-login" hidden style="min-height:100dvh;display:flex;flex-direction:column;position:relative">
+    <div class="grid-bg"
+      style="position:absolute;inset:0;opacity:.28;pointer-events:none;-webkit-mask-image:radial-gradient(ellipse at top,black,transparent 70%);mask-image:radial-gradient(ellipse at top,black,transparent 70%)">
+    </div>
+    <div class="dna-field" id="loginDnaField"></div>
+    <header
+      style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem">
+      <a class="logo" data-go="landing" href="#"><span class="mark" data-icon="dna"></span>
+        <div class="name" data-t="brand"></div>
+      </a>
+      <div class="row"><button class="btn outline sm js-lang"></button><button
+          class="btn outline icon sm js-theme"></button></div>
+    </header>
+    <main style="position:relative;z-index:1;flex:1;display:grid;place-items:center;padding:2rem 1rem">
+      <form id="loginForm" class="card fade" style="width:min(100%,26rem);padding:2rem">
+        <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em" data-t="login_title"></h1>
+        <p class="sm-t muted" style="margin-top:.35rem" data-t="login_subtitle"></p>
+        <div id="loginError" class="alert error" style="margin-top:1.25rem" hidden><span data-icon="alert"></span><span
+            data-t="login_error"></span></div>
+        <div class="stack" style="margin-top:1.5rem;gap:1rem">
+          <div class="field"><label class="label" for="username" data-t="username"></label><input id="username"
+              class="input" autocomplete="username"></div>
+          <div class="field"><label class="label" for="password" data-t="password"></label><input id="password"
+              type="password" class="input" autocomplete="current-password"></div>
+          <button class="btn lg" style="width:100%" id="loginBtn" type="submit"><span
+              data-t="login_button"></span></button>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <!-- ============================ APP SHELL ============================ -->
+  <div id="shell" hidden>
+    <header id="topbar">
+      <div class="topbar-row">
+        <a class="logo" data-go="landing" href="#"><span class="mark" data-icon="dna"></span>
+          <span class="name" data-t="brand"></span>
+        </a>
+        <div class="topbar-tools">
+          <button class="btn outline sm js-lang"></button>
+          <button class="btn outline icon sm js-theme"></button>
+          <button class="btn ghost icon sm js-logout" title="Log out" data-icon="logout"></button>
+        </div>
+      </div>
+      <nav id="topNav"></nav>
+    </header>
+    <main id="view"></main>
+  </div>
+
+  <!-- ============================ DIALOGS ============================ -->
+  <dialog id="patientDialog">
+    <form method="dialog" class="dlg" id="patientForm">
+      <h3 id="pdTitle"></h3>
+      <p class="sm-t muted" style="margin-top:.25rem" data-t="patients_subtitle"></p>
+      <div class="stack" style="margin-top:1.25rem;gap:1rem">
+        <div class="field"><label class="label" for="pdName" data-t="patient_name"></label><input id="pdName"
+            class="input" required></div>
+        <div class="field"><label class="label" for="pdMrn" data-t="patient_mrn"></label><input id="pdMrn" class="input"
+            required></div>
+        <div class="cols2">
+          <div class="field"><label class="label" for="pdGender" data-t="patient_gender"></label>
+            <select id="pdGender" class="select">
+              <option value="male" data-t="gender_male"></option>
+              <option value="female" data-t="gender_female"></option>
+              <option value="other" data-t="gender_other"></option>
+            </select>
+          </div>
+          <div class="field"><label class="label" for="pdDob" data-t="patient_dob"></label><input id="pdDob" type="date"
+              class="input" required></div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn outline" type="button" value="cancel" data-close data-t="cancel"></button>
+        <button class="btn" type="submit" id="pdSave" data-t="save"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirmDialog">
+    <div class="dlg">
+      <h3 id="cfTitle"></h3>
+      <p class="sm-t muted" style="margin-top:.5rem" id="cfDesc"></p>
+      <div class="foot">
+        <button class="btn outline" data-close data-t="cancel"></button>
+        <button class="btn" id="cfOk" style="background:var(--destructive);color:var(--background)"
+          data-t="delete"></button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="js/chromogen-app.js?v=8"></script>
 </body>
+
 </html>

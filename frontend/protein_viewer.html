@@ -1,37 +1,37 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <title>Chromatin + Protein 3D Viewer</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:#020508;color:#e8f4f8;font-family:'Segoe UI',sans-serif;
+body{background:#160A0D;color:#EFE2D0;font-family:'Segoe UI',sans-serif;
      height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
 header{display:flex;align-items:center;justify-content:space-between;
-  padding:10px 18px;background:rgba(8,12,20,.98);
-  border-bottom:1px solid rgba(201,168,76,.15);flex-shrink:0;flex-wrap:wrap;gap:8px;}
+  padding:10px 18px;background:rgba(42,16,22,.98);
+  border-bottom:1px solid rgba(216,198,168,.15);flex-shrink:0;flex-wrap:wrap;gap:8px;}
 
 .brand{display:flex;align-items:center;gap:10px;}
-.brand-dot{width:7px;height:7px;border-radius:50%;background:#c9a84c;
-  box-shadow:0 0 8px #c9a84c,0 0 16px rgba(201,168,76,.4);
+.brand-dot{width:7px;height:7px;border-radius:50%;background:#D8C6A8;
+  box-shadow:0 0 8px #D8C6A8,0 0 16px rgba(216,198,168,.4);
   animation:gp 3s infinite;}
-@keyframes gp{0%,100%{box-shadow:0 0 8px #c9a84c,0 0 16px rgba(201,168,76,.4)}
-              50%{box-shadow:0 0 4px #c9a84c}}
-.brand-title{font-size:13px;font-weight:700;color:#c9a84c;letter-spacing:2px;}
-.brand-sub{font-size:9px;color:#3a3530;letter-spacing:1px;margin-top:1px;}
+@keyframes gp{0%,100%{box-shadow:0 0 8px #D8C6A8,0 0 16px rgba(216,198,168,.4)}
+              50%{box-shadow:0 0 4px #D8C6A8}}
+.brand-title{font-size:13px;font-weight:700;color:#D8C6A8;letter-spacing:2px;}
+.brand-sub{font-size:9px;color:#A38F7D;letter-spacing:1px;margin-top:1px;}
 
 .hbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
-.btn{padding:5px 12px;border-radius:3px;border:1px solid rgba(201,168,76,.2);
-  background:transparent;color:#c9a84c;font-size:11px;cursor:pointer;
+.btn{padding:5px 12px;border-radius:3px;border:1px solid rgba(216,198,168,.2);
+  background:transparent;color:#D8C6A8;font-size:11px;cursor:pointer;
   transition:all .15s;white-space:nowrap;letter-spacing:.5px;}
-.btn:hover{background:rgba(201,168,76,.1);border-color:#c9a84c;}
-.btn.on{background:#c9a84c;color:#020508;font-weight:700;}
+.btn:hover{background:rgba(216,198,168,.1);border-color:#D8C6A8;}
+.btn.on{background:#D8C6A8;color:#160A0D;font-weight:700;}
 .btn.red{border-color:rgba(224,96,96,.3);color:#e06060;}
 .btn.red.on{background:#e06060;color:#fff;}
 input[type=file]{display:none;}
-input[type=range]{width:65px;accent-color:#c9a84c;cursor:pointer;}
-.lbl{font-size:10px;color:#3a3530;white-space:nowrap;}
+input[type=range]{width:65px;accent-color:#D8C6A8;cursor:pointer;}
+.lbl{font-size:10px;color:#A38F7D;white-space:nowrap;}
 
 .main{display:flex;flex:1;overflow:hidden;}
 #cv{flex:1;position:relative;cursor:grab;}
@@ -39,79 +39,215 @@ input[type=range]{width:65px;accent-color:#c9a84c;cursor:pointer;}
 canvas{display:block;width:100%!important;height:100%!important;}
 
 .hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
-  background:rgba(2,5,8,.9);border:1px solid rgba(201,168,76,.1);
-  border-radius:20px;padding:4px 14px;font-size:10px;color:#3a3530;
+  background:rgba(22,10,13,.9);border:1px solid rgba(216,198,168,.1);
+  border-radius:20px;padding:4px 14px;font-size:10px;color:#A38F7D;
   pointer-events:none;white-space:nowrap;}
 
 /* Panel */
-.panel{width:220px;background:rgba(8,12,20,.98);border-right:1px solid rgba(201,168,76,.1);
-  padding:12px;display:flex;flex-direction:column;gap:12px;
+.panel{width:272px;background:rgba(42,16,22,.98);border-right:1px solid rgba(216,198,168,.1);
+  padding:18px 16px;display:flex;flex-direction:column;gap:22px;
   overflow-y:auto;flex-shrink:0;}
 .panel::-webkit-scrollbar{width:2px;}
-.panel::-webkit-scrollbar-thumb{background:#c9a84c;border-radius:1px;}
+.panel::-webkit-scrollbar-thumb{background:#D8C6A8;border-radius:1px;}
 
-.sec h4{font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:2px;
-  text-transform:uppercase;border-bottom:1px solid rgba(201,168,76,.1);
-  padding-bottom:4px;margin-bottom:8px;}
+.sec h4{font-size:11px;font-weight:700;color:#D8C6A8;letter-spacing:2px;
+  text-transform:uppercase;border-bottom:1px solid rgba(216,198,168,.12);
+  padding-bottom:7px;margin-bottom:13px;}
 .row{display:flex;justify-content:space-between;align-items:center;
-  padding:5px 0;border-bottom:1px solid rgba(201,168,76,.04);font-size:11px;}
+  padding:8px 0;border-bottom:1px solid rgba(216,198,168,.06);font-size:12px;}
 .row:last-child{border-bottom:none;}
-.rl{color:#3a3530;}
-.rv{color:#8a8070;font-size:10px;}
-.rv.hi{color:#c9a84c;font-weight:600;}
+.rl{color:#A38F7D;}
+.rv{color:#C7B7A3;font-size:11px;}
+.rv.hi{color:#D8C6A8;font-weight:600;}
 .rv.ok{color:#6abf8a;}
 .rv.warn{color:#e06060;}
 
 /* بروتين كاردات */
-.prot-card{background:rgba(15,12,8,.8);border:1px solid rgba(201,168,76,.1);
+.prot-card{background:rgba(42,16,22,.8);border:1px solid rgba(216,198,168,.1);
   border-radius:3px;padding:10px;margin-bottom:6px;cursor:pointer;transition:.15s;}
-.prot-card:hover{border-color:rgba(201,168,76,.3);}
-.prot-card.active{border-color:#c9a84c;background:rgba(201,168,76,.06);}
+.prot-card:hover{border-color:rgba(216,198,168,.3);}
+.prot-card.active{border-color:#D8C6A8;background:rgba(216,198,168,.06);}
 .prot-card.loading{opacity:.6;}
 .prot-name{font-size:12px;font-weight:600;margin-bottom:3px;}
-.prot-sub{font-size:10px;color:#3a3530;margin-bottom:6px;line-height:1.4;}
+.prot-sub{font-size:10px;color:#A38F7D;margin-bottom:6px;line-height:1.4;}
 .prot-meta{display:flex;gap:6px;flex-wrap:wrap;}
 .prot-tag{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:600;letter-spacing:.5px;}
 .prot-toggle{display:flex;align-items:center;justify-content:space-between;margin-top:6px;}
-.toggle{width:28px;height:15px;border-radius:8px;border:1px solid rgba(201,168,76,.3);
-  cursor:pointer;transition:.2s;position:relative;background:rgba(201,168,76,.1);}
-.toggle.on{background:#c9a84c;border-color:#c9a84c;}
+.toggle{width:28px;height:15px;border-radius:8px;border:1px solid rgba(216,198,168,.3);
+  cursor:pointer;transition:.2s;position:relative;background:rgba(216,198,168,.1);}
+.toggle.on{background:#D8C6A8;border-color:#D8C6A8;}
 .toggle::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;
-  border-radius:50%;background:#3a3530;transition:.2s;}
-.toggle.on::after{right:auto;left:2px;background:#020508;}
+  border-radius:50%;background:#A38F7D;transition:.2s;}
+.toggle.on::after{right:auto;left:2px;background:#160A0D;}
 
 /* حالة التحميل */
 .prot-status{font-size:9px;margin-top:4px;letter-spacing:.5px;}
 
 /* Tooltip */
-.ac-item:hover{background:rgba(201,168,76,.18)!important}
-#tip{position:fixed;background:rgba(8,12,20,.97);border:1px solid #c9a84c;
-  border-radius:4px;padding:8px 12px;font-size:11px;color:#e8f4f8;
+.ac-item:hover{background:rgba(216,198,168,.18)!important}
+#tip{position:fixed;background:rgba(42,16,22,.97);border:1px solid #D8C6A8;
+  border-radius:4px;padding:8px 12px;font-size:11px;color:#EFE2D0;
   pointer-events:none;display:none;z-index:60;line-height:1.8;
-  box-shadow:0 0 20px rgba(201,168,76,.15);}
+  box-shadow:0 0 20px rgba(216,198,168,.15);}
 
 /* Loading */
-#loading{position:fixed;inset:0;background:#020508;display:flex;
+#loading{position:fixed;inset:0;background:#160A0D;display:flex;
   flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:99;}
-.spin{width:30px;height:30px;border:2px solid rgba(201,168,76,.2);
-  border-top-color:#c9a84c;border-radius:50%;animation:spin .8s linear infinite;}
+.spin{width:30px;height:30px;border:2px solid rgba(216,198,168,.2);
+  border-top-color:#D8C6A8;border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
-#load-msg{color:#3a3530;font-size:12px;}
+#load-msg{color:#A38F7D;font-size:12px;}
 
 /* Legend */
-.legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:5px;}
+.legend-dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-left:7px;}
 
 /* Progress */
-.pbar{height:2px;background:rgba(201,168,76,.1);border-radius:1px;margin-top:6px;}
-.pbar-fill{height:100%;background:#c9a84c;border-radius:1px;transition:width .3s;width:0%;}
+.pbar{height:2px;background:rgba(216,198,168,.1);border-radius:1px;margin-top:6px;}
+.pbar-fill{height:100%;background:#D8C6A8;border-radius:1px;transition:width .3s;width:0%;}
+
+/* ══ Light theme (chrome only — the 3D canvas stays dark via Three.js scene.background) ══ */
+:root[data-theme="light"] body{background:#F5EEE6;color:#3A2328;}
+:root[data-theme="light"] header{background:#EFE6DA;border-bottom-color:rgba(109,41,50,.18);}
+:root[data-theme="light"] .brand-title{color:#561C24;}
+:root[data-theme="light"] .brand-sub{color:#8A6F5A;}
+:root[data-theme="light"] .btn{border-color:rgba(109,41,50,.30);color:#6D2932;}
+:root[data-theme="light"] .btn:hover{background:rgba(109,41,50,.08);border-color:#6D2932;}
+:root[data-theme="light"] .btn.on{background:#6D2932;color:#F5EEE6;}
+:root[data-theme="light"] input[type=range]{accent-color:#6D2932;}
+:root[data-theme="light"] .lbl{color:#8A6F5A;}
+:root[data-theme="light"] .hint{background:rgba(245,238,230,.92);border-color:rgba(109,41,50,.15);color:#8A6F5A;}
+:root[data-theme="light"] .panel{background:#EFE6DA;border-right-color:rgba(109,41,50,.15);}
+:root[data-theme="light"] .panel::-webkit-scrollbar-thumb{background:#6D2932;}
+:root[data-theme="light"] .sec h4{color:#561C24;border-bottom-color:rgba(109,41,50,.15);}
+:root[data-theme="light"] .row{border-bottom-color:rgba(109,41,50,.08);}
+:root[data-theme="light"] .rl{color:#6B5142;}
+:root[data-theme="light"] .rv{color:#8A6F5A;}
+:root[data-theme="light"] .rv.hi{color:#6D2932;}
+:root[data-theme="light"] .prot-card{background:#E8DCCB;border-color:rgba(109,41,50,.15);}
+:root[data-theme="light"] .prot-card:hover{border-color:rgba(109,41,50,.35);}
+:root[data-theme="light"] .prot-card.active{border-color:#6D2932;background:rgba(109,41,50,.06);}
+:root[data-theme="light"] .prot-sub{color:#8A6F5A;}
+:root[data-theme="light"] .toggle{background:rgba(109,41,50,.12);border-color:rgba(109,41,50,.3);}
+:root[data-theme="light"] .toggle.on{background:#6D2932;border-color:#6D2932;}
+:root[data-theme="light"] .toggle::after{background:#8A6F5A;}
+:root[data-theme="light"] .toggle.on::after{background:#F5EEE6;}
+:root[data-theme="light"] .pbar{background:rgba(109,41,50,.1);}
+:root[data-theme="light"] #tip{background:#EFE6DA;border-color:#6D2932;color:#3A2328;box-shadow:0 0 20px rgba(109,41,50,.12);}
+:root[data-theme="light"] #loading{background:#F5EEE6;}
+:root[data-theme="light"] #load-msg{color:#8A6F5A;}
+:root[data-theme="light"] #geneSearchBox{background:#FBF7F0!important;border-color:rgba(109,41,50,.3)!important;color:#3A2328!important;}
+:root[data-theme="light"] #autocomplete-dropdown{background:#FBF7F0!important;border-color:rgba(109,41,50,.3)!important;}
 </style>
+<script>
+  (function(){
+    try {
+      if (localStorage.getItem('chromogen-viewer-theme') === 'light')
+        document.documentElement.setAttribute('data-theme','light');
+    } catch(e){}
+  })();
+  function toggleViewerTheme(){
+    var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    if (isLight) { document.documentElement.removeAttribute('data-theme'); }
+    else { document.documentElement.setAttribute('data-theme','light'); }
+    try { localStorage.setItem('chromogen-viewer-theme', isLight ? 'dark' : 'light'); } catch(e){}
+    var b = document.getElementById('themeToggleBtn');
+    if (b) b.textContent = isLight ? '🌙' : '☀️';
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    var b = document.getElementById('themeToggleBtn');
+    if (b) b.textContent = document.documentElement.getAttribute('data-theme') === 'light' ? '☀️' : '🌙';
+  });
+</script>
+<script>
+(function(){
+  var EN2AR = {
+    "Loading engine...":"جاري تحميل المحرك...",
+    "Load a JSON file to start":"حمّل ملف JSON للبدء",
+    "Thread":"خيط","Speed":"سرعة",
+    "Genetic Info":"معلومات جينية",
+    "Chromosome":"الكروموسوم","Region":"المنطقة","Resolution":"الدقة","Points":"النقاط",
+    "🔍 Dynamic Protein Search":"🔍 بحث ديناميكي عن بروتين",
+    "Gene name (e.g. TP53)":"اسم الجين (مثال: TP53)","Search":"بحث",
+    "Atom Color Key":"مفتاح الألوان الذرية",
+    "Carbon C":"كربون C","Grey":"رمادي","Nitrogen N":"نيتروجين N","Blue":"أزرق",
+    "Oxygen O":"أكسجين O","Red":"أحمر","Sulfur S":"كبريت S","Yellow":"أصفر",
+    "Hydrogen H":"هيدروجين H","White":"أبيض",
+    "Selected Point":"النقطة المحددة","Density":"كثافة",
+    "Drag = rotate | Wheel = zoom | Right = pan | hover = details":"سحب=تدوير | عجلة=تكبير | يمين=تحريك | hover=تفاصيل",
+    "⟳ Searching...":"⟳ جاري البحث...",
+    "Could not connect to server":"تعذر الاتصال بالخادم",
+    "No matching results":"لا توجد نتائج مطابقة",
+    "Please enter a gene name":"الرجاء إدخال اسم الجين",
+    "⟳ Searching via UniProt...":"⟳ جاري البحث عبر UniProt...",
+    "No atomic structure (PDB) found for this gene":"لم يتم العثور على بنية ذرية (PDB) لهذا الجين",
+    "Could not connect to server — make sure Django is running":"تعذر الاتصال بالخادم — تأكد من تشغيل Django",
+    "Not specified":"غير محدد","Show Protein":"إظهار البروتين","● Not loaded":"● غير محمّل",
+    "Reading file...":"جاري قراءة الملف...","Not enough points":"نقاط غير كافية",
+    "⟳ Loading from RCSB...":"⟳ جاري التحميل من RCSB...",
+    "Could not reach PDB":"تعذر الوصول للـ PDB",
+    "⟳ Parsing atomic structure...":"⟳ جاري تحليل البنية الذرية...",
+    "No atoms found":"لم تُعثر على ذرات",
+    "✓ Found ":"✓ تم العثور على "," structures — added ":" بنية — أُضيف ",
+    " is already in the list — use the same card below":" مُضاف مسبقاً بالقائمة — استخدم نفس البطاقة بالأسفل",
+    "Error: ":"خطأ: ","✓ Loaded — ":"✓ محمّل — "," atoms":" ذرة",
+    "✕ Load failed: ":"✕ فشل التحميل: ","Point ":"نقطة ","Density: ":"كثافة: "
+  };
+  var AR2EN = {}; for (var k in EN2AR){ AR2EN[EN2AR[k]] = k; }
+  function getLang(){ try { return localStorage.getItem('chromogen-lang') || 'ar'; } catch(e){ return 'ar'; } }
+  var lang = getLang();
+  document.documentElement.setAttribute('lang', lang);
+  document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+  // tr(): تُستخدم داخل JS — تُرجم النص الإنجليزي المصدر إلى العربية عند الحاجة
+  window.tr = function(s){ return (lang === 'ar') ? (EN2AR[s] || s) : s; };
+  function mapFor(l){ return l === 'ar' ? EN2AR : AR2EN; }
+  function translateTree(root, l){
+    var m = mapFor(l);
+    if (root.nodeType === 3){
+      var k0 = root.nodeValue.trim();
+      if (k0 && m[k0]) root.nodeValue = root.nodeValue.replace(k0, m[k0]);
+      return;
+    }
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false), n, arr=[];
+    while (n = w.nextNode()) arr.push(n);
+    arr.forEach(function(tn){ var k = tn.nodeValue.trim(); if (k && m[k]) tn.nodeValue = tn.nodeValue.replace(k, m[k]); });
+    if (root.querySelectorAll){
+      root.querySelectorAll('[placeholder],[title]').forEach(function(el){
+        ['placeholder','title'].forEach(function(a){
+          var v = el.getAttribute(a); if (v && m[v.trim()]) el.setAttribute(a, m[v.trim()]);
+        });
+      });
+    }
+  }
+  window.applyViewerLang = function(l){
+    lang = l;
+    document.documentElement.setAttribute('lang', l);
+    document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
+    try { localStorage.setItem('chromogen-lang', l); localStorage.setItem('chromogen-dir', l==='ar'?'rtl':'ltr'); } catch(e){}
+    translateTree(document.body, l);
+    var b = document.getElementById('langToggleBtn'); if (b) b.textContent = l === 'ar' ? 'EN' : 'ع';
+  };
+  document.addEventListener('DOMContentLoaded', function(){
+    if (lang === 'ar') translateTree(document.body, 'ar');
+    var b = document.getElementById('langToggleBtn'); if (b) b.textContent = lang === 'ar' ? 'EN' : 'ع';
+    new MutationObserver(function(muts){
+      muts.forEach(function(mu){
+        for (var i=0;i<mu.addedNodes.length;i++) translateTree(mu.addedNodes[i], lang);
+      });
+    }).observe(document.body, { childList:true, subtree:true });
+  });
+})();
+function toggleViewerLang(){
+  var cur = document.documentElement.getAttribute('lang') || 'ar';
+  window.applyViewerLang(cur === 'ar' ? 'en' : 'ar');
+}
+</script>
 </head>
 <body>
 
-<div id="loading"><div class="spin"></div><p id="load-msg">جاري تحميل المحرك...</p></div>
+<div id="loading"><div class="spin"></div><p id="load-msg">Loading engine...</p></div>
 <div id="tip"></div>
 <div id="autocomplete-dropdown" style="display:none;position:fixed;
-     background:#0d0d0d;border:1px solid rgba(201,168,76,.3);border-radius:4px;
+     background:#241016;border:1px solid rgba(216,198,168,.3);border-radius:4px;
      max-height:400px;overflow-y:auto;z-index:200;box-shadow:0 8px 20px rgba(0,0,0,.5)"></div>
 
 <header>
@@ -119,15 +255,17 @@ canvas{display:block;width:100%!important;height:100%!important;}
     <div class="brand-dot"></div>
     <div>
       <div class="brand-title">CHROMOGEN · PROTEIN DOCKING</div>
-      <div class="brand-sub" id="hdr-info">حمّل ملف JSON للبدء</div>
+      <div class="brand-sub" id="hdr-info">Load a JSON file to start</div>
     </div>
   </div>
   <div class="hbar">
+    <button class="btn" id="themeToggleBtn" onclick="toggleViewerTheme()" title="Toggle light / dark">🌙</button>
+    <button class="btn" id="langToggleBtn" onclick="toggleViewerLang()" title="Switch language">EN</button>
     <button class="btn" onclick="document.getElementById('fi').click()">📂 JSON</button>
     <input type="file" id="fi" accept=".json" onchange="loadJSON(this)">
-    <span class="lbl">خيط</span>
+    <span class="lbl">Thread</span>
     <input type="range" min="1" max="20" value="5" oninput="setTubeR(this.value)">
-    <span class="lbl">سرعة</span>
+    <span class="lbl">Speed</span>
     <input type="range" min="0" max="12" value="2" oninput="rotSpd=this.value/10000">
     <button class="btn on" id="btnR" onclick="toggleRot()">⏸</button>
     <button class="btn" onclick="resetCam()">🎯</button>
@@ -140,58 +278,58 @@ canvas{display:block;width:100%!important;height:100%!important;}
 <div class="panel">
 
   <div class="sec">
-    <h4>معلومات جينية</h4>
-    <div class="row"><span class="rl">الكروموسوم</span><span class="rv hi" id="p-chr">—</span></div>
-    <div class="row"><span class="rl">المنطقة</span><span class="rv" id="p-reg">—</span></div>
-    <div class="row"><span class="rl">الدقة</span><span class="rv" id="p-res">—</span></div>
+    <h4>Genetic Info</h4>
+    <div class="row"><span class="rl">Chromosome</span><span class="rv hi" id="p-chr">—</span></div>
+    <div class="row"><span class="rl">Region</span><span class="rv" id="p-reg">—</span></div>
+    <div class="row"><span class="rl">Resolution</span><span class="rv" id="p-res">—</span></div>
     <div class="row"><span class="rl">TADs</span><span class="rv hi" id="p-tads">—</span></div>
-    <div class="row"><span class="rl">النقاط</span><span class="rv" id="p-pts">—</span></div>
+    <div class="row"><span class="rl">Points</span><span class="rv" id="p-pts">—</span></div>
   </div>
 
   <div class="sec">
-    <h4>🔍 بحث ديناميكي عن بروتين</h4>
+    <h4>🔍 Dynamic Protein Search</h4>
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input type="text" id="geneSearchBox" placeholder="اسم الجين (مثال: TP53)"
+      <input type="text" id="geneSearchBox" placeholder="Gene name (e.g. TP53)"
              autocomplete="off"
-             style="flex:1;background:#0a0a0a;border:1px solid rgba(201,168,76,.2);
-                    color:#e8f4f8;padding:6px 10px;border-radius:3px;font-size:11px;outline:none"
+             style="flex:1;background:#1B0A0F;border:1px solid rgba(216,198,168,.2);
+                    color:#EFE2D0;padding:6px 10px;border-radius:3px;font-size:11px;outline:none"
              oninput="onGeneInputChange(this.value)"
              onkeydown="handleAutocompleteKeydown(event)">
-      <button class="btn" onclick="searchGeneDynamic()" style="padding:6px 12px">بحث</button>
+      <button class="btn" onclick="searchGeneDynamic()" style="padding:6px 12px">Search</button>
     </div>
-    <div id="dynamic-search-status" style="font-size:10px;color:#3a3530;margin-bottom:6px"></div>
+    <div id="dynamic-search-status" style="font-size:10px;color:#A38F7D;margin-bottom:6px"></div>
     <div id="dynamic-protein-list"></div>
   </div>
 
   <div class="sec">
-    <h4>مفتاح الألوان الذرية</h4>
+    <h4>Atom Color Key</h4>
     <div class="row">
-      <span class="rl"><span class="legend-dot" style="background:#aaaaaa"></span>كربون C</span>
-      <span class="rv">رمادي</span>
+      <span class="rl"><span class="legend-dot" style="background:#aaaaaa"></span>Carbon C</span>
+      <span class="rv">Grey</span>
     </div>
     <div class="row">
-      <span class="rl"><span class="legend-dot" style="background:#4488ff"></span>نيتروجين N</span>
-      <span class="rv">أزرق</span>
+      <span class="rl"><span class="legend-dot" style="background:#4488ff"></span>Nitrogen N</span>
+      <span class="rv">Blue</span>
     </div>
     <div class="row">
-      <span class="rl"><span class="legend-dot" style="background:#ff4444"></span>أكسجين O</span>
-      <span class="rv">أحمر</span>
+      <span class="rl"><span class="legend-dot" style="background:#ff4444"></span>Oxygen O</span>
+      <span class="rv">Red</span>
     </div>
     <div class="row">
-      <span class="rl"><span class="legend-dot" style="background:#ffdd44"></span>كبريت S</span>
-      <span class="rv">أصفر</span>
+      <span class="rl"><span class="legend-dot" style="background:#ffdd44"></span>Sulfur S</span>
+      <span class="rv">Yellow</span>
     </div>
     <div class="row">
-      <span class="rl"><span class="legend-dot" style="background:#ffffff"></span>هيدروجين H</span>
-      <span class="rv">أبيض</span>
+      <span class="rl"><span class="legend-dot" style="background:#ffffff"></span>Hydrogen H</span>
+      <span class="rv">White</span>
     </div>
   </div>
 
   <div class="sec">
-    <h4>النقطة المحددة</h4>
-    <div class="row"><span class="rl">المنطقة</span><span class="rv hi" id="s-reg">—</span></div>
+    <h4>Selected Point</h4>
+    <div class="row"><span class="rl">Region</span><span class="rv hi" id="s-reg">—</span></div>
     <div class="row"><span class="rl">TAD</span><span class="rv" id="s-tad">—</span></div>
-    <div class="row"><span class="rl">كثافة</span><span class="rv" id="s-den">—</span></div>
+    <div class="row"><span class="rl">Density</span><span class="rv" id="s-den">—</span></div>
     <div class="row"><span class="rl">X</span><span class="rv" id="s-x">—</span></div>
     <div class="row"><span class="rl">Y</span><span class="rv" id="s-y">—</span></div>
     <div class="row"><span class="rl">Z</span><span class="rv" id="s-z">—</span></div>
@@ -199,7 +337,7 @@ canvas{display:block;width:100%!important;height:100%!important;}
 
 </div>
 <div id="cv">
-  <div class="hint">سحب=تدوير | عجلة=تكبير | يمين=تحريك | hover=تفاصيل</div>
+  <div class="hint">Drag = rotate | Wheel = zoom | Right = pan | hover = details</div>
 </div>
 </div>
 
@@ -207,7 +345,7 @@ canvas{display:block;width:100%!important;height:100%!important;}
 <script>
 // ══════════════════════════════════════════
 // إعدادات البروتينات
-// يُملأ هذا الكائن ديناميكياً عبر البحث (searchGeneDynamic)
+// يُملأ هذا الكائن ديناميكياً عبر الSearch (searchGeneDynamic)
 // ══════════════════════════════════════════
 const PROTEINS = {};
 
@@ -225,12 +363,19 @@ const ATOM_COLORS = {
 };
 
 // ══════════════════════════════════════════
-// البحث الديناميكي عن جين عبر الباك إند (UniProt → PDB)
+// الSearch الديناميكي عن جين عبر الباك إند (UniProt → PDB)
 // ══════════════════════════════════════════
 const API_BASE_URL = 'http://127.0.0.1:8000/api';
+
+// قراءة توكن المصادقة من localStorage (يحفظه التطبيق عند الدخول) لإرساله مع الطلبات المحمية
+function authHeaders() {
+  let tk = null;
+  try { tk = localStorage.getItem('chromogen-token'); } catch (e) {}
+  return tk ? { 'Authorization': 'Bearer ' + tk } : {};
+}
 let dynamicCounter = 0;
 
-// لائحة ألوان نختار منها للبروتينات المُضافة ديناميكياً (TAD غير محدد مسبقاً)
+// لائحة ألوان نختار منها للبروتينات المُضافة ديناميكياً (TAD Not specified مسبقاً)
 const DYNAMIC_COLOR_PALETTE = [0x9d7fe8, 0x6abf8a, 0xf7b27e, 0x7ef7e1, 0xe87ec9, 0xc9e87e];
 
 // ══════════════════════════════════════════
@@ -252,8 +397,7 @@ function onGeneInputChange(value) {
   autocompleteTimer = setTimeout(() => fetchAutocomplete(value.trim()), 400);
 }
 
-// يحسب موقع القائمة المنسدلة بناءً على الموقع الفعلي لحقل البحث على الشاشة
-// (ضروري لأن الـ dropdown الآن عنصر مستقل خارج .panel القابل للـ scroll)
+
 function positionAutocompleteDropdown() {
   const input = document.getElementById('geneSearchBox');
   const dropdown = document.getElementById('autocomplete-dropdown');
@@ -267,16 +411,16 @@ async function fetchAutocomplete(query) {
   const dropdown = document.getElementById('autocomplete-dropdown');
   positionAutocompleteDropdown();
   dropdown.style.display = 'block';
-  dropdown.innerHTML = `<div style="padding:10px;font-size:11px;color:#c9a84c">⟳ جاري البحث...</div>`;
+  dropdown.innerHTML = `<div style="padding:10px;font-size:11px;color:#D8C6A8">⟳ Searching...</div>`;
 
   try {
-    const res = await fetch(`${API_BASE_URL}/tests/autocomplete-protein/?q=${encodeURIComponent(query)}`);
+    const res = await fetch(`${API_BASE_URL}/tests/autocomplete-protein/?q=${encodeURIComponent(query)}`, { headers: authHeaders() });
     const data = await res.json();
     autocompleteResults = data.suggestions || [];
     autocompleteActiveIndex = -1;
     renderAutocomplete();
   } catch (err) {
-    dropdown.innerHTML = `<div style="padding:10px;font-size:11px;color:#e06060">تعذر الاتصال بالخادم</div>`;
+    dropdown.innerHTML = `<div style="padding:10px;font-size:11px;color:#e06060">Could not connect to server</div>`;
   }
 }
 
@@ -284,17 +428,17 @@ function renderAutocomplete() {
   const dropdown = document.getElementById('autocomplete-dropdown');
 
   if (autocompleteResults.length === 0) {
-    dropdown.innerHTML = `<div style="padding:10px;font-size:11px;color:#3a3530">لا توجد نتائج مطابقة</div>`;
+    dropdown.innerHTML = `<div style="padding:10px;font-size:11px;color:#A38F7D">No matching results</div>`;
     return;
   }
 
   dropdown.innerHTML = autocompleteResults.map((item, i) => `
     <div class="ac-item" data-index="${i}"
          style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);
-                ${i === autocompleteActiveIndex ? 'background:rgba(201,168,76,.15)' : ''}"
+                ${i === autocompleteActiveIndex ? 'background:rgba(216,198,168,.15)' : ''}"
          onclick="selectAutocompleteItem(${i})">
-      <div style="font-size:12px;color:#e8c97a;font-weight:600">${item.gene}</div>
-      <div style="font-size:10px;color:#6b6357;margin-top:2px">${item.protein_name}</div>
+      <div style="font-size:12px;color:#EFE2D0;font-weight:600">${item.gene}</div>
+      <div style="font-size:10px;color:#A38F7D;margin-top:2px">${item.protein_name}</div>
     </div>
   `).join('');
 }
@@ -310,7 +454,7 @@ function selectAutocompleteItem(index) {
 
   document.getElementById('geneSearchBox').value = item.gene;
   hideAutocomplete();
-  // نشغّل البحث الكامل فوراً بعد الاختيار (يجيب PDB IDs ويضيف الكرت)
+  // نشغّل الSearch الكامل فوراً بعد الاختيار (يجيب PDB IDs ويضيف الكرت)
   searchGeneDynamic();
 }
 
@@ -357,30 +501,30 @@ async function searchGeneDynamic() {
 
   if (!gene) {
     statusEl.style.color = '#e06060';
-    statusEl.textContent = 'الرجاء إدخال اسم الجين';
+    statusEl.textContent = 'Please enter a gene name';
     return;
   }
 
-  statusEl.style.color = '#c9a84c';
-  statusEl.textContent = '⟳ جاري البحث عبر UniProt...';
+  statusEl.style.color = '#D8C6A8';
+  statusEl.textContent = '⟳ Searching via UniProt...';
 
   try {
-    const res = await fetch(`${API_BASE_URL}/tests/search-protein/?gene=${encodeURIComponent(gene)}`);
+    const res = await fetch(`${API_BASE_URL}/tests/search-protein/?gene=${encodeURIComponent(gene)}`, { headers: authHeaders() });
     const data = await res.json();
 
     if (!res.ok || !data.pdb_ids || data.pdb_ids.length === 0) {
       statusEl.style.color = '#e06060';
-      statusEl.textContent = data.error || 'لم يتم العثور على بنية ذرية (PDB) لهذا الجين';
+      statusEl.textContent = data.error || 'No atomic structure (PDB) found for this gene';
       return;
     }
 
     addDynamicProteinCard(data);
     statusEl.style.color = '#6abf8a';
-    statusEl.textContent = `✓ تم العثور على ${data.pdb_ids.length} بنية — أُضيف ${data.protein_name}`;
+    statusEl.textContent = `${tr('✓ Found ')}${data.pdb_ids.length}${tr(' structures — added ')}${data.protein_name}`;
     input.value = '';
   } catch (err) {
     statusEl.style.color = '#e06060';
-    statusEl.textContent = 'تعذر الاتصال بالخادم — تأكد من تشغيل Django';
+    statusEl.textContent = 'Could not connect to server — make sure Django is running';
   }
 }
 
@@ -391,15 +535,15 @@ function addDynamicProteinCard(data) {
   );
 
   if (existingKey) {
-    // الجين موجود مسبقاً — نحدّث حالة البحث بدل تكرار الكرت
+    // الجين موجود مسبقاً — نحدّث حالة الSearch بدل تكرار الكرت
     const statusEl = document.getElementById('dynamic-search-status');
-    statusEl.style.color = '#c9a84c';
-    statusEl.textContent = `ℹ ${data.gene} مُضاف مسبقاً بالقائمة — استخدم نفس البطاقة بالأسفل`;
+    statusEl.style.color = '#D8C6A8';
+    statusEl.textContent = `ℹ ${data.gene}${tr(' is already in the list — use the same card below')}`;
     // تمييز الكرت الموجود مؤقتاً عشان المستخدم يلاحظه
     const existingCard = document.getElementById('card-' + existingKey);
     if (existingCard) {
       existingCard.style.transition = 'border-color .3s';
-      existingCard.style.borderColor = '#c9a84c';
+      existingCard.style.borderColor = '#D8C6A8';
       existingCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
       setTimeout(() => { existingCard.style.borderColor = ''; }, 1200);
     }
@@ -416,8 +560,8 @@ function addDynamicProteinCard(data) {
     pdb: pdbId,
     name: data.gene,
     color: color,
-    disease: data.protein_name || 'غير محدد',
-    // البروتينات الديناميكية ما عندها TAD معروف مسبقاً، فنعتمد على ترتيب الكثافة
+    disease: data.protein_name || 'Not specified',
+    // البروتينات الديناميكية ما عندها TAD معروف مسبقاً، فنعتمد على ترتيب الDensity
     tadTarget: null,
     bindRatio: 0.5,
     atoms: null,
@@ -439,10 +583,10 @@ function addDynamicProteinCard(data) {
       ${data.pdb_ids.slice(0,4).map(id => `<span class="prot-tag" style="background:rgba(255,255,255,.05);color:${hexColor};border:1px solid ${hexColor}33">${id}</span>`).join('')}
     </div>
     <div class="prot-toggle">
-      <span style="font-size:10px;color:#3a3530">إظهار البروتين</span>
+      <span style="font-size:10px;color:#A38F7D">Show Protein</span>
       <div class="toggle" id="tog-${key}" onclick="toggleProtein('${key}')"></div>
     </div>
-    <div class="prot-status" id="status-${key}" style="color:#3a3530">● غير محمّل</div>
+    <div class="prot-status" id="status-${key}" style="color:#A38F7D">● Not loaded</div>
     <div class="pbar"><div class="pbar-fill" id="prog-${key}"></div></div>
   `;
   listEl.appendChild(card);
@@ -470,8 +614,8 @@ let raycaster, mouse;
 function initThree(){
   const c=document.getElementById('cv');
   scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x020508);
-  scene.fog=new THREE.FogExp2(0x020508,.003);
+  scene.background=new THREE.Color(0x160A0D);
+  scene.fog=new THREE.FogExp2(0x160A0D,.003);
   camera=new THREE.PerspectiveCamera(55,c.clientWidth/c.clientHeight,.1,3000);
   updateCam();
   renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
@@ -481,7 +625,7 @@ function initThree(){
 
   // إضاءات
   scene.add(new THREE.AmbientLight(0xffffff,.5));
-  const dl=new THREE.DirectionalLight(0xc9a84c,1.5);
+  const dl=new THREE.DirectionalLight(0xD8C6A8,1.5);
   dl.position.set(2,3,2);scene.add(dl);
   const dl2=new THREE.DirectionalLight(0x7eb8f7,.8);
   dl2.position.set(-2,-1,3);scene.add(dl2);
@@ -509,7 +653,7 @@ function addStars(){
 // ══════════════════════════════════════════
 function loadJSON(input){
   const file=input.files[0];if(!file)return;
-  document.getElementById('load-msg').textContent='جاري قراءة الملف...';
+  document.getElementById('load-msg').textContent='Reading file...';
   document.getElementById('loading').style.display='flex';
   const reader=new FileReader();
   reader.onload=e=>{
@@ -518,7 +662,7 @@ function loadJSON(input){
       globalData=d;
       rawPts=d.coords_raw||[];
       smoothPts=d.coords_smooth||[];
-      if(rawPts.length<2)throw new Error('نقاط غير كافية');
+      if(rawPts.length<2)throw new Error('Not enough points');
 
       document.getElementById('p-chr').textContent=d.chrom||'—';
       document.getElementById('p-reg').textContent=
@@ -530,14 +674,14 @@ function loadJSON(input){
         `${d.chrom} ${(d.start/1e6).toFixed(1)}M→${(d.end/1e6).toFixed(1)}M`;
 
       buildChromatin();
-    }catch(err){alert('خطأ: '+err.message);}
+    }catch(err){alert(tr('Error: ')+err.message);}
     document.getElementById('loading').style.display='none';
   };
   reader.readAsText(file,'utf-8');
 }
 
 // ══════════════════════════════════════════
-// رسم خيط الكروماتين
+// رسم Thread الكروماتين
 // ══════════════════════════════════════════
 function buildChromatin(){
   [tubeMesh,glowMesh,dotsMesh].forEach(m=>{
@@ -556,26 +700,26 @@ function buildChromatin(){
   const curve=new THREE.CatmullRomCurve3(v3,false,'catmullrom',.5);
   const segs=Math.min(v3.length*4,1500);
 
-  // أنبوب رئيسي — لون ذهبي متدرج
+  // أنبوب رئيسي — تدرّج توبي/برونزي (الثيم)
   const geo=new THREE.TubeGeometry(curve,segs,tubeR,12,false);
   const cnt=geo.getAttribute('position').count;
   const cols=[];
   for(let i=0;i<cnt;i++){
     const t=i/cnt;
-    // ذهبي → نحاسي متدرج
-    const r=.6+t*.2, g=.5-t*.1, b=.15;
+    // taupe → bronze gradient (theme)
+    const r=.85-t*.13, g=.78-t*.18, b=.66-t*.19;
     cols.push(r,g,b);
   }
   geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
   tubeMesh=new THREE.Mesh(geo,new THREE.MeshPhongMaterial(
-    {vertexColors:true,shininess:100,specular:new THREE.Color(0x3a2a10)}));
+    {vertexColors:true,shininess:100,specular:new THREE.Color(0x4A3F30)}));
   scene.add(tubeMesh);
 
   // Glow
   if(glowOn){
     const geoG=new THREE.TubeGeometry(curve,segs/2,tubeR*3.5,8,false);
     glowMesh=new THREE.Mesh(geoG,new THREE.MeshBasicMaterial(
-      {color:0xc9a84c,transparent:true,opacity:.05,side:THREE.BackSide}));
+      {color:0xD8C6A8,transparent:true,opacity:.05,side:THREE.BackSide}));
     scene.add(glowMesh);
   }
 
@@ -585,7 +729,7 @@ function buildChromatin(){
   rawPts.forEach(p=>dp.push(p.x-cx,p.y-cy,p.z-cz));
   dg.setAttribute('position',new THREE.Float32BufferAttribute(dp,3));
   dotsMesh=new THREE.Points(dg,new THREE.PointsMaterial(
-    {color:0xc9a84c,size:1.8,transparent:true,opacity:.6,sizeAttenuation:true}));
+    {color:0xD8C6A8,size:1.8,transparent:true,opacity:.6,sizeAttenuation:true}));
   scene.add(dotsMesh);
 
   // ضبط كاميرا
@@ -635,8 +779,8 @@ async function loadPDB(protKey){
   const progEl=document.getElementById('prog-'+protKey);
   const cardEl=document.getElementById('card-'+protKey);
 
-  statusEl.style.color='#c9a84c';
-  statusEl.textContent='⟳ جاري التحميل من RCSB...';
+  statusEl.style.color='#D8C6A8';
+  statusEl.textContent='⟳ Loading from RCSB...';
   cardEl.classList.add('loading');
   progEl.style.width='20%';
 
@@ -659,26 +803,26 @@ async function loadPDB(protKey){
       }catch(e){continue;}
     }
 
-    if(!text)throw new Error('تعذر الوصول للـ PDB');
+    if(!text)throw new Error('Could not reach PDB');
 
     progEl.style.width='70%';
-    statusEl.textContent='⟳ جاري تحليل البنية الذرية...';
+    statusEl.textContent='⟳ Parsing atomic structure...';
 
     const atoms=parsePDB(text);
-    if(atoms.length===0)throw new Error('لم تُعثر على ذرات');
+    if(atoms.length===0)throw new Error('No atoms found');
 
     prot.atoms=atoms;
     prot.loaded=true;
 
     progEl.style.width='100%';
     statusEl.style.color='#6abf8a';
-    statusEl.textContent=`✓ محمّل — ${atoms.length} ذرة`;
+    statusEl.textContent=`${tr('✓ Loaded — ')}${atoms.length}${tr(' atoms')}`;
     cardEl.classList.remove('loading');
 
     return true;
   }catch(err){
     statusEl.style.color='#e06060';
-    statusEl.textContent='✕ فشل التحميل: '+err.message;
+    statusEl.textContent=tr('✕ Load failed: ')+err.message;
     progEl.style.width='0%';
     cardEl.classList.remove('loading');
     PROTEINS[protKey].visible=false;
@@ -688,7 +832,7 @@ async function loadPDB(protKey){
 }
 
 // ══════════════════════════════════════════
-// إيجاد موقع الارتباط على الخيط
+// إيجاد موقع الارتباط على الThread
 // ══════════════════════════════════════════
 function getBindingSite(protKey){
   const prot=PROTEINS[protKey];
@@ -702,7 +846,7 @@ function getBindingSite(protKey){
   const tadPts=rawPts.filter(p=>p.tad_id===prot.tadTarget);
 
   if(tadPts.length===0){
-    // إذا ما لقينا الـ TAD، نختار نقطة بناءً على الكثافة
+    // إذا ما لقينا الـ TAD، نختار Point بناءً على الDensity
     const sorted=[...rawPts].sort((a,b)=>(b.density||0)-(a.density||0));
     const idx=Math.floor(sorted.length * prot.bindRatio);
     const p=sorted[Math.min(idx,sorted.length-1)];
@@ -713,7 +857,7 @@ function getBindingSite(protKey){
     };
   }
 
-  // نختار نقطة بناءً على الـ bindRatio داخل الـ TAD
+  // نختار Point بناءً على الـ bindRatio داخل الـ TAD
   const idx=Math.floor(tadPts.length*prot.bindRatio);
   const p=tadPts[Math.min(idx,tadPts.length-1)];
   const realIndex = rawPts.indexOf(p);
@@ -724,11 +868,11 @@ function getBindingSite(protKey){
 }
 
 // ══════════════════════════════════════════
-// تحسين 1: حساب سُمك الخيط المحلي عند موقع الارتباط
+// تحسين 1: حساب سُمك الThread المحلي عند موقع الارتباط
 // ══════════════════════════════════════════
 function getLocalThreadScale(bindIndex){
-  // نحسب متوسط التباعد بين النقاط المتجاورة حول موقع الارتباط
-  // هذا يعكس "كثافة" الخيط محلياً، فيصير حجم البروتين متناسقاً مع سماكة الخيط بهذه المنطقة بالضبط
+  // نحسب متوسط التباعد بين Points المتجاورة حول موقع الارتباط
+  // هذا يعكس "Density" الThread محلياً، فيصير حجم البروتين متناسقاً مع سماكة الThread بهذه Region بالضبط
   const window = 5; // نأخذ 5 نقاط قبل وبعد
   const start = Math.max(0, bindIndex - window);
   const end   = Math.min(rawPts.length - 1, bindIndex + window);
@@ -748,10 +892,10 @@ function getLocalThreadScale(bindIndex){
 
 // ══════════════════════════════════════════
 // تحسين 2: Rigid Body Fitting مبسّط
-// محاذاة المحور الرئيسي للبروتين مع اتجاه الخيط المحلي
+// محاذاة المحور الرئيسي للبروتين مع اتجاه الThread المحلي
 // ══════════════════════════════════════════
 function getThreadDirection(bindIndex){
-  // اتجاه الخيط = المتجه بين النقطة قبل وبعد موقع الارتباط
+  // اتجاه الThread = المتجه بين الPoint قبل وبعد موقع الارتباط
   const i0 = Math.max(0, bindIndex - 3);
   const i1 = Math.min(rawPts.length - 1, bindIndex + 3);
   const p0 = rawPts[i0], p1 = rawPts[i1];
@@ -797,7 +941,7 @@ function drawProtein(protKey){
   // إزالة الرسمة القديمة
   if(prot.mesh){scene.remove(prot.mesh);prot.mesh.geometry?.dispose();}
 
-  // موقع الارتباط على الخيط (+ index النقطة للاستخدام بالتحسينات)
+  // موقع الارتباط على الThread (+ index الPoint للاستخدام بالتحسينات)
   const binding = getBindingSite(protKey);
   const bindPos = binding.pos;
   const bindIndex = binding.index;
@@ -814,11 +958,11 @@ function drawProtein(protKey){
     if(d>maxDist)maxDist=d;
   });
 
-  // ── تحسين 1: Scaling أذكى — مرتبط بسماكة الخيط المحلية، لا برقم ثابت ──
+  // ── تحسين 1: Scaling أذكى — مرتبط بسماكة الThread المحلية، لا برقم ثابت ──
   const targetSize = getLocalThreadScale(bindIndex);
   const scale = Math.min(targetSize / maxDist, 1.5);
 
-  // ── تحسين 2: Rigid Body Fitting — محاذاة محور البروتين مع اتجاه الخيط ──
+  // ── تحسين 2: Rigid Body Fitting — محاذاة محور البروتين مع اتجاه الThread ──
   const threadDir = getThreadDirection(bindIndex);
   const proteinAxis = getProteinPrincipalAxis(prot.atoms, cx, cy, cz);
   const quaternion = new THREE.Quaternion().setFromUnitVectors(proteinAxis, threadDir);
@@ -877,12 +1021,12 @@ function drawProtein(protKey){
   halo.position.copy(bindPos);
   group.add(halo);
 
-  // خط يوصل البروتين بالخيط
+  // خط يوصل البروتين بالThread
   const lineGeo=new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(0,0,0),
     new THREE.Vector3(0,0,0)  // سنحدثه
   ]);
-  // نضيف نقطة تأشير
+  // نضيف Point تأشير
   const markerGeo=new THREE.SphereGeometry(1.2,12,12);
   const markerMat=new THREE.MeshBasicMaterial({
     color:new THREE.Color(prot.color),
@@ -893,7 +1037,7 @@ function drawProtein(protKey){
   scene.add(marker);
   group.userData.marker=marker;
 
-  // Label (نقطة إضاءة)
+  // Label (Point إضاءة)
   const pointLight=new THREE.PointLight(new THREE.Color(prot.color),.8,30);
   pointLight.position.set(bindPos.x,bindPos.y,bindPos.z);
   group.add(pointLight);
@@ -1021,16 +1165,16 @@ function doHover(e,c){
   if(hits.length>0){
     const idx=hits[0].index;
     const p=rawPts[idx];
-    const reg=p.region||`نقطة ${idx}`;
+    const reg=p.region||`${tr('Point ')}${idx}`;
     const den=p.density!=null?(p.density*100).toFixed(0)+'%':'—';
-    const tadColor=globalData?.tad_colors?.[p.tad_id||0]||'#c9a84c';
+    const tadColor=globalData?.tad_colors?.[p.tad_id||0]||'#D8C6A8';
     tip.style.display='block';
     tip.style.left=(e.clientX+14)+'px';
     tip.style.top=(e.clientY-10)+'px';
     tip.innerHTML=
-      `<strong style="color:#c9a84c">${reg}</strong><br>`+
-      `<span style="color:#3a3530">TAD </span><span style="color:${tadColor}">■ ${(p.tad_id||0)+1}</span><br>`+
-      `<span style="color:#3a3530">كثافة: </span><span style="color:${p.density>.6?'#e06060':'#6abf8a'}">${den}</span>`;
+      `<strong style="color:#D8C6A8">${reg}</strong><br>`+
+      `<span style="color:#A38F7D">TAD </span><span style="color:${tadColor}">■ ${(p.tad_id||0)+1}</span><br>`+
+      `<span style="color:#A38F7D">${tr('Density: ')}</span><span style="color:${p.density>.6?'#e06060':'#6abf8a'}">${den}</span>`;
     document.getElementById('s-reg').textContent=reg;
     document.getElementById('s-tad').textContent='TAD '+((p.tad_id||0)+1);
     document.getElementById('s-den').textContent=den;

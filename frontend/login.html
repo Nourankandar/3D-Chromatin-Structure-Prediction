@@ -1,29 +1,44 @@
 <div id="login-view">
-    <div class="login-card">
-        <div class="emblem">🧬</div>
-        <h2 class="login-title">CHROMOGEN</h2>
-        
-        <div id="login-form-block">
-            <label>معرف المشرف</label>
-            <input type="text" id="adminUser" placeholder="أدخل اسم المستخدم">
-            
-            <label>كلمة المرور</label>
-            <input type="password" id="adminPass" placeholder="••••••••">
-            
-            <button type="button" onclick="handleLogin()" style="width: 100%; margin-top: 20px;">دخول إلى النظام</button>
+    <div class="login-frame">
 
-            <p style="text-align: center; margin-top: 20px; cursor: pointer;">
-                <a onclick="togglePasswordReset(true)" style="color: var(--ivory-muted); font-size: 11px; text-decoration: none; letter-spacing: 1px;">نسيت كلمة المرور؟</a>
-            </p>
+        <div class="login-brand">
+            <div class="lb-logo">
+                <span class="lb-badge">🧬</span>
+                <span class="lb-sub">Biotreatment Center</span>
+            </div>
+            <h1 class="lb-title">Chromo<em>gen</em></h1>
+            <p class="lb-tag">منصّة التنبّؤ بالبنية ثلاثية الأبعاد للكروماتين</p>
         </div>
-        
-        <div id="reset-form-block" style="display: none;">
-            <h3 style="color: var(--gold); font-size: 14px; margin-bottom: 15px;">استعادة كلمة المرور</h3>
-            <label>البريد الإلكتروني المسجل</label>
-            <input type="email" id="adminEmail" placeholder="admin@biotreatment.lab">
-            
-            <button onclick="handleResetPassword()" style="width: 100%; margin-top: 15px;">إرسال رابط الاستعادة</button>
-            <button class="btn-outline" onclick="togglePasswordReset(false)" style="width: 100%; margin-top: 10px;">← العودة للدخول</button>
+
+        <div class="login-glass">
+            <div id="login-form-block">
+                <div class="lg-top">
+                    <h2 class="lg-h">تسجيل الدخول</h2>
+                    <span class="lg-alt">دخول <b>المشرف</b></span>
+                </div>
+
+                <label>معرف المشرف</label>
+                <input type="text" id="adminUser" placeholder="أدخل اسم المستخدم">
+
+                <label>كلمة المرور</label>
+                <input type="password" id="adminPass" placeholder="••••••••">
+
+                <a onclick="togglePasswordReset(true)" class="lg-forgot">نسيت كلمة المرور؟</a>
+                <button type="button" onclick="handleLogin()" class="lg-btn">دخول إلى النظام</button>
+            </div>
+
+            <div id="reset-form-block" style="display: none;">
+                <div class="lg-top">
+                    <h2 class="lg-h">استعادة كلمة المرور</h2>
+                </div>
+
+                <label>البريد الإلكتروني المسجل</label>
+                <input type="email" id="adminEmail" placeholder="admin@biotreatment.lab">
+
+                <button onclick="handleResetPassword()" class="lg-btn">إرسال رابط الاستعادة</button>
+                <button class="lg-btn-outline" onclick="togglePasswordReset(false)">← العودة للدخول</button>
+            </div>
         </div>
+
     </div>
 </div>
