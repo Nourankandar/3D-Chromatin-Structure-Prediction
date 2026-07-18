@@ -15,7 +15,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import action
-from .models import CellType, InputData, OutputData
+from .models import CellType, InputData
+from backend.core.utils.atomic_utils import atomic_with_cleanup
 from .serializers import (
     CellTypeSerializer,
     InputDataCreateSerializer,
@@ -101,6 +102,7 @@ class InputDataViewSet(viewsets.ModelViewSet):
             
         return Response(data)
 
+
     @action(detail=True, methods=["post"], url_path="stop")
     def stop(self, request, pk=None):
         input_data = self.get_object()
@@ -111,9 +113,18 @@ class InputDataViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # نكتفي بوضع علم "طلب إلغاء" — الـ pipeline_manager رح يفحصه بين كل خطوة ويوقف الشغل فوراُ
-        input_data.status = "cancelling"
-        input_data.save(update_fields=["status"])
+        old_status = input_data.status
+
+        def rollback_status():
+            input_data.status = old_status
+            input_data.save(update_fields=["status"])
+
+        try:
+            with atomic_with_cleanup(cleanup_fn=rollback_status, log_prefix="StopAnalysis"):
+                input_data.status = "cancelling"
+                input_data.save(update_fields=["status"])
+        except Exception as exc:
+            return Response({"error": f"Failed to stop analysis: {exc}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response(
             {"message": "Cancellation requested", "input_data_id": input_data.id, "status": "cancelling"},
@@ -123,49 +134,29 @@ class InputDataViewSet(viewsets.ModelViewSet):
 # ─────────────────────────────────────────────────────────────────────────────
 # POST /api/genomics/run-test/
 # ─────────────────────────────────────────────────────────────────────────────
+
+
 class RunGenomicTestAPIView(APIView):
-    """
-    Accepts:
-        - fasta_file   : FASTA file (multipart) for the patient
-        - patient_id   : int
-        - cell_type_id : int
-        - chromosome   : str, e.g. "chr21"
-        - start_pos    : int
-        - end_pos      : int
-
-    Returns 202 Accepted + input_data_id immediately, then runs the pipeline
-    asynchronously via Celery.
-    """
-
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
-        # 1) التحقق فوراً: هل هناك أي تحليل شغال حالياً في الخلفية؟
         active_statuses = [
-            'pending', 
-            'predicting_dnase', 
-            'generating_hic', 
-            'generating_hic_coords', 
-            'scanning_motifs', 
-            'cancelling'
+            'pending', 'predicting_dnase', 'generating_hic',
+            'generating_hic_coords', 'scanning_motifs', 'cancelling'
         ]
-        
+
         has_active_test = InputData.objects.filter(status__in=active_statuses).exists()
-        
         if has_active_test:
             return Response(
                 {"error": "There is already a genomic test running. Please wait until it finishes or stop it before running a new one."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 2) إذا لم يكن هناك أي تحليل شغال، يكمل الكود الطبيعي تبعك:
         fasta_file = request.FILES.get("fasta_file") or request.FILES.get("dna_sequence_file")
         if not fasta_file:
-            return Response(
-                {"error": "fasta_file is required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"error": "fasta_file is required"}, status=status.HTTP_400_BAD_REQUEST)
+
         patient_id = request.data.get("patient_id") or request.data.get("patient")
         cell_type_id = request.data.get("cell_type_id") or request.data.get("cell_type")
         chromosome = request.data.get("chromosome")
@@ -182,23 +173,40 @@ class RunGenomicTestAPIView(APIView):
         os.makedirs(fasta_dir, exist_ok=True)
         fasta_path = os.path.join(fasta_dir, fasta_file.name)
 
-        with open(fasta_path, "wb") as f:
-            for chunk in fasta_file.chunks():
-                f.write(chunk)
+        try:
+            with open(fasta_path, "wb") as f:
+                for chunk in fasta_file.chunks():
+                    f.write(chunk)
+        except OSError as exc:
+            return Response(
+                {"error": f"Failed to save uploaded file: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         relative_fasta_path = os.path.relpath(fasta_path, settings.MEDIA_ROOT)
+        input_data = None
 
-        input_data = InputData.objects.create(
-            patient_id=patient_id,
-            cell_type_id=cell_type_id,
-            chromosome=chromosome,
-            start_pos=start_pos,
-            end_pos=end_pos,
-            dna_sequence_file=relative_fasta_path,
-            status="pending",
-        )
+        def cleanup_file():
+            if os.path.exists(fasta_path):
+                os.remove(fasta_path)
 
-        run_genomic_pipeline_task.delay(input_data.id)
+        try:
+            with atomic_with_cleanup(cleanup_fn=cleanup_file, log_prefix="RunGenomicTest"):
+                input_data = InputData.objects.create(
+                    patient_id=patient_id,
+                    cell_type_id=cell_type_id,
+                    chromosome=chromosome,
+                    start_pos=start_pos,
+                    end_pos=end_pos,
+                    dna_sequence_file=relative_fasta_path,
+                    status="pending",
+                )
+                run_genomic_pipeline_task.delay(input_data.id)
+        except Exception as exc:
+            return Response(
+                {"error": f"Failed to start genomic pipeline: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         return Response(
             {
@@ -208,8 +216,6 @@ class RunGenomicTestAPIView(APIView):
             },
             status=status.HTTP_202_ACCEPTED,
         )
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # GET /api/genomics/test-status/<input_id>/
 # ─────────────────────────────────────────────────────────────────────────────
@@ -221,11 +227,12 @@ class TestStatusAPIView(APIView):
 
     def get(self, request, input_id):
         try:
-            # جلب البيانات مع العلاقات بضربة واحدة سريعة
-            input_data = InputData.objects.select_related("patient", "cell_type").prefetch_related("output").get(pk=input_id)
+            # يفضل استخدام select_related لـ OneToOneField إذا كانت العلاقة كذلك لتسريع الاستعلام
+            input_data = InputData.objects.select_related("patient", "cell_type", "output").get(pk=input_id)
         except InputData.DoesNotExist:
             return Response({"error": "InputData not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        # تجهيز القيم الافتراضية
         response = {
             "input_data_id": input_data.id,
             "status": input_data.status,
@@ -233,14 +240,29 @@ class TestStatusAPIView(APIView):
             "chromosome": input_data.chromosome,
             "cell_type": input_data.cell_type.name,
             "created_at": input_data.created_at,
-            "output_data_id": None  # قيمة افتراضية
+            "output_data_id": None,
+            "message": "" # حقل جديد لتوضيح الحالة
         }
 
-        # التحقق من وجود output مباشرة دون استعلام إضافي بفضل الـ prefetch
+        # التحقق من الحالة والبيانات
         output_obj = getattr(input_data, 'output', None)
-        if input_data.status == "completed" and output_obj:
-            response["output_data_id"] = output_obj.id
 
+        if input_data.status == "completed":
+            if output_obj:
+                response["output_data_id"] = output_obj.id
+                response["message"] = "تمت المعالجة بنجاح"
+            else:
+                response["message"] = "اكتملت الحالة ولكن لا توجد بيانات مخرجات (Output)"
+        
+        elif input_data.status == "processing" or input_data.status == "pending":
+            response["message"] = "جاري العمل في الخلفية..."
+            
+        elif input_data.status == "failed":
+            response["message"] = "فشلت عملية المعالجة في الخلفية" # التعامل مع حالة الفشل هنا
+            
+        else:
+            response["message"] = "لا توجد عمليات معالجة حالياً"
+            
         return Response(response, status=status.HTTP_200_OK)
 
 # ─────────────────────────────────────────────────────────────────────────────

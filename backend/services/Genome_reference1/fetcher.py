@@ -88,30 +88,24 @@ def fetch_reference_sequence(chromosome: str, start: int, end: int) -> str:
         raise ReferenceFetchError(f"Failed to fetch reference sequence: {exc}") from exc
 
 
+from core.utils.genomics_utils import normalize_chromosome_name
+
 def fetch_reference_sequence_as_fasta_file(
     chromosome: str, start: int, end: int, output_dir: str, record_id: str = "healthy_control"
 ) -> str:
-    """
-    نفس fetch_reference_sequence بس بيحفظ الناتج كملف .fasta على القرص —
-    مفيد لأنه باقي خطوات الـ pipeline (DNase, motif scanner) بتتوقع مسار ملف.
-
-    Returns
-    -------
-    str: المسار الكامل للملف المحفوظ
-    """
     sequence = fetch_reference_sequence(chromosome, start, end)
+    chromosome_clean = normalize_chromosome_name(chromosome).replace("chr", "", 1)  # يشيل الـ chr إذا موجودة أصلاً
 
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"{record_id}_chr{chromosome}_{start}_{end}.fasta")
+    output_path = os.path.join(output_dir, f"{record_id}_chr{chromosome_clean}_{start}_{end}.fasta")
 
     with open(output_path, "w") as f:
-        f.write(f">{record_id}|chr{chromosome}:{start}-{end}\n")
+        f.write(f">{record_id}|chr{chromosome_clean}:{start}-{end}\n")
         for i in range(0, len(sequence), 60):
             f.write(sequence[i:i + 60] + "\n")
 
     logger.info("[Fetcher] Saved reference FASTA to: %s", output_path)
     return output_path
-
 
 def _try_alternate_chromosome_name(chromosome: str, available: list) -> str | None:
     """يحاول يلاقي تسمية بديلة شائعة (1 <-> chr1)."""

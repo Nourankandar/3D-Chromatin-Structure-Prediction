@@ -17,6 +17,7 @@ from .models import AnalysisReport
 from .serializers import AnalysisReportSerializer
 from weasyprint import HTML
 from django.http import HttpResponse
+from backend.core.utils.atomic_utils import atomic_with_cleanup
 from django.template.loader import render_to_string
 
 class AnalysisReportViewSet(
@@ -42,28 +43,39 @@ class AnalysisReportViewSet(
     serializer_class = AnalysisReportSerializer
     permission_classes = [IsAuthenticated]
 
+
     @action(detail=True, methods=["post"], url_path="regenerate")
     def regenerate(self, request, pk=None):
         report = self.get_object()
 
-        # حارس الأمان: نتحقق من حالة التحليل الأساسي (InputData) المرتبط بهذا التقرير
         input_data = report.output_data.input_data
         if input_data.status in ["pending", "processing"]:
             return Response(
-                {
-                    "error": "Cannot regenerate report while the genomic pipeline is still running."
-                },
+                {"error": "Cannot regenerate report while the genomic pipeline is still running."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 1. نقلب حالة التقرير في الداتا فوراً ليعرض الفرونت إند مؤشر التحميل
-        report.status = "generating"
-        report.summary_text = "AI clinical engine is regenerating chromatin folds analysis..."
-        report.save(update_fields=["status", "summary_text"])
+        old_status = report.status
+        old_summary = report.summary_text
 
-        # 2. نرسل المهمة للسيليري بأمان لأننا تأكدنا أن المسار السابق منتهي
-        from apps.genomics.tasks import generate_llm_report_task
-        generate_llm_report_task.delay(report.output_data_id)
+        def rollback_report_state():
+            report.status = old_status
+            report.summary_text = old_summary
+            report.save(update_fields=["status", "summary_text"])
+
+        try:
+            with atomic_with_cleanup(cleanup_fn=rollback_report_state, log_prefix="ReportRegenerate"):
+                report.status = "generating"
+                report.summary_text = "AI clinical engine is regenerating chromatin folds analysis..."
+                report.save(update_fields=["status", "summary_text"])
+
+                from apps.genomics.tasks import generate_llm_report_task
+                generate_llm_report_task.delay(report.output_data_id)
+        except Exception as exc:
+            return Response(
+                {"error": f"Failed to queue report regeneration: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         return Response(
             {
@@ -73,7 +85,6 @@ class AnalysisReportViewSet(
             },
             status=status.HTTP_202_ACCEPTED,
         )
-    
     @action(detail=True, methods=["get"], url_path="export-pdf")
     def export_pdf(self, request, pk=None):
         """

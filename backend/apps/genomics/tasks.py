@@ -5,20 +5,15 @@ followed by a separate task that generates the LLM clinical report.
 """
 
 import logging
-
+from backend.core.utils.atomic_utils import atomic_with_cleanup
 from celery import shared_task
 from django.utils import timezone
-
+from celery.exceptions import SoftTimeLimitExceeded
 logger = logging.getLogger(__name__)
 
 
-@shared_task(
-    bind=True,
-    max_retries=2,
-    default_retry_delay=30,
-    acks_late=True,
-    track_started=True,
-)
+@shared_task(bind=True, max_retries=2, default_retry_delay=30, acks_late=True, track_started=True,soft_time_limit=600,   
+    time_limit=660,)
 def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
     from apps.genomics.models import InputData, OutputData
     from services.pipeline_manager import GenomicPipelineManager
@@ -34,45 +29,50 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
     try:
         manager = GenomicPipelineManager(input_data_id=input_data_id)
         results: dict = manager.run()
+    except SoftTimeLimitExceeded:
+        # ← هاد الجزء الجديد المهم: تجاوز الـ 5 دقايق
+        logger.error("[Task] Pipeline TIMEOUT (>5min) for InputData id=%s — marking as failed", input_data_id)
+        input_data.status = "failed"
+        input_data.save(update_fields=["status"])
+        return {"status": "failed", "reason": "timeout_exceeded"}
     except Exception as exc:
         input_data.refresh_from_db()
         if input_data.status == "cancelling":
             logger.info("[Task] Pipeline stopped by user. Cleaning up InputData ID=%s", input_data_id)
-            
-            # 1. حذف ملف الـ FASTA من الديسك فوراً
             if input_data.dna_sequence_file and input_data.dna_sequence_file.storage.exists(input_data.dna_sequence_file.name):
                 input_data.dna_sequence_file.delete(save=False)
-            
-            # 2. حذف سجل المدخلات من قاعدة البيانات
             input_data.delete()
             return {"status": "deleted", "message": "Cancelled and completely removed by user"}
-            
+
         logger.exception("[Task] Pipeline FAILED for InputData id=%s", input_data_id)
         input_data.status = "failed"
         input_data.save(update_fields=["status"])
         raise self.retry(exc=exc)
 
-    # NOTE: keys here must match what GenomicPipelineManager.run() returns,
-    # which in turn must match the OutputData model fields below.
-    output_data, _ = OutputData.objects.update_or_create(
-        input_data=input_data,
-        defaults={
-            "hic_patient_file": results["hic_patient_file"],
-            "hic_control_file": results.get("hic_control_file", ""),
-            "coords_patient_file": results["coords_patient_file"],
-            "coords_control_file": results.get("coords_control_file", ""),
-            "affected_proteins": results["affected_proteins"],
-            "generated_at": timezone.now(),
-        },
-    )
+    output_data = None
+    try:
+        with atomic_with_cleanup(log_prefix="PipelineTask-SaveOutput"):
+            output_data, _ = OutputData.objects.update_or_create(
+                input_data=input_data,
+                defaults={
+                    "hic_patient_file": results["hic_patient_file"],
+                    "hic_control_file": results.get("hic_control_file", ""),
+                    "coords_patient_file": results["coords_patient_file"],
+                    "coords_control_file": results.get("coords_control_file", ""),
+                    "affected_proteins": results["affected_proteins"],
+                    "generated_at": timezone.now(),
+                },
+            )
+            InputData.objects.filter(pk=input_data_id).update(status="completed")
+    except Exception:
+        input_data.status = "failed"
+        input_data.save(update_fields=["status"])
+        raise
 
-    InputData.objects.filter(pk=input_data_id).update(status="completed")
     logger.info("[Task] Pipeline completed → OutputData id=%s", output_data.id)
-
     generate_llm_report_task.delay(output_data.id)
 
     return {"output_data_id": output_data.id, "status": "completed"}
-
 
 @shared_task(
     bind=True,

@@ -17,9 +17,9 @@ Django request/response مباشرة.
   7) حفظ كل شي بـ OutputData حسب حقول الموديل
 ====================================================================
 """
-
+import os
 import logging
-
+from core.utils.genomics_utils import normalize_chromosome_name
 logger = logging.getLogger(__name__)
 
 
@@ -42,7 +42,7 @@ class GenomicPipelineManager:
 
         patient_fasta_path: str = input_data.dna_sequence_file.path
         enformer_id: int = input_data.cell_type.target_enformer_id
-        chromosome: str = input_data.chromosome
+        chromosome: str = normalize_chromosome_name(input_data.chromosome)
 
         # ── Step 0: تحديد موقع تسلسل المريض ──────────────────────────
         coords = self._step_locate(patient_fasta_path, chromosome, input_data)
@@ -60,7 +60,9 @@ class GenomicPipelineManager:
 
         # ── Step 3: Motifs/Proteins (مريض + سليم) + مقارنة ───────────
         affected_proteins = self._step_motifs(
-            patient_fasta_path, control_fasta_path, input_data
+            patient_fasta_path, control_fasta_path, input_data,
+            dnase_patient_file=dnase_patient_file,       # ← جديد
+            dnase_control_file=dnase_control_file,       # ← جديد
         )
 
         # ── Step 4: Hi-C (مريض + سليم) ────────────────────────────────
@@ -88,9 +90,9 @@ class GenomicPipelineManager:
     # ------------------------------------------------------------------
     def _step_locate(self, patient_fasta_path: str, chromosome: str, input_data) -> dict:
         from services.Genome_reference1.DNA_locator import locate_patient_sequence
-
+        chromosome = normalize_chromosome_name(chromosome)
         self._update_status(input_data, "pending")  # ما في status مخصص لهاد بالـ model حالياً
-        logger.info("[Pipeline %s] -> Locating patient sequence on chr%s", self.input_data_id, chromosome)
+        logger.info("[Pipeline %s] -> Locating patient sequence on %s", self.input_data_id, chromosome)
 
         coords: dict = locate_patient_sequence(patient_fasta_path, chromosome_hint=chromosome)
 
@@ -115,8 +117,8 @@ class GenomicPipelineManager:
             record_id=f"control_{self.input_data_id}",
         )
 
-        input_data.reference_sequence_file = control_fasta_path
-        input_data.save(update_fields=["reference_sequence_file"])
+        input_data.dna_control_file = control_fasta_path          # ← غيّرنا هون
+        input_data.save(update_fields=["dna_control_file"])
 
         logger.info("[Pipeline %s] Reference fetched: %s", self.input_data_id, control_fasta_path)
         return control_fasta_path
@@ -136,7 +138,10 @@ class GenomicPipelineManager:
         logger.info("[Pipeline %s] DNase done (%s): %s", self.input_data_id, tag, dnase_file)
         return dnase_file
 
-    def _step_motifs(self, patient_fasta_path: str, control_fasta_path: str, input_data) -> dict:
+    def _step_motifs(self, patient_fasta_path: str, control_fasta_path: str, input_data,
+                    dnase_patient_file: str = None, dnase_control_file: str = None) -> dict:
+        import numpy as np
+        from django.conf import settings
         from services.scanning_motifs.scanner import (
             calculate_spatial_docking,
             fetch_pdb_file,
@@ -146,31 +151,47 @@ class GenomicPipelineManager:
         self._update_status(input_data, "scanning_motifs")
         logger.info("[Pipeline %s] -> Motif scanning started (patient + control)", self.input_data_id)
 
-        patient_motifs: dict = run_motif_delta_analysis(patient_fasta_path)
-        control_motifs: dict = run_motif_delta_analysis(control_fasta_path)
+        # نحمّل إشارة DNase الحقيقية (لو متوفرة) لاستخدامها بالفلترة
+        patient_dnase_array = None
+        control_dnase_array = None
 
-        # نبني قائمة موحّدة على كل البروتينات يلي ظهرت بأي من الجهتين
+        if dnase_patient_file:
+            patient_dnase_path = os.path.join(settings.MEDIA_ROOT, dnase_patient_file)
+            if os.path.exists(patient_dnase_path):
+                patient_dnase_array = np.load(patient_dnase_path).astype(np.float32)
+
+        if dnase_control_file:
+            control_dnase_path = os.path.join(settings.MEDIA_ROOT, dnase_control_file)
+            if os.path.exists(control_dnase_path):
+                control_dnase_array = np.load(control_dnase_path).astype(np.float32)
+
+        patient_motifs: dict = run_motif_delta_analysis(patient_fasta_path, dnase_signal=patient_dnase_array)
+        control_motifs: dict = run_motif_delta_analysis(control_fasta_path, dnase_signal=control_dnase_array)
+
         all_protein_ids = set(patient_motifs.keys()) | set(control_motifs.keys())
 
         affected_proteins = {}
+        skipped_proteins = []
+
         for protein_id in all_protein_ids:
             patient_info = patient_motifs.get(protein_id)
             control_info = control_motifs.get(protein_id)
-
-            # مفقود عند المريض = موجود بالسليم وغير موجود عند المريض
             is_missing = control_info is not None and patient_info is None
-
-            # لو موجود بس بمكان/سكور مختلف بشكل واضح، منعتبره متأثر مش مفقود بالكامل
-            # (منستخدم بيانات المريض لو موجودة، وإلا بيانات السليم كمرجع للموقع)
             motif_info = patient_info or control_info
-
-            # مهم: fetch_pdb_file() بتبحث بـ UniProt عن طريق اسم الجين/البروتين
-            # (protein_name)، مش عن طريق jaspar_id (protein_id) — لأنه UniProt
-            # ما بيفهم معرّفات JASPAR أصلاً. لو ما لقينا اسم لأي سبب، منرجع
-            # لاستخدام الـ jaspar_id كحل احتياطي بدل ما ينهار الكود بالكامل.
             protein_name_for_lookup = motif_info.get("protein_name") or protein_id
-            pdb_path = fetch_pdb_file(protein_name_for_lookup)
-            docking_coords = calculate_spatial_docking(pdb_path, motif_info)
+
+            try:
+                pdb_path = fetch_pdb_file(protein_name_for_lookup)
+                docking_coords = calculate_spatial_docking(pdb_path, motif_info)
+            except Exception as exc:
+                # ما منوقف كل الـ pipeline لبروتين واحد فشل جلبه —
+                # منسجله كـ "متخطى" ومنكمل الباقي
+                logger.warning(
+                    "[Pipeline %s] تخطينا البروتين '%s' (فشل الجلب): %s",
+                    self.input_data_id, protein_name_for_lookup, exc,
+                )
+                skipped_proteins.append(protein_name_for_lookup)
+                continue
 
             delta_score = None
             if patient_info and control_info:
@@ -188,10 +209,14 @@ class GenomicPipelineManager:
             }
 
         logger.info(
-            "[Pipeline %s] Motifs done - %d proteins found (patient=%d, control=%d, missing=%d)",
+            "[Pipeline %s] Motifs done - %d proteins found (patient=%d, control=%d, missing=%d, skipped=%d)",
             self.input_data_id, len(affected_proteins), len(patient_motifs), len(control_motifs),
             sum(1 for p in affected_proteins.values() if p["is_missing"]),
+            len(skipped_proteins),
         )
+        if skipped_proteins:
+            logger.warning("[Pipeline %s] البروتينات المتخطاة: %s", self.input_data_id, skipped_proteins)
+
         return affected_proteins
 
     def _step_hic(self, fasta_path: str, dnase_file: str, input_data, tag: str) -> str:

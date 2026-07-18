@@ -69,9 +69,8 @@ class ProteinStructureFetcher:
         except Exception as e:
             print(f"[!] لم نجد هيكل متبلور تجريبي، سننتقل للخيار البديل. السبب الفني: {e}")
 
-        # 3. تنزيل الملف وحفظه محلياً في الكاش
         if pdb_id:
-            cache_path = os.path.join(self.cache_dir, f"{pdb_id}.pdb")
+            cache_path = os.path.join(self.rcsb_dir, f"{pdb_id}.pdb")        # ← rcsb_dir
             if not os.path.exists(cache_path):
                 print(f"[+] جاري تنزيل ملف PDB المشتق مخبرياً لـ {pdb_id}...")
                 r = requests.get(f"https://files.rcsb.org/download/{pdb_id}.pdb", timeout=30)
@@ -80,9 +79,8 @@ class ProteinStructureFetcher:
                     f.write(r.text)
             return cache_path
         else:
-            # الحل الاحتياطي السريع والمضمون: نموذج الذكاء الاصطناعي AlphaFold
             print(f"[⚠️] جاري جلب هيكل تنبؤي من AlphaFold DB للمعرف: {uniprot_id}")
-            alphafold_path = os.path.join(self.cache_dir, f"AF-{uniprot_id}-F1.pdb")
+            alphafold_path = os.path.join(self.alphafold_dir, f"AF-{uniprot_id}-F1.pdb")
             
             if not os.path.exists(alphafold_path):
                 api_url = f"https://alphafold.ebi.ac.uk/api/prediction/{uniprot_id}"

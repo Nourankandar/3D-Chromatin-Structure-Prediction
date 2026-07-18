@@ -2,6 +2,7 @@
 # backend/services/scanning_motifs/scanner.py
 
 import os
+import logging
 import numpy as np
 from django.conf import settings
 
@@ -9,43 +10,63 @@ from django.conf import settings
 from ai_engine.models.Proteins.MotifScanner.protein_lookup import GenomicMotifScanner
 from ai_engine.models.Proteins.ProteinStructures.protein_fetcher import ProteinStructureFetcher
 
+import numpy as np
+from core.utils.genomics_utils import call_dnase_peaks, is_position_in_peaks
 
-def run_motif_delta_analysis(fasta_absolute_path: str) -> dict:
+logger = logging.getLogger(__name__)
+
+def run_motif_delta_analysis(fasta_absolute_path: str, dnase_signal: np.ndarray = None) -> dict:
     """
-    يقرأ ملف الـ FASTA، ويقوم بتشغيل الـ Motif Scanner لاستخراج البروتينات المتأثرة.
-    يعيد قاموساً مفتاحه jaspar_id (وليس اسم البروتين)، لأن نفس اسم البروتين
-    ممكن يتكرر لأكثر من matrix/motif بقاعدة JASPAR فبيصير في تضارب لو اعتمدنا
-    الاسم كمفتاح. اسم البروتين نفسه بنخزنه جوا القيمة (protein_name).
+    يقرأ ملف الـ FASTA، ويشغل الـ Motif Scanner لاستخراج البروتينات المتأثرة.
+    لو انبعتت dnase_signal، منفلتر الـ motifs بحيث نحتفظ بس باللي واقعة جوا
+    مناطق الانفتاح (DNase peaks) — لأنه بروتين ما إلو معنى بيولوجي يرتبط
+    بمنطقة كروماتين مقفولة أصلاً.
     """
-    # 1. قراءة التسلسل النظيف من ملف الـ FASTA
     with open(fasta_absolute_path, "r") as f:
         lines = f.readlines()
     dna_sequence = "".join(line.strip() for line in lines if not line.startswith(">"))
 
-    # 2. استدعاء الماسح الجينومي
     scanner = GenomicMotifScanner()
     detected_motifs = scanner.scan_sequence(dna_sequence, threshold=0.8)
 
-    # 3. إعادة هيكلة البيانات ليتوافق مع حلقة الـ Pipeline Manager (jaspar_id -> motif_info)
+    # ── فلترة حسب DNase peaks (لو متوفرة) ──────────────────────────
+    peaks = []
+    if dnase_signal is not None:
+        peaks = call_dnase_peaks(dnase_signal, min_fraction_of_max=0.5, min_peak_width=10)
+        if not peaks:
+            logger.warning(
+                "[Scanner] لا توجد مناطق انفتاح (DNase peaks) بهاي المنطقة — "
+                "بيولوجياً هاد يعني كروماتين مقفول بالكامل، فمافي أي بروتين متوقع يرتبط هون."
+            )
+            return {}   # نرجع فاضي — مفيش داعي نفحص أي بروتين أصلاً
+        logger.info("[Scanner] تم تحديد %d منطقة انفتاح (DNase peaks)", len(peaks))
     motif_results = {}
+    skipped_by_dnase = 0
+
     for entry in detected_motifs:
-        key = entry["jaspar_id"]  # المفتاح الفريد الحقيقي بدل الاسم
-        # إذا تكرر ارتباط نفس الـ motif في أكثر من موقع، نأخذ أول ظهور فقط
+        position = entry["position"]
+
+        if peaks and not is_position_in_peaks(position, peaks):
+            skipped_by_dnase += 1
+            continue  # الموقع خارج أي منطقة مفتوحة — نتجاهله
+
+        key = entry["jaspar_id"]
         if key not in motif_results:
-            # ملاحظة: is_missing ما بتتحدد هون — الدالة هاي بتشتغل على تسلسل
-            # واحد بس (مريض أو سليم) فمفيش عندها مرجع تقارن فيه. المقارنة
-            # الفعلية (مريض مقابل سليم) صايرة بـ pipeline_manager._step_motifs
-            # عبر مناداة هاي الدالة مرتين ثم مقارنة النتيجتين.
             motif_results[key] = {
                 "protein_name": entry["protein_name"],
                 "jaspar_id": entry["jaspar_id"],
-                "position_index": entry["position"],
+                "position_index": position,
                 "strand": entry["strand"],
                 "delta_score": entry["score"],
             }
 
-    return motif_results
+    if peaks:
+        logger.info(
+            "[Scanner] %d motif تم تجاهلها لوقوعها خارج مناطق الانفتاح، %d تبقى",
+            skipped_by_dnase, len(motif_results),
+        )
 
+    return motif_results
 
 def fetch_pdb_file(protein_name: str) -> str:
     """
@@ -54,22 +75,29 @@ def fetch_pdb_file(protein_name: str) -> str:
 
     ملاحظة: هاد بياخد اسم الجين (protein_name) مش jaspar_id، لأنه
     ProteinStructureFetcher بيعمل بحث بـ UniProt عن طريق اسم الجين.
+
+    بعض motifs بـ JASPAR بتكون لـ "complex" من بروتينين سوا (زي "HOXD12::ELK1")
+    — UniProt ما بيفهم هيك صيغة، فمنفصل ومنستخدم بس أول بروتين بالمركّب.
     """
-    # تحديد مجلد الحفظ داخل الـ Media الخاص بدجانغو
+    if "::" in protein_name:
+        original_name = protein_name
+        protein_name = protein_name.split("::")[0].strip()
+        # (اختياري) تسجيل تنويه بسيط بدل ما ينكتم تماماً
+        import logging
+        logging.getLogger(__name__).info(
+            "[PDB Fetch] '%s' هو بروتين مركّب (heterodimer) — استخدمنا '%s' فقط لجلب البنية",
+            original_name, protein_name,
+        )
+
     relative_folder = 'genomics/pdb_structures/'
     absolute_folder = os.path.join(settings.MEDIA_ROOT, relative_folder)
     os.makedirs(absolute_folder, exist_ok=True)
 
-    # إنشاء الـ Fetcher وتوجيه الكاش الخاص به مباشرة إلى مجلد ميديا دجانغو
     fetcher = ProteinStructureFetcher(cache_dir=absolute_folder)
-
-    # جلب وتحميل الملف (سيعيد المسار المطلق للملف المحفوظ في الميديا)
     absolute_pdb_path = fetcher.fetch(protein_name)
 
-    # استخراج اسم الملف النهائي فقط لإرجاع المسار النسبي لقاعدة البيانات
     filename = os.path.basename(absolute_pdb_path)
     return os.path.join(relative_folder, filename)
-
 
 def calculate_spatial_docking(pdb_relative_path: str, motif_info: dict) -> dict:
     """
