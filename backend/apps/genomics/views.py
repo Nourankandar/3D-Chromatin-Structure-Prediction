@@ -216,6 +216,46 @@ class RunGenomicTestAPIView(APIView):
             },
             status=status.HTTP_202_ACCEPTED,
         )
+
+# apps/genomics/views.py
+class OutputDataFullDetailAPIView(APIView):
+    """
+    GET /api/genomics/output/<output_id>/full/
+    يرجع الـ JSON الكامل الجاهز للفرونت: patient + control + binding_proteins
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, output_id):
+        import json
+        from django.conf import settings
+        from .models import OutputData
+
+        try:
+            output = OutputData.objects.select_related(
+                "input_data__patient", "input_data__cell_type"
+            ).get(pk=output_id)
+        except OutputData.DoesNotExist:
+            return Response({"error": "OutputData not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        def _load_json(field_file):
+            if not field_file:
+                return None
+            abs_path = os.path.join(settings.MEDIA_ROOT, field_file.name)
+            if not os.path.exists(abs_path):
+                return None
+            with open(abs_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+        patient_struct = _load_json(output.coords_patient_file)
+        control_struct = _load_json(output.coords_control_file)
+
+        payload = {
+            "patient": patient_struct,
+            "control": control_struct,
+            "binding_proteins": output.affected_proteins or {},
+        }
+        return Response(payload, status=status.HTTP_200_OK)
+    
 # ─────────────────────────────────────────────────────────────────────────────
 # GET /api/genomics/test-status/<input_id>/
 # ─────────────────────────────────────────────────────────────────────────────
@@ -294,3 +334,4 @@ class SearchProteinAPIView(APIView):
             return Response({"error": f"No UniProt entry found for gene '{gene}'"}, status=status.HTTP_404_NOT_FOUND)
 
         return Response(result, status=status.HTTP_200_OK)
+

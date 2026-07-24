@@ -165,18 +165,11 @@ def generate_hic_matrices(
     dna_input: Union[str, np.ndarray],
     dnase_input: Union[str, np.ndarray],
     output_name_hint: str = "sample",
+    chrom: str = "unknown",          # ← تمت الإضافة: اسم الكروموسوم الحقيقي (مثلاً "chr21")
+    start_pos: int = 0,             # ← تمت الإضافة: بداية المنطقة بالـ bp (مثلاً 14200000)
 ) -> str:
     """
     الجسر الفعلي المستدعى بواسطة GenomicPipelineManager._step_hic().
-
-    Parameters
-    ----------
-    dna_input : إما مسار FASTA، أو تسلسل DNA كنص خام، أو مصفوفة one-hot جاهزة (1,4,L)
-                *يفضّل تمرير المصفوفة one-hot مباشرة لو متوفرة أصلاً من خطوة سابقة
-                لتفادي إعادة الترميز مرتين (مريض/سليم لكل واحد مرة)*
-    dnase_input : إما مسار نسبي لملف .npy، أو مصفوفة DNase جاهزة بالذاكرة
-    output_name_hint : اسم مميز يُستخدم لبناء اسم ملف الإخراج (مثلاً "patient_123" أو "control_123")
-                        بما إنه ما عاد عندنا اسم ملف DNase مضمون الوجود دايماً
     """
     raw_signal = _resolve_dnase_array(dnase_input)
     total_length = len(raw_signal)
@@ -208,17 +201,15 @@ def generate_hic_matrices(
         total_bins = final_bins
 
     else:
-        # ─── الحالة الثانية: أطول من نافذة الموديل — تقطيع مع تداخل 50% ودمج ───
+        # ─── الحالة الثانية: أطول من نافذة الموديل ───
         full_dna_array = _resolve_dna_array(dna_input, total_length) if not isinstance(dna_input, np.ndarray) else dna_input
 
-        # جعل القفزة نصف حجم النافذة للتداخل
         stride = MODEL_WINDOW_SIZE // 2 
         start_idx = 0
         
         while start_idx < total_length:
             end_idx = start_idx + MODEL_WINDOW_SIZE
 
-            # لتجنب البادينغ الزائد في آخر نافذة، نثبت النهاية ونرجع بالبداية للخلف
             if end_idx > total_length:
                 end_idx = total_length
                 start_idx = max(0, end_idx - MODEL_WINDOW_SIZE)
@@ -248,9 +239,9 @@ def generate_hic_matrices(
 
             start_idx += stride
 
-        # stride_bins يعادل نصف عدد البينات للنافذة (128) ليوافق تداخل الـ 50%
         stride_bins = MODEL_NUM_BINS // 2
         hic_matrix = merge_hic_matrices(predicted_sub_matrices, total_bins, MODEL_NUM_BINS, stride_bins)
+
     hic_matrix = (hic_matrix + hic_matrix.T) * 0.5
     np.fill_diagonal(hic_matrix, hic_matrix.max() if hic_matrix.max() > 0 else 1.0)
 
@@ -261,12 +252,16 @@ def generate_hic_matrices(
     output_filename = f"{output_name_hint}_hic.npz"
     absolute_output_path = os.path.join(absolute_folder, output_filename)
 
+    # حساب نهاية المنطقة بناءً على موقع البداية الفعلي والـ resolution
+    end_pos = start_pos + (total_bins * DEFAULT_RESOLUTION)
+
+    # حفظ القيم الحقيقية الممررة بدلاً من unknown و 0
     np.savez_compressed(
         absolute_output_path,
         hic_matrix=hic_matrix,
-        chrom='unknown',
-        start=0,
-        end=total_bins * DEFAULT_RESOLUTION,
+        chrom=chrom,
+        start=start_pos,
+        end=end_pos,
         resolution=DEFAULT_RESOLUTION,
     )
 

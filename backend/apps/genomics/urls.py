@@ -1,13 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import (
-    CellTypeViewSet,
-    InputDataViewSet,
-    RunGenomicTestAPIView,
-    TestStatusAPIView,
-    SearchProteinAPIView,  
-)
+from .views import *
 
 router = DefaultRouter()
 router.register(r'cell-types', CellTypeViewSet, basename='celltype')
@@ -19,6 +13,8 @@ urlpatterns = [
     path("test-status/<int:input_id>/", TestStatusAPIView.as_view(), name="test-status"),
     
     path("search-protein/", SearchProteinAPIView.as_view(), name="search-protein"),
+
+    path("output/<int:output_id>/full/", OutputDataFullDetailAPIView.as_view(), name="output-full-detail"),
     
     path('', include(router.urls)),
 ]

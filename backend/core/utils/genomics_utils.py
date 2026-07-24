@@ -54,3 +54,14 @@ def call_dnase_peaks(dnase_signal: np.ndarray, min_fraction_of_max: float = 0.5,
         peaks.append((start, len(dnase_signal)))
 
     return peaks
+
+def is_position_in_peaks(position: int, peaks: list) -> bool:
+    """
+    يتحقق إذا كان موقع معيّن (index) واقع جوا أي منطقة انفتاح (DNase peak).
+    peaks: لستة من (start, end) tuples طالعة من call_dnase_peaks — بنفس
+    وحدة الـ position (index داخل مصفوفة الإشارة).
+    """
+    for start, end in peaks:
+        if start <= position < end:
+            return True
+    return False

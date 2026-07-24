@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
     time_limit=660,)
 def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
     from apps.genomics.models import InputData, OutputData
-    from services.pipeline_manager import GenomicPipelineManager
+    from services.pipeline_manager import GenomicPipelineManager, PipelineCancelledError
 
     logger.info("[Task %s] Pipeline started for InputData id=%s", self.request.id, input_data_id)
 
@@ -35,9 +35,21 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
         input_data.status = "failed"
         input_data.save(update_fields=["status"])
         return {"status": "failed", "reason": "timeout_exceeded"}
+    except PipelineCancelledError:
+        # ← إلغاء صريح من المستخدم (status="cancelling") — مكتشف داخل
+        # GenomicPipelineManager._check_cancelled بين خطوات الـ pipeline.
+        # ما في داعي لـ retry هون أبداً، ولا لإعادة فحص الـ status لأنه
+        # إحنا يلي رفعنا الاستثناء وعارفين السبب أصلاً.
+        logger.info("[Task] Pipeline cancelled by user. Cleaning up InputData ID=%s", input_data_id)
+        if input_data.dna_sequence_file and input_data.dna_sequence_file.storage.exists(input_data.dna_sequence_file.name):
+            input_data.dna_sequence_file.delete(save=False)
+        input_data.delete()
+        return {"status": "deleted", "message": "Cancelled and completely removed by user"}
     except Exception as exc:
         input_data.refresh_from_db()
         if input_data.status == "cancelling":
+            # حالة احتياطية: إلغاء اكتُشف بطريقة تانية (مثلاً استثناء غير
+            # متوقع صار بالتزامن مع طلب stop) — نفس منطق التنظيف السابق.
             logger.info("[Task] Pipeline stopped by user. Cleaning up InputData ID=%s", input_data_id)
             if input_data.dna_sequence_file and input_data.dna_sequence_file.storage.exists(input_data.dna_sequence_file.name):
                 input_data.dna_sequence_file.delete(save=False)

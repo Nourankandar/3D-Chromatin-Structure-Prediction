@@ -99,16 +99,19 @@ def fetch_pdb_file(protein_name: str) -> str:
     filename = os.path.basename(absolute_pdb_path)
     return os.path.join(relative_folder, filename)
 
-def calculate_spatial_docking(pdb_relative_path: str, motif_info: dict) -> dict:
+def calculate_spatial_docking(coords_raw: list, position_index, resolution: int = 5000) -> dict | None:
     """
-    يأخذ ملف الـ PDB ومعلومات الموقع الجيني، ويحسب مصفوفات الدوران والإزاحة (Translation & Rotation)
-    لتثبيت ذرات البروتين بدقة ثلاثية الأبعاد فوق خيط الـ DNA.
+    يلاقي أقرب نقطة 3D (bin) لموقع البروتين على المحور الجيني،
+    بدون أي حاجة لملف PDB.
     """
-    position_index = motif_info.get("position_index", 0)
+    if not coords_raw or position_index is None:
+        return None
 
-    # هنا ستوضع معادلات التحويل الرياضية وربطها بالـ 3D Coords لاحقاً
-    # حالياً نرجع هيكل رياضي افتراضي متزن وجاهز للاستقبال في الواجهات
-    return {
-        "position": [float(position_index * 0.34), 0.0, 0.0],  # مثال لحساب الإزاحة بناءً على المسافة بين القواعد
-        "rotation": [0.0, 90.0, 0.0]  # زوايا الدوران الافتراضية للتركيب الفراغي
-    }
+    target_bin = int(position_index) // resolution
+    if target_bin >= len(coords_raw):
+        target_bin = len(coords_raw) - 1
+    if target_bin < 0:
+        return None
+
+    point = coords_raw[target_bin]
+    return {"x": point["x"], "y": point["y"], "z": point["z"]}

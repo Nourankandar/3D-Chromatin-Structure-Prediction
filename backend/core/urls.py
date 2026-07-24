@@ -24,9 +24,19 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import TemplateView
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    path('', TemplateView.as_view(template_name='index.html')),
+    path('login.html', TemplateView.as_view(template_name='login.html')),
+    path('dashboard.html', TemplateView.as_view(template_name='dashboard.html')),
+    path('viewer.html', TemplateView.as_view(template_name='viewer.html')),
+    path('hic_viewer.html', TemplateView.as_view(template_name='hic_viewer.html')),
+    path('protein_viewer.html', TemplateView.as_view(template_name='protein_viewer.html')),
+
     path('api/patients/', include('apps.patients.urls')),
     path('api/genomics/', include('apps.genomics.urls')),
     path('api/reports/', include('apps.reports.urls')),

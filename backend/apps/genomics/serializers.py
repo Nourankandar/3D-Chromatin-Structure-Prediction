@@ -49,27 +49,31 @@ class OutputDataSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source='input_data.patient.name', read_only=True)
     chromosome = serializers.CharField(source='input_data.chromosome', read_only=True)
     affected_proteins = serializers.SerializerMethodField() # تعديل مخصص هنا
+    report_id = serializers.SerializerMethodField()  # ← جديد: الربط الصريح مع AnalysisReport
 
     class Meta:
         model = OutputData
         fields = '__all__'
         read_only_fields = ['id', 'generated_at']
 
+    def get_report_id(self, obj):
+        # OneToOneField بين OutputData و AnalysisReport — الـ id مختلف
+        # عن قصد (كل جدول عندو تسلسل خاص فيه)، فلازم نرجع الربط صراحة
+        # حتى الفرونت يعرف يوصل لتقرير الـ output هاد بدون أي تخمين
+        return obj.report.id if hasattr(obj, 'report') else None
+
     def get_affected_proteins(self, obj):
         if not obj.affected_proteins:
             return []
             
         request = self.context.get('request')
-        base_media_url = request.build_absolute_uri(settings.MEDIA_URL) if request else settings.MEDIA_URL
         
         proteins_payload = []
         for protein_id, info in obj.affected_proteins.items():
             pdb_rel_path = info.get("pdb_file", "")
-            pdb_url = f"{base_media_url}{pdb_rel_path}" if pdb_rel_path else None
 
             proteins_payload.append({
                 "protein_id": protein_id,
-                "pdb_url": pdb_url,
                 "position": info.get("position"),
                 "rotation": info.get("rotation"),
                 "binding_score": info.get("binding_score"),
