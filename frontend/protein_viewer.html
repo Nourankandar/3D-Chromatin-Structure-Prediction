@@ -1,1210 +1,367 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>Chromatin + Protein 3D Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChromoGen · Protein 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=Cairo:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:#160A0D;color:#EFE2D0;font-family:'Segoe UI',sans-serif;
-     height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+  :root{
+    --bg:#0b2b26; --scene:#08201c; --fg:#daf1de; --muted:#8eb69b; --primary:#8eb69b;
+    --border:rgba(218,241,222,.14); --card:rgba(11,43,38,.72);
+    --font-display:"Space Grotesk","Cairo",sans-serif; --font-sans:"Inter","Cairo",sans-serif;
+  }
+  :root[data-theme="light"]{ --bg:#f2f9f3; --scene:#0a201d; --fg:#051f20; --muted:#3f6155; --primary:#163832; --border:rgba(5,31,32,.12); --card:rgba(255,255,255,.8); }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--fg);font-family:var(--font-sans);overflow:hidden}
+  #cv{position:absolute;inset:0}
+  #cv canvas{display:block;width:100%!important;height:100%!important;cursor:grab}
+  #cv canvas:active{cursor:grabbing}
 
-header{display:flex;align-items:center;justify-content:space-between;
-  padding:10px 18px;background:rgba(42,16,22,.98);
-  border-bottom:1px solid rgba(216,198,168,.15);flex-shrink:0;flex-wrap:wrap;gap:8px;}
+  /* overlay التحميل */
+  #loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:var(--scene);gap:.9rem;z-index:5;transition:opacity .3s}
+  #loading.hidden{opacity:0;pointer-events:none}
+  .spin{width:34px;height:34px;border:2.5px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #load-msg{font-size:12px;color:var(--muted);font-family:var(--font-sans)}
 
-.brand{display:flex;align-items:center;gap:10px;}
-.brand-dot{width:7px;height:7px;border-radius:50%;background:#D8C6A8;
-  box-shadow:0 0 8px #D8C6A8,0 0 16px rgba(216,198,168,.4);
-  animation:gp 3s infinite;}
-@keyframes gp{0%,100%{box-shadow:0 0 8px #D8C6A8,0 0 16px rgba(216,198,168,.4)}
-              50%{box-shadow:0 0 4px #D8C6A8}}
-.brand-title{font-size:13px;font-weight:700;color:#D8C6A8;letter-spacing:2px;}
-.brand-sub{font-size:9px;color:#A38F7D;letter-spacing:1px;margin-top:1px;}
+  /* أدوات علوية */
+  .toolbar{position:absolute;top:12px;inset-inline-start:12px;z-index:4;display:flex;gap:8px}
+  .tbtn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:10px;
+    border:1px solid var(--border);background:var(--card);backdrop-filter:blur(8px);color:var(--fg);
+    font-family:var(--font-sans);font-size:12px;cursor:pointer;transition:border-color .15s}
+  .tbtn:hover{border-color:color-mix(in oklch,var(--primary) 45%,transparent)}
+  .tbtn.on{border-color:var(--primary);color:var(--primary)}
 
-.hbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
-.btn{padding:5px 12px;border-radius:3px;border:1px solid rgba(216,198,168,.2);
-  background:transparent;color:#D8C6A8;font-size:11px;cursor:pointer;
-  transition:all .15s;white-space:nowrap;letter-spacing:.5px;}
-.btn:hover{background:rgba(216,198,168,.1);border-color:#D8C6A8;}
-.btn.on{background:#D8C6A8;color:#160A0D;font-weight:700;}
-.btn.red{border-color:rgba(224,96,96,.3);color:#e06060;}
-.btn.red.on{background:#e06060;color:#fff;}
-input[type=file]{display:none;}
-input[type=range]{width:65px;accent-color:#D8C6A8;cursor:pointer;}
-.lbl{font-size:10px;color:#A38F7D;white-space:nowrap;}
+  /* بطاقة العنوان */
+  .title-card{position:absolute;top:12px;inset-inline-end:12px;z-index:4;background:var(--card);backdrop-filter:blur(8px);
+    border:1px solid var(--border);border-radius:12px;padding:.6rem .9rem;max-width:240px}
+  .title-card .t{font-family:var(--font-display);font-weight:600;font-size:.9rem}
+  .title-card .s{font-size:.72rem;color:var(--muted);margin-top:.15rem;font-family:var(--font-sans)}
 
-.main{display:flex;flex:1;overflow:hidden;}
-#cv{flex:1;position:relative;cursor:grab;}
-#cv:active{cursor:grabbing;}
-canvas{display:block;width:100%!important;height:100%!important;}
+  /* مفتاح ألوان الذرات */
+  .legend{position:absolute;bottom:12px;inset-inline-start:12px;z-index:4;background:var(--card);backdrop-filter:blur(8px);
+    border:1px solid var(--border);border-radius:12px;padding:.6rem .8rem;display:flex;gap:.9rem;flex-wrap:wrap;max-width:calc(100% - 24px)}
+  .legend .it{display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--muted);font-family:var(--font-sans)}
+  .legend .sw{width:10px;height:10px;border-radius:50%}
 
-.hint{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
-  background:rgba(22,10,13,.9);border:1px solid rgba(216,198,168,.1);
-  border-radius:20px;padding:4px 14px;font-size:10px;color:#A38F7D;
-  pointer-events:none;white-space:nowrap;}
-
-/* Panel */
-.panel{width:272px;background:rgba(42,16,22,.98);border-right:1px solid rgba(216,198,168,.1);
-  padding:18px 16px;display:flex;flex-direction:column;gap:22px;
-  overflow-y:auto;flex-shrink:0;}
-.panel::-webkit-scrollbar{width:2px;}
-.panel::-webkit-scrollbar-thumb{background:#D8C6A8;border-radius:1px;}
-
-.sec h4{font-size:11px;font-weight:700;color:#D8C6A8;letter-spacing:2px;
-  text-transform:uppercase;border-bottom:1px solid rgba(216,198,168,.12);
-  padding-bottom:7px;margin-bottom:13px;}
-.row{display:flex;justify-content:space-between;align-items:center;
-  padding:8px 0;border-bottom:1px solid rgba(216,198,168,.06);font-size:12px;}
-.row:last-child{border-bottom:none;}
-.rl{color:#A38F7D;}
-.rv{color:#C7B7A3;font-size:11px;}
-.rv.hi{color:#D8C6A8;font-weight:600;}
-.rv.ok{color:#6abf8a;}
-.rv.warn{color:#e06060;}
-
-/* بروتين كاردات */
-.prot-card{background:rgba(42,16,22,.8);border:1px solid rgba(216,198,168,.1);
-  border-radius:3px;padding:10px;margin-bottom:6px;cursor:pointer;transition:.15s;}
-.prot-card:hover{border-color:rgba(216,198,168,.3);}
-.prot-card.active{border-color:#D8C6A8;background:rgba(216,198,168,.06);}
-.prot-card.loading{opacity:.6;}
-.prot-name{font-size:12px;font-weight:600;margin-bottom:3px;}
-.prot-sub{font-size:10px;color:#A38F7D;margin-bottom:6px;line-height:1.4;}
-.prot-meta{display:flex;gap:6px;flex-wrap:wrap;}
-.prot-tag{font-size:9px;padding:2px 7px;border-radius:10px;font-weight:600;letter-spacing:.5px;}
-.prot-toggle{display:flex;align-items:center;justify-content:space-between;margin-top:6px;}
-.toggle{width:28px;height:15px;border-radius:8px;border:1px solid rgba(216,198,168,.3);
-  cursor:pointer;transition:.2s;position:relative;background:rgba(216,198,168,.1);}
-.toggle.on{background:#D8C6A8;border-color:#D8C6A8;}
-.toggle::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;
-  border-radius:50%;background:#A38F7D;transition:.2s;}
-.toggle.on::after{right:auto;left:2px;background:#160A0D;}
-
-/* حالة التحميل */
-.prot-status{font-size:9px;margin-top:4px;letter-spacing:.5px;}
-
-/* Tooltip */
-.ac-item:hover{background:rgba(216,198,168,.18)!important}
-#tip{position:fixed;background:rgba(42,16,22,.97);border:1px solid #D8C6A8;
-  border-radius:4px;padding:8px 12px;font-size:11px;color:#EFE2D0;
-  pointer-events:none;display:none;z-index:60;line-height:1.8;
-  box-shadow:0 0 20px rgba(216,198,168,.15);}
-
-/* Loading */
-#loading{position:fixed;inset:0;background:#160A0D;display:flex;
-  flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:99;}
-.spin{width:30px;height:30px;border:2px solid rgba(216,198,168,.2);
-  border-top-color:#D8C6A8;border-radius:50%;animation:spin .8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg)}}
-#load-msg{color:#A38F7D;font-size:12px;}
-
-/* Legend */
-.legend-dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-left:7px;}
-
-/* Progress */
-.pbar{height:2px;background:rgba(216,198,168,.1);border-radius:1px;margin-top:6px;}
-.pbar-fill{height:100%;background:#D8C6A8;border-radius:1px;transition:width .3s;width:0%;}
-
-/* ══ Light theme (chrome only — the 3D canvas stays dark via Three.js scene.background) ══ */
-:root[data-theme="light"] body{background:#F5EEE6;color:#3A2328;}
-:root[data-theme="light"] header{background:#EFE6DA;border-bottom-color:rgba(109,41,50,.18);}
-:root[data-theme="light"] .brand-title{color:#561C24;}
-:root[data-theme="light"] .brand-sub{color:#8A6F5A;}
-:root[data-theme="light"] .btn{border-color:rgba(109,41,50,.30);color:#6D2932;}
-:root[data-theme="light"] .btn:hover{background:rgba(109,41,50,.08);border-color:#6D2932;}
-:root[data-theme="light"] .btn.on{background:#6D2932;color:#F5EEE6;}
-:root[data-theme="light"] input[type=range]{accent-color:#6D2932;}
-:root[data-theme="light"] .lbl{color:#8A6F5A;}
-:root[data-theme="light"] .hint{background:rgba(245,238,230,.92);border-color:rgba(109,41,50,.15);color:#8A6F5A;}
-:root[data-theme="light"] .panel{background:#EFE6DA;border-right-color:rgba(109,41,50,.15);}
-:root[data-theme="light"] .panel::-webkit-scrollbar-thumb{background:#6D2932;}
-:root[data-theme="light"] .sec h4{color:#561C24;border-bottom-color:rgba(109,41,50,.15);}
-:root[data-theme="light"] .row{border-bottom-color:rgba(109,41,50,.08);}
-:root[data-theme="light"] .rl{color:#6B5142;}
-:root[data-theme="light"] .rv{color:#8A6F5A;}
-:root[data-theme="light"] .rv.hi{color:#6D2932;}
-:root[data-theme="light"] .prot-card{background:#E8DCCB;border-color:rgba(109,41,50,.15);}
-:root[data-theme="light"] .prot-card:hover{border-color:rgba(109,41,50,.35);}
-:root[data-theme="light"] .prot-card.active{border-color:#6D2932;background:rgba(109,41,50,.06);}
-:root[data-theme="light"] .prot-sub{color:#8A6F5A;}
-:root[data-theme="light"] .toggle{background:rgba(109,41,50,.12);border-color:rgba(109,41,50,.3);}
-:root[data-theme="light"] .toggle.on{background:#6D2932;border-color:#6D2932;}
-:root[data-theme="light"] .toggle::after{background:#8A6F5A;}
-:root[data-theme="light"] .toggle.on::after{background:#F5EEE6;}
-:root[data-theme="light"] .pbar{background:rgba(109,41,50,.1);}
-:root[data-theme="light"] #tip{background:#EFE6DA;border-color:#6D2932;color:#3A2328;box-shadow:0 0 20px rgba(109,41,50,.12);}
-:root[data-theme="light"] #loading{background:#F5EEE6;}
-:root[data-theme="light"] #load-msg{color:#8A6F5A;}
-:root[data-theme="light"] #geneSearchBox{background:#FBF7F0!important;border-color:rgba(109,41,50,.3)!important;color:#3A2328!important;}
-:root[data-theme="light"] #autocomplete-dropdown{background:#FBF7F0!important;border-color:rgba(109,41,50,.3)!important;}
+  .err{color:#e5766f;font-size:12px;max-width:80%;text-align:center;line-height:1.6;font-family:var(--font-sans)}
 </style>
-<script>
-  (function(){
-    try {
-      if (localStorage.getItem('chromogen-viewer-theme') === 'light')
-        document.documentElement.setAttribute('data-theme','light');
-    } catch(e){}
-  })();
-  function toggleViewerTheme(){
-    var isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    if (isLight) { document.documentElement.removeAttribute('data-theme'); }
-    else { document.documentElement.setAttribute('data-theme','light'); }
-    try { localStorage.setItem('chromogen-viewer-theme', isLight ? 'dark' : 'light'); } catch(e){}
-    var b = document.getElementById('themeToggleBtn');
-    if (b) b.textContent = isLight ? '🌙' : '☀️';
-  }
-  document.addEventListener('DOMContentLoaded', function(){
-    var b = document.getElementById('themeToggleBtn');
-    if (b) b.textContent = document.documentElement.getAttribute('data-theme') === 'light' ? '☀️' : '🌙';
-  });
-</script>
-<script>
-(function(){
-  var EN2AR = {
-    "Loading engine...":"جاري تحميل المحرك...",
-    "Load a JSON file to start":"حمّل ملف JSON للبدء",
-    "Thread":"خيط","Speed":"سرعة",
-    "Genetic Info":"معلومات جينية",
-    "Chromosome":"الكروموسوم","Region":"المنطقة","Resolution":"الدقة","Points":"النقاط",
-    "🔍 Dynamic Protein Search":"🔍 بحث ديناميكي عن بروتين",
-    "Gene name (e.g. TP53)":"اسم الجين (مثال: TP53)","Search":"بحث",
-    "Atom Color Key":"مفتاح الألوان الذرية",
-    "Carbon C":"كربون C","Grey":"رمادي","Nitrogen N":"نيتروجين N","Blue":"أزرق",
-    "Oxygen O":"أكسجين O","Red":"أحمر","Sulfur S":"كبريت S","Yellow":"أصفر",
-    "Hydrogen H":"هيدروجين H","White":"أبيض",
-    "Selected Point":"النقطة المحددة","Density":"كثافة",
-    "Drag = rotate | Wheel = zoom | Right = pan | hover = details":"سحب=تدوير | عجلة=تكبير | يمين=تحريك | hover=تفاصيل",
-    "⟳ Searching...":"⟳ جاري البحث...",
-    "Could not connect to server":"تعذر الاتصال بالخادم",
-    "No matching results":"لا توجد نتائج مطابقة",
-    "Please enter a gene name":"الرجاء إدخال اسم الجين",
-    "⟳ Searching via UniProt...":"⟳ جاري البحث عبر UniProt...",
-    "No atomic structure (PDB) found for this gene":"لم يتم العثور على بنية ذرية (PDB) لهذا الجين",
-    "Could not connect to server — make sure Django is running":"تعذر الاتصال بالخادم — تأكد من تشغيل Django",
-    "Not specified":"غير محدد","Show Protein":"إظهار البروتين","● Not loaded":"● غير محمّل",
-    "Reading file...":"جاري قراءة الملف...","Not enough points":"نقاط غير كافية",
-    "⟳ Loading from RCSB...":"⟳ جاري التحميل من RCSB...",
-    "Could not reach PDB":"تعذر الوصول للـ PDB",
-    "⟳ Parsing atomic structure...":"⟳ جاري تحليل البنية الذرية...",
-    "No atoms found":"لم تُعثر على ذرات",
-    "✓ Found ":"✓ تم العثور على "," structures — added ":" بنية — أُضيف ",
-    " is already in the list — use the same card below":" مُضاف مسبقاً بالقائمة — استخدم نفس البطاقة بالأسفل",
-    "Error: ":"خطأ: ","✓ Loaded — ":"✓ محمّل — "," atoms":" ذرة",
-    "✕ Load failed: ":"✕ فشل التحميل: ","Point ":"نقطة ","Density: ":"كثافة: "
-  };
-  var AR2EN = {}; for (var k in EN2AR){ AR2EN[EN2AR[k]] = k; }
-  function getLang(){ try { return localStorage.getItem('chromogen-lang') || 'ar'; } catch(e){ return 'ar'; } }
-  var lang = getLang();
-  document.documentElement.setAttribute('lang', lang);
-  document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
-  // tr(): تُستخدم داخل JS — تُرجم النص الإنجليزي المصدر إلى العربية عند الحاجة
-  window.tr = function(s){ return (lang === 'ar') ? (EN2AR[s] || s) : s; };
-  function mapFor(l){ return l === 'ar' ? EN2AR : AR2EN; }
-  function translateTree(root, l){
-    var m = mapFor(l);
-    if (root.nodeType === 3){
-      var k0 = root.nodeValue.trim();
-      if (k0 && m[k0]) root.nodeValue = root.nodeValue.replace(k0, m[k0]);
-      return;
-    }
-    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false), n, arr=[];
-    while (n = w.nextNode()) arr.push(n);
-    arr.forEach(function(tn){ var k = tn.nodeValue.trim(); if (k && m[k]) tn.nodeValue = tn.nodeValue.replace(k, m[k]); });
-    if (root.querySelectorAll){
-      root.querySelectorAll('[placeholder],[title]').forEach(function(el){
-        ['placeholder','title'].forEach(function(a){
-          var v = el.getAttribute(a); if (v && m[v.trim()]) el.setAttribute(a, m[v.trim()]);
-        });
-      });
-    }
-  }
-  window.applyViewerLang = function(l){
-    lang = l;
-    document.documentElement.setAttribute('lang', l);
-    document.documentElement.setAttribute('dir', l === 'ar' ? 'rtl' : 'ltr');
-    try { localStorage.setItem('chromogen-lang', l); localStorage.setItem('chromogen-dir', l==='ar'?'rtl':'ltr'); } catch(e){}
-    translateTree(document.body, l);
-    var b = document.getElementById('langToggleBtn'); if (b) b.textContent = l === 'ar' ? 'EN' : 'ع';
-  };
-  document.addEventListener('DOMContentLoaded', function(){
-    if (lang === 'ar') translateTree(document.body, 'ar');
-    var b = document.getElementById('langToggleBtn'); if (b) b.textContent = lang === 'ar' ? 'EN' : 'ع';
-    new MutationObserver(function(muts){
-      muts.forEach(function(mu){
-        for (var i=0;i<mu.addedNodes.length;i++) translateTree(mu.addedNodes[i], lang);
-      });
-    }).observe(document.body, { childList:true, subtree:true });
-  });
-})();
-function toggleViewerLang(){
-  var cur = document.documentElement.getAttribute('lang') || 'ar';
-  window.applyViewerLang(cur === 'ar' ? 'en' : 'ar');
-}
-</script>
 </head>
 <body>
 
-<div id="loading"><div class="spin"></div><p id="load-msg">Loading engine...</p></div>
-<div id="tip"></div>
-<div id="autocomplete-dropdown" style="display:none;position:fixed;
-     background:#241016;border:1px solid rgba(216,198,168,.3);border-radius:4px;
-     max-height:400px;overflow-y:auto;z-index:200;box-shadow:0 8px 20px rgba(0,0,0,.5)"></div>
+<div id="cv"></div>
 
-<header>
-  <div class="brand">
-    <div class="brand-dot"></div>
-    <div>
-      <div class="brand-title">CHROMOGEN · PROTEIN DOCKING</div>
-      <div class="brand-sub" id="hdr-info">Load a JSON file to start</div>
-    </div>
-  </div>
-  <div class="hbar">
-    <button class="btn" id="themeToggleBtn" onclick="toggleViewerTheme()" title="Toggle light / dark">🌙</button>
-    <button class="btn" id="langToggleBtn" onclick="toggleViewerLang()" title="Switch language">EN</button>
-    <button class="btn" onclick="document.getElementById('fi').click()">📂 JSON</button>
-    <input type="file" id="fi" accept=".json" onchange="loadJSON(this)">
-    <span class="lbl">Thread</span>
-    <input type="range" min="1" max="20" value="5" oninput="setTubeR(this.value)">
-    <span class="lbl">Speed</span>
-    <input type="range" min="0" max="12" value="2" oninput="rotSpd=this.value/10000">
-    <button class="btn on" id="btnR" onclick="toggleRot()">⏸</button>
-    <button class="btn" onclick="resetCam()">🎯</button>
-    <button class="btn" id="btnGlow" onclick="toggleGlow()" title="Glow">✨</button>
-    <button class="btn" onclick="exportPNG()">💾</button>
-  </div>
-</header>
-
-<div class="main">
-<div class="panel">
-
-  <div class="sec">
-    <h4>Genetic Info</h4>
-    <div class="row"><span class="rl">Chromosome</span><span class="rv hi" id="p-chr">—</span></div>
-    <div class="row"><span class="rl">Region</span><span class="rv" id="p-reg">—</span></div>
-    <div class="row"><span class="rl">Resolution</span><span class="rv" id="p-res">—</span></div>
-    <div class="row"><span class="rl">TADs</span><span class="rv hi" id="p-tads">—</span></div>
-    <div class="row"><span class="rl">Points</span><span class="rv" id="p-pts">—</span></div>
-  </div>
-
-  <div class="sec">
-    <h4>🔍 Dynamic Protein Search</h4>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input type="text" id="geneSearchBox" placeholder="Gene name (e.g. TP53)"
-             autocomplete="off"
-             style="flex:1;background:#1B0A0F;border:1px solid rgba(216,198,168,.2);
-                    color:#EFE2D0;padding:6px 10px;border-radius:3px;font-size:11px;outline:none"
-             oninput="onGeneInputChange(this.value)"
-             onkeydown="handleAutocompleteKeydown(event)">
-      <button class="btn" onclick="searchGeneDynamic()" style="padding:6px 12px">Search</button>
-    </div>
-    <div id="dynamic-search-status" style="font-size:10px;color:#A38F7D;margin-bottom:6px"></div>
-    <div id="dynamic-protein-list"></div>
-  </div>
-
-  <div class="sec">
-    <h4>Atom Color Key</h4>
-    <div class="row">
-      <span class="rl"><span class="legend-dot" style="background:#aaaaaa"></span>Carbon C</span>
-      <span class="rv">Grey</span>
-    </div>
-    <div class="row">
-      <span class="rl"><span class="legend-dot" style="background:#4488ff"></span>Nitrogen N</span>
-      <span class="rv">Blue</span>
-    </div>
-    <div class="row">
-      <span class="rl"><span class="legend-dot" style="background:#ff4444"></span>Oxygen O</span>
-      <span class="rv">Red</span>
-    </div>
-    <div class="row">
-      <span class="rl"><span class="legend-dot" style="background:#ffdd44"></span>Sulfur S</span>
-      <span class="rv">Yellow</span>
-    </div>
-    <div class="row">
-      <span class="rl"><span class="legend-dot" style="background:#ffffff"></span>Hydrogen H</span>
-      <span class="rv">White</span>
-    </div>
-  </div>
-
-  <div class="sec">
-    <h4>Selected Point</h4>
-    <div class="row"><span class="rl">Region</span><span class="rv hi" id="s-reg">—</span></div>
-    <div class="row"><span class="rl">TAD</span><span class="rv" id="s-tad">—</span></div>
-    <div class="row"><span class="rl">Density</span><span class="rv" id="s-den">—</span></div>
-    <div class="row"><span class="rl">X</span><span class="rv" id="s-x">—</span></div>
-    <div class="row"><span class="rl">Y</span><span class="rv" id="s-y">—</span></div>
-    <div class="row"><span class="rl">Z</span><span class="rv" id="s-z">—</span></div>
-  </div>
-
-</div>
-<div id="cv">
-  <div class="hint">Drag = rotate | Wheel = zoom | Right = pan | hover = details</div>
-</div>
+<div class="toolbar">
+  <button class="tbtn on" id="btnRibbon" onclick="setMode('ribbon')">〰 شريط</button>
+  <button class="tbtn" id="btnAtoms" onclick="setMode('atoms')">⦿ ذرات</button>
+  <span style="width:1px;background:var(--border);margin:0 2px"></span>
+  <button class="tbtn on" id="btnRot" onclick="toggleRot()">⟳ دوران</button>
+  <button class="tbtn" onclick="resetView()">⊙ توسيط</button>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<div class="title-card" id="titleCard" style="display:none">
+  <div class="t" id="tTitle">—</div>
+  <div class="s" id="tSub">—</div>
+</div>
+
+<div class="legend" id="legend" style="display:none">
+  <div class="it"><span class="sw" style="background:#aaaaaa"></span>C</div>
+  <div class="it"><span class="sw" style="background:#4488ff"></span>N</div>
+  <div class="it"><span class="sw" style="background:#ff4444"></span>O</div>
+  <div class="it"><span class="sw" style="background:#ffdd44"></span>S</div>
+  <div class="it"><span class="sw" style="background:#ff8800"></span>P</div>
+</div>
+
+<div id="loading">
+  <div class="spin"></div>
+  <p id="load-msg">جاري تحميل المحرك…</p>
+</div>
+
 <script>
-// ══════════════════════════════════════════
-// إعدادات البروتينات
-// يُملأ هذا الكائن ديناميكياً عبر الSearch (searchGeneDynamic)
-// ══════════════════════════════════════════
-const PROTEINS = {};
 
-// ألوان الذرات (CPK coloring)
-const ATOM_COLORS = {
-  'C': 0xaaaaaa,
-  'N': 0x4488ff,
-  'O': 0xff4444,
-  'S': 0xffdd44,
-  'H': 0xffffff,
-  'P': 0xff8800,
-  'FE':0xff6600,
-  'ZN':0x8888ff,
-  'DEFAULT': 0xcccccc
-};
-
-// ══════════════════════════════════════════
-// الSearch الديناميكي عن جين عبر الباك إند (UniProt → PDB)
-// ══════════════════════════════════════════
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
-
-// قراءة توكن المصادقة من localStorage (يحفظه التطبيق عند الدخول) لإرساله مع الطلبات المحمية
-function authHeaders() {
-  let tk = null;
-  try { tk = localStorage.getItem('chromogen-token'); } catch (e) {}
-  return tk ? { 'Authorization': 'Bearer ' + tk } : {};
-}
-let dynamicCounter = 0;
-
-// لائحة ألوان نختار منها للبروتينات المُضافة ديناميكياً (TAD Not specified مسبقاً)
-const DYNAMIC_COLOR_PALETTE = [0x9d7fe8, 0x6abf8a, 0xf7b27e, 0x7ef7e1, 0xe87ec9, 0xc9e87e];
-
-// ══════════════════════════════════════════
-// Autocomplete — اقتراحات أثناء الكتابة
-// ══════════════════════════════════════════
-let autocompleteTimer = null;
-let autocompleteResults = [];
-let autocompleteActiveIndex = -1;
-
-function onGeneInputChange(value) {
-  clearTimeout(autocompleteTimer);
-
-  if (value.trim().length < 2) {
-    hideAutocomplete();
-    return;
-  }
-
-  // debounce: ننتظر 400ms بعد آخر حرف قبل إرسال الطلب
-  autocompleteTimer = setTimeout(() => fetchAutocomplete(value.trim()), 400);
-}
-
-
-function positionAutocompleteDropdown() {
-  const input = document.getElementById('geneSearchBox');
-  const dropdown = document.getElementById('autocomplete-dropdown');
-  const rect = input.getBoundingClientRect();
-  dropdown.style.top   = (rect.bottom + 4) + 'px';
-  dropdown.style.left  = rect.left + 'px';
-  dropdown.style.width = rect.width + 'px';
-}
-
-async function fetchAutocomplete(query) {
-  const dropdown = document.getElementById('autocomplete-dropdown');
-  positionAutocompleteDropdown();
-  dropdown.style.display = 'block';
-  dropdown.innerHTML = `<div style="padding:10px;font-size:11px;color:#D8C6A8">⟳ Searching...</div>`;
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/tests/autocomplete-protein/?q=${encodeURIComponent(query)}`, { headers: authHeaders() });
-    const data = await res.json();
-    autocompleteResults = data.suggestions || [];
-    autocompleteActiveIndex = -1;
-    renderAutocomplete();
-  } catch (err) {
-    dropdown.innerHTML = `<div style="padding:10px;font-size:11px;color:#e06060">Could not connect to server</div>`;
-  }
-}
-
-function renderAutocomplete() {
-  const dropdown = document.getElementById('autocomplete-dropdown');
-
-  if (autocompleteResults.length === 0) {
-    dropdown.innerHTML = `<div style="padding:10px;font-size:11px;color:#A38F7D">No matching results</div>`;
-    return;
-  }
-
-  dropdown.innerHTML = autocompleteResults.map((item, i) => `
-    <div class="ac-item" data-index="${i}"
-         style="padding:8px 12px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04);
-                ${i === autocompleteActiveIndex ? 'background:rgba(216,198,168,.15)' : ''}"
-         onclick="selectAutocompleteItem(${i})">
-      <div style="font-size:12px;color:#EFE2D0;font-weight:600">${item.gene}</div>
-      <div style="font-size:10px;color:#A38F7D;margin-top:2px">${item.protein_name}</div>
-    </div>
-  `).join('');
-}
-
-function setAutocompleteActive(index) {
-  autocompleteActiveIndex = index;
-  renderAutocomplete();
-}
-
-function selectAutocompleteItem(index) {
-  const item = autocompleteResults[index];
-  if (!item) return;
-
-  document.getElementById('geneSearchBox').value = item.gene;
-  hideAutocomplete();
-  // نشغّل الSearch الكامل فوراً بعد الاختيار (يجيب PDB IDs ويضيف الكرت)
-  searchGeneDynamic();
-}
-
-function handleAutocompleteKeydown(event) {
-  const dropdown = document.getElementById('autocomplete-dropdown');
-  const isOpen = dropdown.style.display === 'block' && autocompleteResults.length > 0;
-
-  if (event.key === 'Enter') {
-    event.preventDefault();
-    if (isOpen && autocompleteActiveIndex >= 0) {
-      selectAutocompleteItem(autocompleteActiveIndex);
-    } else {
-      hideAutocomplete();
-      searchGeneDynamic();
-    }
-    return;
-  }
-
-  if (!isOpen) return;
-
-  if (event.key === 'ArrowDown') {
-    event.preventDefault();
-    autocompleteActiveIndex = Math.min(autocompleteActiveIndex + 1, autocompleteResults.length - 1);
-    renderAutocomplete();
-  } else if (event.key === 'ArrowUp') {
-    event.preventDefault();
-    autocompleteActiveIndex = Math.max(autocompleteActiveIndex - 1, 0);
-    renderAutocomplete();
-  } else if (event.key === 'Escape') {
-    hideAutocomplete();
-  }
-}
-
-function hideAutocomplete() {
-  document.getElementById('autocomplete-dropdown').style.display = 'none';
-  autocompleteResults = [];
-  autocompleteActiveIndex = -1;
-}
-
-async function searchGeneDynamic() {
-  const input = document.getElementById('geneSearchBox');
-  const statusEl = document.getElementById('dynamic-search-status');
-  const gene = input.value.trim();
-
-  if (!gene) {
-    statusEl.style.color = '#e06060';
-    statusEl.textContent = 'Please enter a gene name';
-    return;
-  }
-
-  statusEl.style.color = '#D8C6A8';
-  statusEl.textContent = '⟳ Searching via UniProt...';
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/tests/search-protein/?gene=${encodeURIComponent(gene)}`, { headers: authHeaders() });
-    const data = await res.json();
-
-    if (!res.ok || !data.pdb_ids || data.pdb_ids.length === 0) {
-      statusEl.style.color = '#e06060';
-      statusEl.textContent = data.error || 'No atomic structure (PDB) found for this gene';
-      return;
-    }
-
-    addDynamicProteinCard(data);
-    statusEl.style.color = '#6abf8a';
-    statusEl.textContent = `${tr('✓ Found ')}${data.pdb_ids.length}${tr(' structures — added ')}${data.protein_name}`;
-    input.value = '';
-  } catch (err) {
-    statusEl.style.color = '#e06060';
-    statusEl.textContent = 'Could not connect to server — make sure Django is running';
-  }
-}
-
-function addDynamicProteinCard(data) {
-  // فحص: هل هذا الجين مُضاف مسبقاً؟ (نقارن بالاسم بحروف كبيرة لتوحيد المقارنة)
-  const existingKey = Object.keys(PROTEINS).find(
-    k => k.startsWith('dyn_') && PROTEINS[k].name.toUpperCase() === data.gene.toUpperCase()
-  );
-
-  if (existingKey) {
-    // الجين موجود مسبقاً — نحدّث حالة الSearch بدل تكرار الكرت
-    const statusEl = document.getElementById('dynamic-search-status');
-    statusEl.style.color = '#D8C6A8';
-    statusEl.textContent = `ℹ ${data.gene}${tr(' is already in the list — use the same card below')}`;
-    // تمييز الكرت الموجود مؤقتاً عشان المستخدم يلاحظه
-    const existingCard = document.getElementById('card-' + existingKey);
-    if (existingCard) {
-      existingCard.style.transition = 'border-color .3s';
-      existingCard.style.borderColor = '#D8C6A8';
-      existingCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => { existingCard.style.borderColor = ''; }, 1200);
-    }
-    return;
-  }
-
-  dynamicCounter++;
-  const key = 'dyn_' + dynamicCounter;
-  const color = DYNAMIC_COLOR_PALETTE[dynamicCounter % DYNAMIC_COLOR_PALETTE.length];
-  const pdbId = data.pdb_ids[0];
-
-  // إضافة البروتين لكائن PROTEINS العام بنفس بنية البروتينات الثابتة
-  PROTEINS[key] = {
-    pdb: pdbId,
-    name: data.gene,
-    color: color,
-    disease: data.protein_name || 'Not specified',
-    // البروتينات الديناميكية ما عندها TAD معروف مسبقاً، فنعتمد على ترتيب الDensity
-    tadTarget: null,
-    bindRatio: 0.5,
-    atoms: null,
-    mesh: null,
-    visible: false,
-    loaded: false
+(function(){ try{ var p=new URLSearchParams(location.search); if(p.get('theme')==='light') document.documentElement.setAttribute('data-theme','light');
+  var ACCENTS={
+    green :{primary:'#8eb69b',muted:'#8eb69b',scene:'#08201c',bg:'#0b2b26',card:'rgba(13,42,37,.66)'},
+    blue  :{primary:'#8fa9d4',muted:'#8fa9d4',scene:'#0d1526',bg:'#111a2e',card:'rgba(20,30,54,.66)'},
+    purple:{primary:'#b19cd0',muted:'#b19cd0',scene:'#1a1226',bg:'#20182e',card:'rgba(37,26,54,.66)'},
+    lilac :{primary:'#b3a3c4',muted:'#b3a3c4',scene:'#1c1626',bg:'#231d2e',card:'rgba(42,34,54,.66)'},
+    rose  :{primary:'#cf9d94',muted:'#cf9d94',scene:'#241413',bg:'#2e1b19',card:'rgba(54,30,28,.66)'},
+    wine  :{primary:'#c48a92',muted:'#c48a92',scene:'#210f12',bg:'#2a1418',card:'rgba(54,20,24,.66)'},
+    gold  :{primary:'#d0b878',muted:'#d0b878',scene:'#221a0d',bg:'#2b2211',card:'rgba(54,44,20,.66)'},
+    slate :{primary:'#9fb0ba',muted:'#9fb0ba',scene:'#12181c',bg:'#171e22',card:'rgba(23,30,34,.66)'},
   };
+  var a=p.get('accent'); if(a && ACCENTS[a] && a!=='green'){
+    var c=ACCENTS[a], r=document.documentElement.style;
+    r.setProperty('--primary',c.primary); r.setProperty('--muted',c.muted);
+    r.setProperty('--scene',c.scene); r.setProperty('--bg',c.bg); r.setProperty('--card',c.card);
+  }
+}catch(e){} })();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ── جداول الذرات  ──
+const ATOM_COLORS = { C:0xaaaaaa, N:0x4488ff, O:0xff4444, S:0xffdd44, H:0xffffff, P:0xff8800, FE:0xff6600, ZN:0x8888ff, DEFAULT:0xcccccc };
+const ATOM_RADII  = { C:1.0, N:0.95, O:0.9, S:1.2, H:0.6, P:1.15, FE:1.3, ZN:1.25, DEFAULT:0.9 };
 
-  const hexColor = '#' + color.toString(16).padStart(6, '0');
-  const listEl = document.getElementById('dynamic-protein-list');
+let scene, camera, renderer, controls, proteinGroup=null, autoRot=true;
 
-  const card = document.createElement('div');
-  card.className = 'prot-card';
-  card.id = 'card-' + key;
-  card.innerHTML = `
-    <div class="prot-name" style="color:${hexColor}">🧬 ${data.gene}</div>
-    <div class="prot-sub">${data.protein_name || ''}<br>PDB: ${pdbId} · UniProt: ${data.uniprot_id}</div>
-    <div class="prot-meta">
-      ${data.pdb_ids.slice(0,4).map(id => `<span class="prot-tag" style="background:rgba(255,255,255,.05);color:${hexColor};border:1px solid ${hexColor}33">${id}</span>`).join('')}
-    </div>
-    <div class="prot-toggle">
-      <span style="font-size:10px;color:#A38F7D">Show Protein</span>
-      <div class="toggle" id="tog-${key}" onclick="toggleProtein('${key}')"></div>
-    </div>
-    <div class="prot-status" id="status-${key}" style="color:#A38F7D">● Not loaded</div>
-    <div class="pbar"><div class="pbar-fill" id="prog-${key}"></div></div>
-  `;
-  listEl.appendChild(card);
-}
-
-const ATOM_RADII = {
-  'C': 0.3, 'N': 0.28, 'O': 0.26, 'S': 0.35,
-  'H': 0.12, 'P': 0.34, 'FE': 0.4, 'ZN': 0.38,
-  'DEFAULT': 0.25
-};
-
-// ══════════════════════════════════════════
-// Three.js
-// ══════════════════════════════════════════
-let scene, camera, renderer;
-let tubeMesh=null, glowMesh=null, dotsMesh=null;
-let sph={theta:.4,phi:1.2,r:80}, pan={x:0,y:0};
-let drag=false, rDrag=false, prev={x:0,y:0};
-let autoRot=true, rotSpd=.0002;
-let tubeR=0.6, glowOn=true;
-let rawPts=[], smoothPts=[];
-let globalData=null;
-let raycaster, mouse;
+function sceneColor(){ return getComputedStyle(document.documentElement).getPropertyValue('--scene').trim() || '#08201c'; }
 
 function initThree(){
-  const c=document.getElementById('cv');
-  scene=new THREE.Scene();
-  scene.background=new THREE.Color(0x160A0D);
-  scene.fog=new THREE.FogExp2(0x160A0D,.003);
-  camera=new THREE.PerspectiveCamera(55,c.clientWidth/c.clientHeight,.1,3000);
-  updateCam();
-  renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.setSize(c.clientWidth,c.clientHeight);
-  c.appendChild(renderer.domElement);
+  const host = document.getElementById('cv');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(sceneColor());
+  scene.fog = new THREE.FogExp2(scene.background.getHex(), .0016);
 
-  // إضاءات
-  scene.add(new THREE.AmbientLight(0xffffff,.5));
-  const dl=new THREE.DirectionalLight(0xD8C6A8,1.5);
-  dl.position.set(2,3,2);scene.add(dl);
-  const dl2=new THREE.DirectionalLight(0x7eb8f7,.8);
-  dl2.position.set(-2,-1,3);scene.add(dl2);
-  const dl3=new THREE.DirectionalLight(0xffffff,.4);
-  dl3.position.set(0,0,-3);scene.add(dl3);
+  camera = new THREE.PerspectiveCamera(50, host.clientWidth/host.clientHeight, 0.1, 4000);
+  camera.position.set(0, 0, 120);
 
-  addStars();
-  raycaster=new THREE.Raycaster();
-  mouse=new THREE.Vector2();
-  setupEvents(c);
-  loop();
-  document.getElementById('loading').style.display='none';
+  renderer = new THREE.WebGLRenderer({ antialias:true, preserveDrawingBuffer:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(host.clientWidth, host.clientHeight);
+  host.appendChild(renderer.domElement);
+
+  // إضاءة
+  scene.add(new THREE.AmbientLight(0xffffff, .55));
+  const d1 = new THREE.DirectionalLight(0xffffff, 1.1); d1.position.set(2,3,2); scene.add(d1);
+  const d2 = new THREE.DirectionalLight(0x8eb69b, .7);  d2.position.set(-2,-1,3); scene.add(d2);
+  const d3 = new THREE.DirectionalLight(0xffffff, .35); d3.position.set(0,0,-3); scene.add(d3);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = .08;
+  controls.rotateSpeed = .8; controls.autoRotate = autoRot; controls.autoRotateSpeed = 1.1;
+
+  window.addEventListener('resize', onResize);
+  animate();
 }
 
-function addStars(){
-  const g=new THREE.BufferGeometry(),pos=[];
-  for(let i=0;i<800;i++)
-    pos.push((Math.random()-.5)*1200,(Math.random()-.5)*1200,(Math.random()-.5)*1200);
-  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
-  scene.add(new THREE.Points(g,new THREE.PointsMaterial({color:0x1a1408,size:.4})));
+function onResize(){
+  const host = document.getElementById('cv');
+  camera.aspect = host.clientWidth/host.clientHeight; camera.updateProjectionMatrix();
+  renderer.setSize(host.clientWidth, host.clientHeight);
 }
 
-// ══════════════════════════════════════════
-// تحميل JSON
-// ══════════════════════════════════════════
-function loadJSON(input){
-  const file=input.files[0];if(!file)return;
-  document.getElementById('load-msg').textContent='Reading file...';
-  document.getElementById('loading').style.display='flex';
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const d=JSON.parse(e.target.result);
-      globalData=d;
-      rawPts=d.coords_raw||[];
-      smoothPts=d.coords_smooth||[];
-      if(rawPts.length<2)throw new Error('Not enough points');
-
-      document.getElementById('p-chr').textContent=d.chrom||'—';
-      document.getElementById('p-reg').textContent=
-        d.start&&d.end?`${(d.start/1e6).toFixed(1)}M→${(d.end/1e6).toFixed(1)}M`:'—';
-      document.getElementById('p-res').textContent=d.resolution?(d.resolution/1000)+'kb':'—';
-      document.getElementById('p-tads').textContent=(d.n_tads||'—')+' TAD';
-      document.getElementById('p-pts').textContent=rawPts.length+' | '+smoothPts.length;
-      document.getElementById('hdr-info').textContent=
-        `${d.chrom} ${(d.start/1e6).toFixed(1)}M→${(d.end/1e6).toFixed(1)}M`;
-
-      buildChromatin();
-    }catch(err){alert(tr('Error: ')+err.message);}
-    document.getElementById('loading').style.display='none';
-  };
-  reader.readAsText(file,'utf-8');
+function animate(){
+  requestAnimationFrame(animate);
+  controls.autoRotate = autoRot;
+  controls.update();
+  renderer.render(scene, camera);
 }
 
-// ══════════════════════════════════════════
-// رسم Thread الكروماتين
-// ══════════════════════════════════════════
-function buildChromatin(){
-  [tubeMesh,glowMesh,dotsMesh].forEach(m=>{
-    if(m){scene.remove(m);m.geometry.dispose();}
-  });
-  tubeMesh=glowMesh=dotsMesh=null;
+function toggleRot(){ autoRot = !autoRot; document.getElementById('btnRot').classList.toggle('on', autoRot); }
+function resetView(){ camera.position.set(0,0,120); controls.target.set(0,0,0); controls.update(); }
 
-  const pts=smoothPts.length>0?smoothPts:rawPts;
-  if(pts.length<2)return;
-
-  const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length;
-  const cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;
-  const cz=pts.reduce((s,p)=>s+p.z,0)/pts.length;
-  const v3=pts.map(p=>new THREE.Vector3(p.x-cx,p.y-cy,p.z-cz));
-
-  const curve=new THREE.CatmullRomCurve3(v3,false,'catmullrom',.5);
-  const segs=Math.min(v3.length*4,1500);
-
-  // أنبوب رئيسي — تدرّج توبي/برونزي (الثيم)
-  const geo=new THREE.TubeGeometry(curve,segs,tubeR,12,false);
-  const cnt=geo.getAttribute('position').count;
-  const cols=[];
-  for(let i=0;i<cnt;i++){
-    const t=i/cnt;
-    // taupe → bronze gradient (theme)
-    const r=.85-t*.13, g=.78-t*.18, b=.66-t*.19;
-    cols.push(r,g,b);
-  }
-  geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
-  tubeMesh=new THREE.Mesh(geo,new THREE.MeshPhongMaterial(
-    {vertexColors:true,shininess:100,specular:new THREE.Color(0x4A3F30)}));
-  scene.add(tubeMesh);
-
-  // Glow
-  if(glowOn){
-    const geoG=new THREE.TubeGeometry(curve,segs/2,tubeR*3.5,8,false);
-    glowMesh=new THREE.Mesh(geoG,new THREE.MeshBasicMaterial(
-      {color:0xD8C6A8,transparent:true,opacity:.05,side:THREE.BackSide}));
-    scene.add(glowMesh);
-  }
-
-  // نقاط hover
-  const dg=new THREE.BufferGeometry();
-  const dp=[];
-  rawPts.forEach(p=>dp.push(p.x-cx,p.y-cy,p.z-cz));
-  dg.setAttribute('position',new THREE.Float32BufferAttribute(dp,3));
-  dotsMesh=new THREE.Points(dg,new THREE.PointsMaterial(
-    {color:0xD8C6A8,size:1.8,transparent:true,opacity:.6,sizeAttenuation:true}));
-  scene.add(dotsMesh);
-
-  // ضبط كاميرا
-  const maxR=Math.max(...pts.map(p=>Math.abs(p.x-cx)),
-                       ...pts.map(p=>Math.abs(p.y-cy)),
-                       ...pts.map(p=>Math.abs(p.z-cz)));
-  sph.r=Math.max(maxR*3.2,30);
-  updateCam();
-
-  // إعادة رسم البروتينات الموجودة
-  Object.keys(PROTEINS).forEach(k=>{
-    if(PROTEINS[k].visible&&PROTEINS[k].atoms)
-      drawProtein(k);
-  });
-}
-
-// ══════════════════════════════════════════
-// PDB Parser
-// ══════════════════════════════════════════
+// ── تحليل PDB → ذرات (مع اسم الذرة والسلسلة والتسلسل — لازمين للشريط) ──
 function parsePDB(text){
-  const atoms=[];
-  const lines=text.split('\n');
+  const atoms=[]; const lines=text.split('\n');
   for(const line of lines){
     if(line.startsWith('ATOM')||line.startsWith('HETATM')){
-      try{
-        const element=(line.slice(76,78)||line.slice(12,14)).trim().toUpperCase();
-        // تجاهل الهيدروجين لتقليل عدد الذرات
-        if(element==='H'||element==='D') continue;
-        const x=parseFloat(line.slice(30,38));
-        const y=parseFloat(line.slice(38,46));
-        const z=parseFloat(line.slice(46,54));
-        if(!isNaN(x)&&!isNaN(y)&&!isNaN(z)){
-          atoms.push({x,y,z,element:element||'C'});
-        }
-      }catch(e){}
+      const element=(line.slice(76,78)||line.slice(12,14)).trim().toUpperCase();
+      if(element==='H'||element==='D') continue;
+      const x=parseFloat(line.slice(30,38)), y=parseFloat(line.slice(38,46)), z=parseFloat(line.slice(46,54));
+      if(isNaN(x)||isNaN(y)||isNaN(z)) continue;
+      atoms.push({
+        x,y,z, element:element||'C',
+        name:line.slice(12,16).trim(),
+        chain:(line.slice(21,22).trim()||'A'),
+        resSeq:parseInt(line.slice(22,26))||0
+      });
     }
   }
   return atoms;
 }
 
-// ══════════════════════════════════════════
-// تحميل PDB من RCSB
-// ══════════════════════════════════════════
-async function loadPDB(protKey){
-  const prot=PROTEINS[protKey];
-  const statusEl=document.getElementById('status-'+protKey);
-  const progEl=document.getElementById('prog-'+protKey);
-  const cardEl=document.getElementById('card-'+protKey);
+function disposeGroup(g){ g.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose(); }); }
 
-  statusEl.style.color='#D8C6A8';
-  statusEl.textContent='⟳ Loading from RCSB...';
-  cardEl.classList.add('loading');
-  progEl.style.width='20%';
+const CHAIN_COLORS = [0x8eb69b, 0xe0b24d, 0x6ba3d6, 0xd98a6a, 0xb088d9, 0x5cbf9e, 0xd97aa5];
+const TARGET_R = 42;
+let currentAtoms = null, currentMode = 'ribbon';
 
+function centerScale(atoms){
+  const n=atoms.length; let cx=0,cy=0,cz=0;
+  atoms.forEach(a=>{cx+=a.x;cy+=a.y;cz+=a.z;}); cx/=n;cy/=n;cz/=n;
+  let maxDist=0; atoms.forEach(a=>{ const d=Math.hypot(a.x-cx,a.y-cy,a.z-cz); if(d>maxDist)maxDist=d; });
+  return { cx, cy, cz, scale: maxDist>0 ? TARGET_R/maxDist : 1 };
+}
+function clearProtein(){ if(proteinGroup){ scene.remove(proteinGroup); disposeGroup(proteinGroup); } proteinGroup=new THREE.Group(); }
+function frameCamera(){ controls.target.set(0,0,0); camera.position.set(0,0,TARGET_R*2.5); controls.update(); }
+
+// ألوان العناصر (ذرات) أو ألوان السلاسل (شريط)
+function legendMode(mode, chainKeys){
+  const el=document.getElementById('legend'); el.style.display='flex';
+  if(mode==='atoms'){
+    el.innerHTML = [['#aaaaaa','C'],['#4488ff','N'],['#ff4444','O'],['#ffdd44','S'],['#ff8800','P']]
+      .map(([c,l])=>`<div class="it"><span class="sw" style="background:${c}"></span>${l}</div>`).join('');
+  } else {
+    el.innerHTML = (chainKeys||[]).map((ch,i)=>{
+      const c='#'+CHAIN_COLORS[i%CHAIN_COLORS.length].toString(16).padStart(6,'0');
+      return `<div class="it"><span class="sw" style="background:${c}"></span>سلسلة ${ch}</div>`;
+    }).join('');
+  }
+}
+
+// أسلوب الذرات: كل ذرة كرة ملوّنة بالعنصر
+function drawAtoms(atoms){
+  clearProtein();
+  const {cx,cy,cz,scale}=centerScale(atoms);
+  const n=atoms.length, step=n>5000?3:n>1800?2:1;
+  const groups={};
+  for(let i=0;i<n;i+=step){
+    const a=atoms[i], el2=a.element.toUpperCase().slice(0,2);
+    const key=ATOM_COLORS[el2]!==undefined?el2:(ATOM_COLORS[a.element.slice(0,1).toUpperCase()]!==undefined?a.element.slice(0,1).toUpperCase():'DEFAULT');
+    (groups[key]||(groups[key]=[])).push(a);
+  }
+  const m=new THREE.Matrix4();
+  Object.entries(groups).forEach(([el,ats])=>{
+    const geo=new THREE.SphereGeometry((ATOM_RADII[el]||ATOM_RADII.DEFAULT)*1.05, 8, 8);
+    const mat=new THREE.MeshPhongMaterial({color:ATOM_COLORS[el]||ATOM_COLORS.DEFAULT, shininess:70, transparent:true, opacity:.96});
+    const mesh=new THREE.InstancedMesh(geo, mat, ats.length);
+    ats.forEach((a,i)=>{ m.setPosition((a.x-cx)*scale,(a.y-cy)*scale,(a.z-cz)*scale); mesh.setMatrixAt(i,m); });
+    mesh.instanceMatrix.needsUpdate=true; proteinGroup.add(mesh);
+  });
+  scene.add(proteinGroup); frameCamera(); legendMode('atoms');
+}
+
+function drawRibbon(atoms){
+  const chains={};
+  atoms.forEach(a=>{ if(a.name==='CA'){ (chains[a.chain]||(chains[a.chain]=[])).push(a); } });
+  const keys=Object.keys(chains);
+  if(!keys.length){ drawAtoms(atoms); return; }   
+  clearProtein();
+  const {cx,cy,cz,scale}=centerScale(atoms);
+  keys.forEach((ch,ci)=>{
+    const cas=chains[ch].sort((p,q)=>p.resSeq-q.resSeq);
+    if(cas.length<2) return;
+    const pts=cas.map(a=>new THREE.Vector3((a.x-cx)*scale,(a.y-cy)*scale,(a.z-cz)*scale));
+    const curve=new THREE.CatmullRomCurve3(pts,false,'catmullrom',0.5);
+    const geo=new THREE.TubeGeometry(curve, Math.min(700,cas.length*6), 1.5, 8, false);
+    const mat=new THREE.MeshPhongMaterial({color:CHAIN_COLORS[ci%CHAIN_COLORS.length], shininess:55, transparent:true, opacity:.97});
+    proteinGroup.add(new THREE.Mesh(geo,mat));
+  });
+  scene.add(proteinGroup); frameCamera(); legendMode('ribbon', keys);
+}
+
+function setMode(mode){
+  currentMode=mode;
+  document.getElementById('btnAtoms').classList.toggle('on', mode==='atoms');
+  document.getElementById('btnRibbon').classList.toggle('on', mode==='ribbon');
+  if(!currentAtoms) return;
+  if(mode==='ribbon') drawRibbon(currentAtoms); else drawAtoms(currentAtoms);
+}
+
+// بروكسي 
+function proxied(url){
+  return [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  ];
+}
+
+async function loadPDB(pdbId){
+  const L=document.getElementById('loading'), msg=document.getElementById('load-msg');
+  L.classList.remove('hidden'); L.querySelector('.spin')?.style && (L.querySelector('.spin').style.display='block');
+  msg.className=''; msg.textContent='جاري التحميل من RCSB…';
+  const rcsb=`https://files.rcsb.org/download/${pdbId}.pdb`;
+  return loadStructure([rcsb, ...proxied(rcsb)], msg, L);
+}
+
+async function loadAlphaFold(uniprotId){
+  const L=document.getElementById('loading'), msg=document.getElementById('load-msg');
+  L.classList.remove('hidden'); L.querySelector('.spin')?.style && (L.querySelector('.spin').style.display='block');
+  msg.className=''; msg.textContent='جاري الاستعلام من AlphaFold…';
+  const id=String(uniprotId).toUpperCase();
+
+  // 1) API  نحاول الحصول على الرابط الرسمي من الـ 
+  let apiUrls=[];
+  const apiEndpoint=`https://alphafold.ebi.ac.uk/api/prediction/${id}`;
+  for(const u of [apiEndpoint, ...proxied(apiEndpoint)]){
+    try{
+      const res=await fetch(u,{signal:AbortSignal.timeout(12000)});
+      if(!res.ok) continue;
+      const data=await res.json();
+      const entry=Array.isArray(data)?data[0]:data;
+      if(entry && entry.pdbUrl){ apiUrls=[entry.pdbUrl, ...proxied(entry.pdbUrl)]; break; }
+    }catch(e){}
+  }
+
+  // 2)  تخمين الإصدارات الأحدث أولاً 
+  const guessed=['v6','v5','v4'].map(v=>`https://alphafold.ebi.ac.uk/files/AF-${id}-F1-model_${v}.pdb`);
+  const urls=[...apiUrls, ...guessed, ...proxied(guessed[0])];
+
+  msg.textContent='جاري التحميل من AlphaFold…';
+  return loadStructure(urls, msg, L);
+}
+
+
+async function loadStructure(urls, msg, L){
   try{
-    // استخدام RCSB PDB API مع CORS proxy
-    const urls=[
-      `https://files.rcsb.org/download/${prot.pdb}.pdb`,
-      `https://api.allorigins.win/raw?url=https://files.rcsb.org/download/${prot.pdb}.pdb`
-    ];
-
-    let text=null;
+    let text=null; const notes=[];
     for(const url of urls){
+      const isProxy=/allorigins|corsproxy|codetabs/.test(url);
       try{
-        progEl.style.width='40%';
-        const res=await fetch(url,{signal:AbortSignal.timeout(15000)});
-        if(res.ok){
-          text=await res.text();
-          break;
-        }
-      }catch(e){continue;}
+        msg.textContent = isProxy ? 'تعذّر الاتصال المباشر — جاري المحاولة عبر وسيط…' : msg.textContent;
+        const res=await fetch(url,{signal:AbortSignal.timeout(isProxy?25000:12000)});
+        if(!res.ok){ notes.push('HTTP '+res.status); continue; }
+        const body=await res.text();
+        if(/^ATOM\s|\nATOM\s/.test(body)){ text=body; break; }
+        notes.push('رد غير صالح');
+      }catch(e){
+        notes.push(e && e.name==='TimeoutError' ? 'مهلة' : 'حجب/شبكة');
+      }
     }
-
-    if(!text)throw new Error('Could not reach PDB');
-
-    progEl.style.width='70%';
-    statusEl.textContent='⟳ Parsing atomic structure...';
-
+    if(!text){
+      const blocked = notes.filter(n=>n==='حجب/شبكة').length;
+      const hint = blocked>=2 ? 'قد يكون بسبب حجب CORS أو الشبكة' : notes.slice(0,3).join(' · ');
+      throw new Error('تعذّر تحميل ملف البنية — ' + hint);
+    }
+    msg.textContent='جاري تحليل البنية الذرية…';
     const atoms=parsePDB(text);
-    if(atoms.length===0)throw new Error('No atoms found');
-
-    prot.atoms=atoms;
-    prot.loaded=true;
-
-    progEl.style.width='100%';
-    statusEl.style.color='#6abf8a';
-    statusEl.textContent=`${tr('✓ Loaded — ')}${atoms.length}${tr(' atoms')}`;
-    cardEl.classList.remove('loading');
-
-    return true;
+    if(!atoms.length) throw new Error('الملف لا يحتوي إحداثيات ذرية');
+    currentAtoms = atoms; setMode(currentMode);
+    document.getElementById('tSub').textContent = atoms.length.toLocaleString('ar-EG') + ' ذرة';
+    L.classList.add('hidden');
   }catch(err){
-    statusEl.style.color='#e06060';
-    statusEl.textContent=tr('✕ Load failed: ')+err.message;
-    progEl.style.width='0%';
-    cardEl.classList.remove('loading');
-    PROTEINS[protKey].visible=false;
-    document.getElementById('tog-'+protKey).classList.remove('on');
-    return false;
+    const spin=L.querySelector('.spin'); if(spin) spin.style.display='none';
+    msg.className='err'; msg.textContent='✕ ' + (err.message||'فشل التحميل');
   }
 }
 
-// ══════════════════════════════════════════
-// إيجاد موقع الارتباط على الThread
-// ══════════════════════════════════════════
-function getBindingSite(protKey){
-  const prot=PROTEINS[protKey];
-  if(!globalData||rawPts.length===0) return {pos:new THREE.Vector3(0,0,0), index:0};
-
-  const cx=rawPts.reduce((s,p)=>s+p.x,0)/rawPts.length;
-  const cy=rawPts.reduce((s,p)=>s+p.y,0)/rawPts.length;
-  const cz=rawPts.reduce((s,p)=>s+p.z,0)/rawPts.length;
-
-  // نجيب نقاط الـ TAD المستهدف
-  const tadPts=rawPts.filter(p=>p.tad_id===prot.tadTarget);
-
-  if(tadPts.length===0){
-    // إذا ما لقينا الـ TAD، نختار Point بناءً على الDensity
-    const sorted=[...rawPts].sort((a,b)=>(b.density||0)-(a.density||0));
-    const idx=Math.floor(sorted.length * prot.bindRatio);
-    const p=sorted[Math.min(idx,sorted.length-1)];
-    const realIndex = rawPts.indexOf(p);
-    return {
-      pos: new THREE.Vector3(p.x-cx, p.y-cy, p.z-cz),
-      index: realIndex >= 0 ? realIndex : 0
-    };
+// ── بدء ──
+initThree();
+(function boot(){
+  const p=new URLSearchParams(location.search);
+  const pdb=(p.get('pdb')||'').trim().toUpperCase();
+  const uniprot=(p.get('uniprot')||'').trim().toUpperCase();
+  const name=p.get('name')||'', gene=p.get('gene')||'';
+  const tc=document.getElementById('titleCard');
+  if(pdb){
+    tc.style.display='block';
+    document.getElementById('tTitle').textContent = name || pdb;
+    document.getElementById('tSub').textContent = (gene?gene+' · ':'') + pdb;
+    loadPDB(pdb);
+  } else if(uniprot){
+  
+    tc.style.display='block';
+    document.getElementById('tTitle').textContent = name || uniprot;
+    document.getElementById('tSub').textContent = (gene?gene+' · ':'') + 'AlphaFold';
+    loadAlphaFold(uniprot);
+  } else {
+    const L=document.getElementById('loading'); L.querySelector('.spin').style.display='none';
+    document.getElementById('load-msg').textContent='لم يُحدَّد معرّف بنية';
   }
+})();
 
-  // نختار Point بناءً على الـ bindRatio داخل الـ TAD
-  const idx=Math.floor(tadPts.length*prot.bindRatio);
-  const p=tadPts[Math.min(idx,tadPts.length-1)];
-  const realIndex = rawPts.indexOf(p);
-  return {
-    pos: new THREE.Vector3(p.x-cx, p.y-cy, p.z-cz),
-    index: realIndex >= 0 ? realIndex : 0
-  };
-}
-
-// ══════════════════════════════════════════
-// تحسين 1: حساب سُمك الThread المحلي عند موقع الارتباط
-// ══════════════════════════════════════════
-function getLocalThreadScale(bindIndex){
-  // نحسب متوسط التباعد بين Points المتجاورة حول موقع الارتباط
-  // هذا يعكس "Density" الThread محلياً، فيصير حجم البروتين متناسقاً مع سماكة الThread بهذه Region بالضبط
-  const window = 5; // نأخذ 5 نقاط قبل وبعد
-  const start = Math.max(0, bindIndex - window);
-  const end   = Math.min(rawPts.length - 1, bindIndex + window);
-
-  let totalDist = 0, count = 0;
-  for(let i = start; i < end; i++){
-    const p1 = rawPts[i], p2 = rawPts[i+1];
-    if(!p1 || !p2) continue;
-    const d = Math.sqrt((p2.x-p1.x)**2 + (p2.y-p1.y)**2 + (p2.z-p1.z)**2);
-    totalDist += d;
-    count++;
-  }
-  const avgStep = count > 0 ? totalDist / count : 1;
-  // نريد البروتين بحجم يقارب 3-4 أضعاف الخطوة المحلية، بحد أقصى وأدنى معقولين
-  return Math.max(2, Math.min(avgStep * 3.5, 14));
-}
-
-// ══════════════════════════════════════════
-// تحسين 2: Rigid Body Fitting مبسّط
-// محاذاة المحور الرئيسي للبروتين مع اتجاه الThread المحلي
-// ══════════════════════════════════════════
-function getThreadDirection(bindIndex){
-  // اتجاه الThread = المتجه بين الPoint قبل وبعد موقع الارتباط
-  const i0 = Math.max(0, bindIndex - 3);
-  const i1 = Math.min(rawPts.length - 1, bindIndex + 3);
-  const p0 = rawPts[i0], p1 = rawPts[i1];
-  if(!p0 || !p1) return new THREE.Vector3(0,1,0);
-
-  const dir = new THREE.Vector3(p1.x-p0.x, p1.y-p0.y, p1.z-p0.z);
-  if(dir.lengthSq() < 1e-6) return new THREE.Vector3(0,1,0);
-  return dir.normalize();
-}
-
-function getProteinPrincipalAxis(atoms, cx, cy, cz){
-  // أبسط نسخة من PCA: نحسب مصفوفة التغايُر (covariance) 3x3
-  // ونوجد المحور ذو أكبر انتشار عبر طريقة القوة التكرارية (power iteration)
-  let xx=0, yy=0, zz=0, xy=0, xz=0, yz=0;
-  atoms.forEach(a=>{
-    const dx=a.x-cx, dy=a.y-cy, dz=a.z-cz;
-    xx+=dx*dx; yy+=dy*dy; zz+=dz*dz;
-    xy+=dx*dy; xz+=dx*dz; yz+=dy*dz;
-  });
-  const n = atoms.length;
-  xx/=n; yy/=n; zz/=n; xy/=n; xz/=n; yz/=n;
-
-  // power iteration لإيجاد المتجه الذاتي الأكبر لمصفوفة 3x3 المتماثلة
-  let v = new THREE.Vector3(1,1,1).normalize();
-  for(let iter=0; iter<25; iter++){
-    const nx = xx*v.x + xy*v.y + xz*v.z;
-    const ny = xy*v.x + yy*v.y + yz*v.z;
-    const nz = xz*v.x + yz*v.y + zz*v.z;
-    v.set(nx,ny,nz);
-    if(v.lengthSq() < 1e-10){ v.set(0,1,0); break; }
-    v.normalize();
-  }
-  return v;
-}
-
-// ══════════════════════════════════════════
-// رسم البروتين
-// ══════════════════════════════════════════
-function drawProtein(protKey){
-  const prot=PROTEINS[protKey];
-  if(!prot.atoms||prot.atoms.length===0)return;
-
-  // إزالة الرسمة القديمة
-  if(prot.mesh){scene.remove(prot.mesh);prot.mesh.geometry?.dispose();}
-
-  // موقع الارتباط على الThread (+ index الPoint للاستخدام بالتحسينات)
-  const binding = getBindingSite(protKey);
-  const bindPos = binding.pos;
-  const bindIndex = binding.index;
-
-  // مركز البروتين
-  const cx=prot.atoms.reduce((s,a)=>s+a.x,0)/prot.atoms.length;
-  const cy=prot.atoms.reduce((s,a)=>s+a.y,0)/prot.atoms.length;
-  const cz=prot.atoms.reduce((s,a)=>s+a.z,0)/prot.atoms.length;
-
-  // حساب حجم البروتين الطبيعي (نصف القطر الذري الحقيقي)
-  let maxDist=0;
-  prot.atoms.forEach(a=>{
-    const d=Math.sqrt((a.x-cx)**2+(a.y-cy)**2+(a.z-cz)**2);
-    if(d>maxDist)maxDist=d;
-  });
-
-  // ── تحسين 1: Scaling أذكى — مرتبط بسماكة الThread المحلية، لا برقم ثابت ──
-  const targetSize = getLocalThreadScale(bindIndex);
-  const scale = Math.min(targetSize / maxDist, 1.5);
-
-  // ── تحسين 2: Rigid Body Fitting — محاذاة محور البروتين مع اتجاه الThread ──
-  const threadDir = getThreadDirection(bindIndex);
-  const proteinAxis = getProteinPrincipalAxis(prot.atoms, cx, cy, cz);
-  const quaternion = new THREE.Quaternion().setFromUnitVectors(proteinAxis, threadDir);
-
-  // Instanced mesh للأداء (كل الذرات كرات)
-  const group=new THREE.Group();
-
-  // نأخذ كل 3 ذرات لتقليل العدد إذا كان كبير جداً
-  const step=prot.atoms.length>3000?3:prot.atoms.length>1000?2:1;
-
-  // نجمّع الذرات حسب اللون
-  const atomGroups={};
-  for(let i=0;i<prot.atoms.length;i+=step){
-    const atom=prot.atoms[i];
-    const el=atom.element.toUpperCase().slice(0,2);
-    const elKey=ATOM_COLORS[el]!==undefined?el:(ATOM_COLORS[atom.element.slice(0,1)]!==undefined?atom.element.slice(0,1):'DEFAULT');
-    if(!atomGroups[elKey])atomGroups[elKey]=[];
-    atomGroups[elKey].push(atom);
-  }
-
-  // رسم كل مجموعة ذرية — مع تطبيق الدوران (rigid body) قبل الإزاحة لموقع الارتباط
-  Object.entries(atomGroups).forEach(([el,atoms])=>{
-    const color=ATOM_COLORS[el]||ATOM_COLORS['DEFAULT'];
-    const radius=(ATOM_RADII[el]||ATOM_RADII['DEFAULT'])*scale;
-
-    const geo=new THREE.SphereGeometry(radius,6,6);
-    const mat=new THREE.MeshPhongMaterial({
-      color:new THREE.Color(color),
-      shininess:80,
-      transparent:true,
-      opacity:.92
-    });
-    const mesh=new THREE.InstancedMesh(geo,mat,atoms.length);
-
-    const matrix=new THREE.Matrix4();
-    const tempVec=new THREE.Vector3();
-    atoms.forEach((atom,i)=>{
-      tempVec.set((atom.x-cx)*scale, (atom.y-cy)*scale, (atom.z-cz)*scale);
-      tempVec.applyQuaternion(quaternion);
-      tempVec.add(bindPos);
-      matrix.setPosition(tempVec.x, tempVec.y, tempVec.z);
-      mesh.setMatrixAt(i,matrix);
-    });
-    mesh.instanceMatrix.needsUpdate=true;
-    group.add(mesh);
-  });
-
-  // إضافة هالة حول موقع الارتباط
-  const haloGeo=new THREE.SphereGeometry(maxDist*scale*1.3,16,16);
-  const haloMat=new THREE.MeshBasicMaterial({
-    color:new THREE.Color(prot.color),
-    transparent:true,opacity:.04,
-    side:THREE.BackSide
-  });
-  const halo=new THREE.Mesh(haloGeo,haloMat);
-  halo.position.copy(bindPos);
-  group.add(halo);
-
-  // خط يوصل البروتين بالThread
-  const lineGeo=new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(0,0,0),
-    new THREE.Vector3(0,0,0)  // سنحدثه
-  ]);
-  // نضيف Point تأشير
-  const markerGeo=new THREE.SphereGeometry(1.2,12,12);
-  const markerMat=new THREE.MeshBasicMaterial({
-    color:new THREE.Color(prot.color),
-    transparent:true,opacity:.8
-  });
-  const marker=new THREE.Mesh(markerGeo,markerMat);
-  marker.position.copy(bindPos);
-  scene.add(marker);
-  group.userData.marker=marker;
-
-  // Label (Point إضاءة)
-  const pointLight=new THREE.PointLight(new THREE.Color(prot.color),.8,30);
-  pointLight.position.set(bindPos.x,bindPos.y,bindPos.z);
-  group.add(pointLight);
-
-  prot.mesh=group;
-  scene.add(group);
-}
-
-// ══════════════════════════════════════════
-// تفعيل/إلغاء البروتين
-// ══════════════════════════════════════════
-async function toggleProtein(protKey){
-  const prot=PROTEINS[protKey];
-  const tog=document.getElementById('tog-'+protKey);
-
-  if(prot.visible){
-    // إخفاء
-    prot.visible=false;
-    tog.classList.remove('on');
-    if(prot.mesh){
-      scene.remove(prot.mesh);
-      if(prot.mesh.userData.marker)
-        scene.remove(prot.mesh.userData.marker);
-      prot.mesh=null;
-    }
-    document.getElementById('card-'+protKey).classList.remove('active');
-    return;
-  }
-
-  // إظهار
-  if(!prot.loaded){
-    const ok=await loadPDB(protKey);
-    if(!ok)return;
-  }
-
-  prot.visible=true;
-  tog.classList.add('on');
-  document.getElementById('card-'+protKey).classList.add('active');
-  drawProtein(protKey);
-}
-
-// ══════════════════════════════════════════
-// UI controls
-// ══════════════════════════════════════════
-function setTubeR(v){
-  tubeR=v/10;
-  if(smoothPts.length>0||rawPts.length>0) buildChromatin();
-}
-
-function toggleGlow(){
-  glowOn=!glowOn;
-  document.getElementById('btnGlow').classList.toggle('on',glowOn);
-  if(smoothPts.length>0||rawPts.length>0) buildChromatin();
-}
-
-function toggleRot(){
-  autoRot=!autoRot;
-  const b=document.getElementById('btnR');
-  b.textContent=autoRot?'⏸':'▶';
-  b.classList.toggle('on',autoRot);
-}
-
-function resetCam(){sph={theta:.4,phi:1.2,r:80};pan={x:0,y:0};updateCam();}
-
-function exportPNG(){
-  renderer.render(scene,camera);
-  const a=document.createElement('a');
-  a.download='chromogen_protein_'+Date.now()+'.png';
-  a.href=renderer.domElement.toDataURL('image/png',1.0);
-  a.click();
-}
-
-// ══════════════════════════════════════════
-// Camera
-// ══════════════════════════════════════════
-function updateCam(){
-  const{theta,phi,r}=sph;
-  camera.position.set(
-    r*Math.sin(phi)*Math.cos(theta)+pan.x,
-    r*Math.cos(phi)+pan.y,
-    r*Math.sin(phi)*Math.sin(theta));
-  camera.lookAt(pan.x,pan.y,0);
-}
-
-// ══════════════════════════════════════════
-// Events
-// ══════════════════════════════════════════
-function setupEvents(c){
-  renderer.domElement.addEventListener('mousedown',e=>{
-    drag=true;rDrag=e.button===2;
-    prev={x:e.clientX,y:e.clientY};
-    autoRot=false;
-    document.getElementById('btnR').textContent='▶';
-    document.getElementById('btnR').classList.remove('on');
-  });
-  window.addEventListener('mousemove',e=>{
-    if(!drag){doHover(e,c);return;}
-    const dx=e.clientX-prev.x,dy=e.clientY-prev.y;
-    if(rDrag){pan.x-=dx*.05;pan.y+=dy*.05;}
-    else{sph.theta-=dx*.004;sph.phi=Math.max(.04,Math.min(Math.PI-.04,sph.phi+dy*.004));}
-    updateCam();prev={x:e.clientX,y:e.clientY};
-  });
-  window.addEventListener('mouseup',()=>drag=false);
-  renderer.domElement.addEventListener('wheel',e=>{
-    sph.r=Math.max(5,Math.min(500,sph.r+e.deltaY*.04));
-    updateCam();e.preventDefault();
-  },{passive:false});
-  renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
-  window.addEventListener('resize',()=>{
-    camera.aspect=c.clientWidth/c.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(c.clientWidth,c.clientHeight);
-  });
-}
-
-function doHover(e,c){
-  if(!dotsMesh||rawPts.length===0)return;
-  const rect=c.getBoundingClientRect();
-  mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
-  mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
-  raycaster.setFromCamera(mouse,camera);
-  raycaster.params.Points.threshold=2.5;
-  const hits=raycaster.intersectObject(dotsMesh);
-  const tip=document.getElementById('tip');
-  if(hits.length>0){
-    const idx=hits[0].index;
-    const p=rawPts[idx];
-    const reg=p.region||`${tr('Point ')}${idx}`;
-    const den=p.density!=null?(p.density*100).toFixed(0)+'%':'—';
-    const tadColor=globalData?.tad_colors?.[p.tad_id||0]||'#D8C6A8';
-    tip.style.display='block';
-    tip.style.left=(e.clientX+14)+'px';
-    tip.style.top=(e.clientY-10)+'px';
-    tip.innerHTML=
-      `<strong style="color:#D8C6A8">${reg}</strong><br>`+
-      `<span style="color:#A38F7D">TAD </span><span style="color:${tadColor}">■ ${(p.tad_id||0)+1}</span><br>`+
-      `<span style="color:#A38F7D">${tr('Density: ')}</span><span style="color:${p.density>.6?'#e06060':'#6abf8a'}">${den}</span>`;
-    document.getElementById('s-reg').textContent=reg;
-    document.getElementById('s-tad').textContent='TAD '+((p.tad_id||0)+1);
-    document.getElementById('s-den').textContent=den;
-    document.getElementById('s-x').textContent=p.x.toFixed(2);
-    document.getElementById('s-y').textContent=p.y.toFixed(2);
-    document.getElementById('s-z').textContent=p.z.toFixed(2);
-  } else {tip.style.display='none';}
-}
-
-// ══════════════════════════════════════════
-// Loop
-// ══════════════════════════════════════════
-function loop(){
-  requestAnimationFrame(loop);
-  if(autoRot){sph.theta+=rotSpd;updateCam();}
-  renderer.render(scene,camera);
-}
-
-// إخفاء القائمة عند النقر خارجها (بديل أوضح من onblur)
-document.addEventListener('click', (e) => {
-  const dropdown = document.getElementById('autocomplete-dropdown');
-  const input = document.getElementById('geneSearchBox');
-  if (dropdown.style.display === 'block' &&
-      e.target !== input &&
-      !dropdown.contains(e.target)) {
-    hideAutocomplete();
+window.addEventListener('message', e=>{
+  if(e.data && e.data.type==='load-pdb' && e.data.pdb){
+    document.getElementById('titleCard').style.display='block';
+    document.getElementById('tTitle').textContent = e.data.name || e.data.pdb;
+    loadPDB(String(e.data.pdb).toUpperCase());
   }
 });
-
-window.addEventListener('load',initThree);
 </script>
 </body>
 </html>

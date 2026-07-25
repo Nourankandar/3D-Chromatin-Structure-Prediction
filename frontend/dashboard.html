@@ -1,183 +1,119 @@
 <div class="topbar">
     <div style="display:flex; align-items:center; gap:15px;">
-        <div style="width:6px; height:6px; border-radius:50%; background:rgba(232,216,196,0.7);"></div>
+        <div style="width:6px; height:6px; border-radius:50%; background:var(--gold); box-shadow:0 0 8px var(--gold);"></div>
         <div>
             <div class="topbar-title">CHROMOGEN</div>
-            <div style="font-size:9px; color:rgba(199,183,163,0.6); letter-spacing:2px;">Biotreatment Center Platform</div>
+            <div style="font-size:9px; color:var(--ivory-muted); letter-spacing:2px;">Biotreatment Center Platform</div>
         </div>
     </div>
-    <div class="topbar-right">
-        <div class="topbar-badge">● SYSTEM ONLINE</div>
-        <button class="topbar-theme-btn" onclick="toggleTheme()" id="themeToggleBtn">🌙 داكن</button>
-    </div>
+    <div class="topbar-badge">● SYSTEM ONLINE</div>
 </div>
 
-<nav class="tabs-nav">
-    <button class="tab-btn active" onclick="switchSubView('profile-subview', this)">◈ الملف الشخصي</button>
-    <button class="tab-btn" onclick="switchSubView('new-patient-subview', this)">＋ إضافة مريض</button>
-    <button class="tab-btn" onclick="switchSubView('new-test-subview', this)">⚡ طلب تحليل جيني</button>
-    <button class="tab-btn" onclick="switchSubView('patients-list-subview', this)">▦ سجل المرضى</button>
-    <button class="tab-btn" onclick="switchSubView('settings-subview', this)">⚙ الإعدادات</button>
-    <button class="tab-btn tab-logout" onclick="handleLogout()">⏻ تسجيل الخروج</button>
-</nav>
-
 <div id="dashboard-view">
-    <div class="main-content">
+    <div class="sidebar">
+        <div style="font-size:9px; color:var(--ivory-muted); letter-spacing:2px; margin:10px 0;">القائمة الرئيسية</div>
+        <button class="sidebar-btn active" onclick="switchSubView('profile-subview', this)">◈ الملف الشخصي</button>
+        <button class="sidebar-btn" onclick="switchSubView('new-patient-subview', this)">＋ إضافة مريض</button>
+        <button class="sidebar-btn" onclick="switchSubView('new-test-subview', this)">⚡ طلب تحليل جيني</button>
+        <button class="sidebar-btn" onclick="switchSubView('patients-list-subview', this)">▦ سجل المرضى</button>
+        
+        <button class="sidebar-btn btn-danger" onclick="handleLogout()" style="margin-top: auto;">⏻ تسجيل الخروج</button>
+    </div>
 
-        <!-- ══ الملف الشخصي ══ -->
+    <div class="main-content">
         <div id="profile-subview" class="sub-view active">
             <h2>الملف الشخصي</h2>
-            <div class="pf-card">
-                <aside class="pf-side">
-                    <div class="pf-avatar" id="profileAvatar">ر</div>
-                    <div class="pf-side-name" id="profileName">—</div>
-                    <div class="pf-side-role" id="profileRole">—</div>
-                    <span class="pf-side-status"><span class="pf-dot"></span>متّصل</span>
-                    <button class="pf-side-logout" onclick="handleLogout()">تسجيل الخروج</button>
-                </aside>
-                <div class="pf-body">
-                    <span class="pf-eyebrow">معلومات الحساب</span>
-                    <h3 class="pf-body-title">التفاصيل</h3>
-                    <div class="pf-field">
-                        <span class="pf-field-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg></span>
-                        <span class="pf-field-kv"><span class="pf-field-k">اسم المستخدم</span><span class="pf-field-v mono" id="profileUsername">—</span></span>
-                    </div>
-                    <div class="pf-field">
-                        <span class="pf-field-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>
-                        <span class="pf-field-kv"><span class="pf-field-k">البريد الإلكتروني</span><span class="pf-field-v mono" id="profileEmail">—</span></span>
-                    </div>
-                    <div class="pf-field">
-                        <span class="pf-field-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 4 6v6c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6z"/></svg></span>
-                        <span class="pf-field-kv"><span class="pf-field-k">الصلاحية</span><span class="pf-field-v" id="profileRoleDetail">—</span></span>
-                    </div>
-                    <div class="pf-field">
-                        <span class="pf-field-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span>
-                        <span class="pf-field-kv"><span class="pf-field-k">تاريخ الانضمام</span><span class="pf-field-v mono" id="profileJoined">—</span></span>
-                    </div>
-                </div>
+            <div class="report-box" style="max-width: 580px;">
+                <p style="margin-bottom:10px"><span style="color:var(--ivory-muted)">الاسم الفني:</span> <strong style="color:var(--gold-light)">د. سارة - مشرف معمل الجينوم البشري</strong></p>
+                <p style="margin-bottom:10px"><span style="color:var(--ivory-muted)">الرتبة المعملية:</span> مسؤول أول للتحاليل الحسابية والنمذجة</p>
+                <p style="margin-bottom:10px"><span style="color:var(--ivory-muted)">تاريخ تسجيل الدخول الحركي:</span> <span style="color:var(--ivory)">مايو 2026</span></p>
+                <p><span style="color:var(--ivory-muted)">حالة النظام:</span> <span style="color:#6abf8a">● نشط</span></p>
             </div>
         </div>
 
-        <!-- ══ مريض جديد ══ -->
         <div id="new-patient-subview" class="sub-view">
             <h2>تسجيل مريض جديد</h2>
-            <span class="page-sub">أضف مريضاً إلى السجل</span>
-            <div class="pro-form">
-                <span class="pro-eyebrow">بيانات المريض</span>
-                <div class="pro-field">
-                    <label>الرقم الطبي (ID / MRN)</label>
-                    <input type="text" id="patientMRN" placeholder="مثال: P-1093">
-                </div>
-                <div class="pro-field">
-                    <label>اسم المريض الكامل</label>
-                    <input type="text" id="patientName" placeholder="أدخل اسم المريض">
-                </div>
-                <div class="pro-grid c2">
-                    <div>
+            <div class="report-box" style="max-width: 520px;">
+                <label>الرقم الطبي (ID / MRN)</label>
+                <input type="text" id="patientMRN" placeholder="مثال: P-1093">
+                
+                <label>اسم المريض الكامل</label>
+                <input type="text" id="patientName" placeholder="أدخل اسم المريض">
+                
+                <div style="display:flex; gap:15px;">
+                    <div style="flex:1">
                         <label>الجنس</label>
                         <select id="patientGender">
                             <option value="M">ذكر</option>
                             <option value="F">أنثى</option>
                         </select>
                     </div>
-                    <div>
+                    <div style="flex:1">
                         <label>تاريخ الميلاد (DOB)</label>
                         <input type="date" id="patientDOB">
                     </div>
                 </div>
-                <div class="pro-foot">
-                    <span style="flex:1"></span>
-                    <button onclick="addNewPatientSubmit()">＋ تسجيل المريض</button>
-                </div>
+                
+                <button onclick="addNewPatientSubmit()" style="width: 100%; margin-top: 20px;">＋ تسجيل المريض</button>
             </div>
         </div>
 
-        <!-- ══ تحليل جيني ══ -->
         <div id="new-test-subview" class="sub-view">
             <h2>طلب تحليل جيني (AI Pipeline)</h2>
-            <span class="page-sub">رفع تسلسل DNA وتشغيل خط التنبّؤ</span>
-            <div class="pro-form" style="max-width:760px;">
-                <span class="pro-eyebrow">معطيات التحليل</span>
-                <div class="pro-grid c2">
-                    <div><label>اختر المريض</label><select id="testPatientSelect"><option value="">جاري التحميل...</option></select></div>
-                    <div><label>نوع الخلية المستهدفة</label><select id="testCellType"><option value="">جاري التحميل...</option></select></div>
-                </div>
-                <div class="pro-grid c3">
-                    <div><label>الكروموسوم</label><input type="text" id="testChromosome" placeholder="chr2"></div>
-                    <div><label>نقطة البداية</label><input type="number" id="testStartPos" placeholder="100000"></div>
-                    <div><label>نقطة النهاية</label><input type="number" id="testEndPos" placeholder="296608"></div>
-                </div>
-                <label>ملف تسلسل الـ DNA المخبري (FASTA)</label>
-                <label class="file-drop" for="testDnaFile">
-                    <span class="fic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0 4 4m-4-4-4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span>
-                    <span class="ft">اسحب الملف هنا أو اضغط للاختيار</span>
-                    <span class="fs">FASTA / ‎.fa / ‎.txt</span>
-                    <span class="chosen" id="dnaFileChosen"></span>
-                    <input type="file" id="testDnaFile" accept=".fasta,.txt,.seq" style="display:none" onchange="var f=this.files[0]; document.getElementById('dnaFileChosen').textContent = f ? ('✓ '+f.name) : '';">
-                </label>
-                <div class="pro-foot">
-                    <span class="pro-hint" style="margin-left:0;">المعالجة تجري بالخلفية بعد الرفع.</span>
-                    <span style="flex:1"></span>
-                    <button onclick="addNewTestSubmit()">⚡ معالجة وبدء التنبؤ</button>
-                </div>
-            </div>
+            <div class="report-box" style="max-width: 600px;">
+                <label>اختر المريض</label>
+                <select id="testPatientSelect"><option value="">جاري التحميل...</option></select>
 
-            <div class="pro-form sub" style="max-width:760px; margin-top:18px;">
-                <div class="pro-sub-eyebrow">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                    البحث عن بروتين مرتبط بجين <span style="font-size:11px; font-weight:400; color:var(--text-muted); margin-right:4px;">(اختياري)</span>
+                <label>نوع الخلية المستهدفة</label>
+                <select id="testCellType"><option value="">جاري التحميل...</option></select>
+
+                <div style="display: flex; gap: 15px;">
+                    <div style="flex: 1;"><label>الكروموسوم</label><input type="text" id="testChromosome" placeholder="chr2"></div>
+                    <div style="flex: 1;"><label>نقطة البداية</label><input type="number" id="testStartPos" placeholder="100000"></div>
+                    <div style="flex: 1;"><label>نقطة النهاية</label><input type="number" id="testEndPos" placeholder="296608"></div>
                 </div>
+                
+                <label>ملف تسلسل الـ DNA المخبري (FASTA)</label>
+                <input type="file" id="testDnaFile" accept=".fasta,.txt,.seq">
+                
+                <button onclick="addNewTestSubmit()" style="width: 100%; margin-top: 20px;">⚡ معالجة وبدء التنبؤ</button>
+
+                <div style="height:1px; background:linear-gradient(90deg,var(--border),transparent); margin:25px 0;"></div>
+
+                <label>🔬 البحث عن بروتين مرتبط بجين (اختياري)</label>
                 <div style="display:flex; gap:10px;">
-                    <input type="text" id="geneSearchInput" placeholder="اسم الجين (مثال: TP53)" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();searchProteinByGene();}">
-                    <button onclick="searchProteinByGene()" style="white-space:nowrap; width:auto; padding-left:20px; padding-right:20px;">🔍 بحث</button>
+                    <input type="text" id="geneSearchInput" placeholder="مثال: FSHR" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();searchProteinByGene();}">
+                    <button onclick="searchProteinByGene()" style="white-space:nowrap;">🔍 بحث</button>
                 </div>
-                <div id="proteinSearchResult" style="margin-top:14px; font-size:12px; color:var(--text-muted); line-height:1.8;"></div>
+                <div id="proteinSearchResult" style="margin-top:12px; font-size:12px; color:var(--ivory-muted); line-height:1.8;"></div>
             </div>
         </div>
 
-        <!-- ══ سجل المرضى ══ -->
         <div id="patients-list-subview" class="sub-view">
-            <h2>سجل المرضى والتحاليل</h2>
-            <span class="page-sub">تصفّح المرضى ونتائج تحاليلهم</span>
-            <div class="rec-grid">
-                <aside class="panel roster">
-                    <div class="roster-top">
-                        <span class="roster-eyebrow">المرضى المسجّلون</span>
-                        <div class="roster-search">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                            <input id="patientSearchInput" placeholder="بحث بالاسم أو الرقم…" oninput="filterPatientCards(this.value)">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2>سجل المرضى والتحاليل</h2>
+            </div>
+            
+            <div class="patient-grid">
+                <div id="patient-details-display" class="report-box" style="display: flex; flex-direction: column; min-height: 400px;">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                        <div>
+                            <h3 id="detName" style="color:var(--gold-light); font-family:var(--font-display); font-size:26px; margin-bottom: 6px;">اختر مريضاً من القائمة...</h3>
+                            <p id="detID" style="color:var(--ivory-muted); font-size:12px; font-family:var(--font-mono); letter-spacing: 1px;"></p>
                         </div>
+                        <div id="detGenderDOB" style="background: var(--obsidian-4); border: 1px solid var(--border); padding: 6px 14px; border-radius: 4px; font-size: 11px; color: var(--gold); letter-spacing: 1px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);"></div>
                     </div>
-                    <div id="patients-cards-container"></div>
-                    <div class="roster-foot">
-                        <span id="patientCount"></span>
-                        <span class="roster-add" onclick="document.querySelector('button[onclick*=&quot;new-patient-subview&quot;]').click()">+ إضافة</span>
-                    </div>
-                </aside>
+                    
+                    <div style="height:1px; background:linear-gradient(90deg,var(--border),transparent); margin:15px 0 20px 0;"></div>
+                    
+                    <h4 style="color:var(--gold); font-size:11px; text-transform:uppercase; letter-spacing:2px; margin-bottom:12px;">سجل التحاليل السابقة:</h4>
+                    <div id="testsListContainer" style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px; max-height:180px; overflow-y:auto;"><p style="color:var(--ivory-muted); font-size:12px;">لا توجد تحاليل سابقة لهذا المريض.</p></div>
 
-                <main id="patient-details-display" class="panel rec-detail">
-                    <div class="dhead">
-                        <h3 id="detName">اختر مريضاً من القائمة...</h3>
-                        <div class="mrn-badge" id="detID"></div>
-                        <span id="detMRN" style="display:none;"></span>
-                        <div class="dfields">
-                            <div><div class="dk">الجنس</div><div class="dv" id="detGender">—</div></div>
-                            <div><div class="dk">المواليد</div><div class="dv mono" id="detDOB">—</div></div>
-                        </div>
-                    </div>
-
-                    <div class="tlist">
-                        <div class="tlist-head"><h4>سجل التحاليل السابقة</h4></div>
-                        <div id="testsListContainer"><p style="color:var(--text-muted); font-size:12px;">لا توجد تحاليل سابقة لهذا المريض.</p></div>
-                        <div id="detTestsContainer" style="display:none;"></div>
-                    </div>
-
-                    <div class="rec-report">
-                        <span class="rec-report-eyebrow">حالة الاختبار والتقرير</span>
-                        <div id="detReport">---</div>
-                    </div>
-
-                    <div id="actionButtons" style="display:none; padding:18px 20px; border-top:1px solid var(--border);">
+                    <h4 style="color:var(--gold); font-size:11px; text-transform:uppercase; letter-spacing:2px; margin-bottom:12px;">حالة الاختبار والتقرير:</h4>
+                    <div id="detReport" style="line-height:1.9; color:var(--ivory); font-size:13px; background:var(--obsidian); padding:20px; border:1px solid var(--border); border-radius: 4px; flex-grow: 1; box-shadow: inset 0 4px 10px rgba(0,0,0,0.3);">---</div>
+                    
+                    <div id="actionButtons" style="display: none; margin-top: 25px;">
                         <div class="action-bar-layout">
                             <button class="btn-3d-glow" onclick="openChromosomeWindow()">◈ عرض المجسم الفراغي 3D</button>
                             <div class="secondary-actions">
@@ -186,51 +122,10 @@
                             </div>
                         </div>
                     </div>
-                </main>
+                </div>
+                
+                <div id="patients-cards-container"></div>
             </div>
         </div>
-
-        <!-- ══ الإعدادات ══ -->
-        <div id="settings-subview" class="sub-view">
-            <h2>الإعدادات</h2>
-            <div class="settings-section" style="max-width:520px;">
-                <h3>المظهر</h3>
-                <div class="settings-row">
-                    <div>
-                        <div class="settings-row-label">الوضع الداكن</div>
-                        <div class="settings-row-sub">تبديل بين الخلفية الكريمية الدافئة والداكنة</div>
-                    </div>
-                    <label class="toggle-wrap">
-                        <input type="checkbox" id="darkModeToggle" onchange="applyTheme(this.checked)">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-            </div>
-            <div class="settings-section" style="max-width:520px;">
-                <h3>اللغة والمنطقة</h3>
-                <div class="settings-row">
-                    <div>
-                        <div class="settings-row-label">لغة الواجهة</div>
-                        <div class="settings-row-sub">تغيير لغة عرض النظام</div>
-                    </div>
-                    <select class="lang-select" id="langSelect" onchange="applyLanguage(this.value)">
-                        <option value="ar">العربية</option>
-                        <option value="en">English</option>
-                    </select>
-                </div>
-            </div>
-            <div class="settings-section" style="max-width:520px;">
-                <h3>حول النظام</h3>
-                <div class="settings-row">
-                    <div class="settings-row-label">الإصدار</div>
-                    <span style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono);">Chromogen v2.0</span>
-                </div>
-                <div class="settings-row">
-                    <div class="settings-row-label">المنصة</div>
-                    <span style="font-size:12px; color:var(--text-muted);">Biotreatment Center Platform</span>
-                </div>
-            </div>
-        </div>
-
     </div>
 </div>
