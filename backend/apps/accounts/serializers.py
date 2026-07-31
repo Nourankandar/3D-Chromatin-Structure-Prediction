@@ -33,6 +33,27 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "email", "is_staff", "is_superuser", "date_joined"]
         read_only_fields = fields
 
+
+
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=6)
+    
+    
+    
+    
+    # --- NEW SERIALIZERS ---
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("No user is associated with this email address.")
+        return value
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(max_length=6)
     new_password = serializers.CharField(write_only=True, min_length=6)

@@ -5,10 +5,14 @@ so it can be reused or unit tested independently of the HTTP layer.
 """
 
 import logging
+import random
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.mail import send_mail
+from django.core.cache import cache
+from django.conf import settings
 
 logger = logging.getLogger("apps.accounts")
 
@@ -71,3 +75,57 @@ class AuthService:
         user.save(update_fields=["password"])
         logger.info("Password changed successfully for user: %s", user.username)
         return {"status": "success", "message": "Password changed successfully."}
+    
+    
+ # --- NEW METHODS ---
+
+    @staticmethod
+    def send_forgot_password_email(email: str) -> dict:
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return {"status": "error", "message": "User not found."}
+
+        # Generate a 6-digit numeric code
+        code = str(random.randint(100000, 999999))
+        
+        # Store in cache for 15 minutes (900 seconds)
+        cache.set(f"reset_code_{email}", code, timeout=900)
+
+        subject = "Password Reset Code"
+        message = f"Hello {user.username},\n\nYour password reset code is: {code}\nThis code will expire in 15 minutes."
+
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+            return {"status": "success", "message": "Password reset code sent to your email."}
+        except Exception as e:
+            logger.error(f"Failed to send email to {email}: {str(e)}")
+            return {"status": "error", "message": "Failed to send email. Please check SMTP settings."}
+
+    @staticmethod
+    def reset_password_with_code(email: str, code: str, new_password: str) -> dict:
+        cached_code = cache.get(f"reset_code_{email}")
+
+        if not cached_code:
+            return {"status": "error", "message": "Reset code has expired or does not exist."}
+
+        if cached_code != code:
+            return {"status": "error", "message": "Invalid reset code."}
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return {"status": "error", "message": "User not found."}
+
+        # Set the new password
+        user.set_password(new_password)
+        user.save()
+        
+        # Invalidate the code immediately after successful use
+        cache.delete(f"reset_code_{email}")
+
+        return {"status": "success", "message": "Password has been reset successfully."}   

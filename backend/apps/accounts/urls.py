@@ -10,6 +10,11 @@ urlpatterns = [
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("MyAccountAPIView/", MyAccountAPIView.as_view(), name="api_me"),
     path("change-password/", ChangePasswordAPIView.as_view(), name="change_password"),
+    
+    
+    # --- NEW URLS ---
+    path("forgot-password/", ForgotPasswordAPIView.as_view(), name="forgot_password"),
+    path("reset-password/", ResetPasswordAPIView.as_view(), name="reset_password"),
 ]
 
 # GET  /api/auth/MyAccountAPIView/             -> returns the currently authenticated user

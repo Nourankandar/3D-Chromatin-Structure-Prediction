@@ -121,3 +121,44 @@ class ChangePasswordAPIView(APIView):
         if result["status"] == "success":
             return Response(result, status=status.HTTP_200_OK)
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
+    
+    
+    
+    
+class ForgotPasswordAPIView(APIView):
+    """POST /api/auth/forgot-password/ — request a password reset code via email."""
+    
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = AuthService.send_forgot_password_email(
+            email=serializer.validated_data["email"]
+        )
+
+        if result["status"] == "success":
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordAPIView(APIView):
+    """POST /api/auth/reset-password/ — reset password using the emailed code."""
+    
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = AuthService.reset_password_with_code(
+            email=serializer.validated_data["email"],
+            code=serializer.validated_data["code"],
+            new_password=serializer.validated_data["new_password"],
+        )
+
+        if result["status"] == "success":
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+    
