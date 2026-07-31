@@ -5,7 +5,7 @@ Serializers for signup / login / token responses.
 
 from django.contrib.auth.models import User
 from rest_framework import serializers
-
+import re
 
 class SignupSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150)
@@ -56,4 +56,24 @@ class ForgotPasswordSerializer(serializers.Serializer):
 class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     code = serializers.CharField(max_length=6)
-    new_password = serializers.CharField(write_only=True, min_length=6)
+    # Increased min_length to 8, which is standard for strong passwords
+    new_password = serializers.CharField(write_only=True, min_length=8) 
+
+    def validate_new_password(self, value):
+        """
+        Validate that the password is strong.
+        Must contain at least one uppercase, one lowercase, one number, and one symbol.
+        """
+        if not re.search(r'[A-Z]', value):
+            raise serializers.ValidationError("Password must contain at least one uppercase letter.")
+        
+        if not re.search(r'[a-z]', value):
+            raise serializers.ValidationError("Password must contain at least one lowercase letter.")
+        
+        if not re.search(r'[0-9]', value):
+            raise serializers.ValidationError("Password must contain at least one number.")
+        
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>\-_\+=/\[\]~`]', value):
+            raise serializers.ValidationError("Password must contain at least one special symbol.")
+        
+        return value
