@@ -2,6 +2,7 @@
    4. خوارزمية الرسام لمعاينات الكروماتين/البروتين الصغيرة داخل البطاقات     
    ============================================================ */
 const scenes = [];
+
 const mulberry32 = a => () => { a|=0; a=a+0x6D2B79F5|0; let x=Math.imul(a^a>>>15,1|a); x=x+Math.imul(x^x>>>7,61|x)^x; return ((x^x>>>14)>>>0)/4294967296; };
 const hashSeed = s => { let h=2166136261; for(const c of String(s)){h^=c.charCodeAt(0);h=Math.imul(h,16777619);} return h>>>0; };
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();

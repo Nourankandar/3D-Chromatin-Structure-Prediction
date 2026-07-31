@@ -2,6 +2,7 @@
    10. VIEWERS
    العارضات
    ============================================================ */
+   
 function viewerFrame({title, desc, backRoute, backLabel, panel, canvasId}){
   return `<div class="wrap">
     <button class="btn ghost sm" style="margin-bottom:1.25rem" data-go="${backRoute}">

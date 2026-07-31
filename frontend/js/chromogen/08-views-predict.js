@@ -6,6 +6,7 @@
    ============================================================ */
 const PF = {patient:'', cell:'', chrom:'', start:'', end:'', file:null, submitting:false, started:false, rejected:false};
 
+
 function renderPredict(view){
   let form;
   if (S.patientsLoading){

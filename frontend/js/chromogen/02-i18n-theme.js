@@ -3,6 +3,7 @@
    قاموس عربي/إنجليزي، الثيم (فاتح/غامق)، الألوان، تنسيق الأرقام والتواريخ والمناطق الجينومية.
    ============================================================ */
 const DICT = {
+  
   en:{
     brand:'ChromoGen', tagline:'Genomic Analysis Platform', loading:'Loading…', cancel:'Cancel', save:'Save',
     delete:'Delete', retry:'Retry', optional:'optional', back:'Back',

@@ -2,6 +2,7 @@
    11. WIRING
     تسجيل الدخول، استعادة الجلسة
    ============================================================ */
+   
 document.querySelectorAll('.js-theme').forEach(b=>b.onclick=()=>{ theme = theme==='dark'?'light':'dark'; applyTheme(); if(['settings','chromatin','protein'].includes(S.route)) renderRoute(); });
 document.querySelectorAll('.js-lang').forEach(b=>b.onclick=()=>{ locale = locale==='en'?'ar':'en'; applyLocale(); });
 document.querySelectorAll('.js-logout').forEach(b=>b.onclick=async()=>{

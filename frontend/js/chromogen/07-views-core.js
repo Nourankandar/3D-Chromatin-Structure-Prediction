@@ -4,6 +4,7 @@
    ============================================================ */
 const STAGES = ['stage_ingest','stage_preprocess','stage_predict','stage_reconstruct','stage_report'];
 
+
 function injectHeroDots(host){
   if(!host) return;
   let html='';

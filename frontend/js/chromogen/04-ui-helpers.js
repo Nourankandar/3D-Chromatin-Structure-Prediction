@@ -21,4 +21,5 @@ function confirmDialog(title, desc){
     dlg.oncancel = ()=>resolve(false);
     dlg.showModal();
   });
+  
 }

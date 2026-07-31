@@ -11,6 +11,7 @@ const NAV = [
   {id:'profile',   key:'nav_profile',   icon:'users'},
   {id:'settings',  key:'nav_settings',  icon:'settings'},
 ];
+
 function renderNav(){
   const html = NAV.map(n=>`<a class="navlink ${(S.route===n.id || (S.route==='patient' && n.id==='dashboard'))?'active':''}" data-go="${n.id}" href="#">${ICON[n.icon]}<span>${t(n.key)}</span></a>`).join('');
   const top = document.getElementById('topNav');

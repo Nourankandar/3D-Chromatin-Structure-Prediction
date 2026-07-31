@@ -2,6 +2,7 @@
    2. أنواع الخلايا، المرضى، متابعة حالة التحاليل الجارية 
    ============================================================ */
 let CELL_TYPES = [];
+
 async function fetchCellTypes(){
   try {
     const data = await api.get('/genomics/cell-types/');
