@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChromoGen · مقارنة الكروماتين</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=Cairo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b221e; --scene:#081b18; --fg:#dfeee2; --muted:#7f9c8b;
+    --primary:#8eb69b; --primary-deep:#43705d;
+    --border:rgba(223,238,226,.10);
+    --card:rgba(14,38,33,.72); --card-solid:#0e2621;
+    --patient:#8eb69b; --control:#c8d3d6;
+    --font-display:"Space Grotesk","Cairo",sans-serif;
+    --font-sans:"Inter","Cairo",sans-serif;
+    --font-mono:"JetBrains Mono",monospace;
+    --r:14px;
+  }
+  :root[data-theme="light"]{
+    --bg:#f1f6f2; --scene:#0a201d; --fg:#0d2521; --muted:#57736a;
+    --primary:#2c6552; --primary-deep:#1f5040;
+    --border:rgba(13,37,33,.10); --card:rgba(255,255,255,.8); --card-solid:#ffffff;
+    --control:#5b6f74;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--fg); font-family:var(--font-sans);
+    overflow:hidden; height:100vh; display:flex; flex-direction:column; font-size:13.5px;
+  }
+  button{font:inherit; color:inherit; cursor:pointer}
+
+  /*  الشريط العلوي */
+  .topbar{
+    display:flex; align-items:center; gap:14px; padding:10px 16px; flex:none;
+    border-bottom:1px solid var(--border); background:var(--card-solid);
+  }
+  .brand{display:flex; align-items:center; gap:10px}
+  .brand .logo{
+    width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg, var(--primary), var(--primary-deep));
+  }
+  .brand .logo svg{width:17px; height:17px}
+  .brand .name{font-family:var(--font-display); font-weight:700; font-size:.95rem}
+  .brand .name span{color:var(--primary)}
+  .spacer{flex:1}
+
+  .segmented{display:flex; background:transparent; border:1px solid var(--border); border-radius:11px; padding:3px; gap:2px}
+  .seg-btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px; height:28px; padding:0 8px; border:0; border-radius:8px;
+    background:transparent; color:var(--muted); font-size:12px; font-weight:500; transition:.16s; white-space:nowrap; flex:1;
+  }
+  .seg-btn svg{width:14px; height:14px}
+  .seg-btn.on{background:color-mix(in srgb, var(--primary) 18%, transparent); color:var(--fg)}
+  .seg-btn:not(.on):hover{color:var(--fg)}
+
+  .ghost-btn{
+    display:inline-flex; align-items:center; gap:7px; height:34px; padding:0 13px; border-radius:10px;
+    border:1px solid var(--border); background:transparent; color:var(--fg); font-size:12.5px; transition:.16s;
+  }
+  .ghost-btn:hover{border-color:color-mix(in srgb,var(--primary) 45%,transparent)}
+  .ghost-btn.on{border-color:var(--primary); color:var(--primary)}
+  .ghost-btn svg{width:15px; height:15px}
+
+  .btn-primary{
+    display:inline-flex; align-items:center; gap:7px; height:34px; padding:0 15px; border:0; border-radius:10px;
+    background:var(--primary); color:#07201b; font-size:12.5px; font-weight:600; transition:.16s;
+  }
+  .btn-primary:hover{filter:brightness(1.06)}
+  .btn-primary svg{width:15px; height:15px}
+  #fi{display:none}
+
+  .status{
+    display:inline-flex; align-items:center; gap:8px; font-size:11.5px; color:var(--muted);
+    font-family:var(--font-mono); max-width:240px;
+  }
+  .status .pulse{width:7px; height:7px; border-radius:50%; background:var(--primary); flex:none}
+  .status.idle .pulse{background:var(--muted); opacity:.5}
+  .status .txt{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+  /* ═══ جسم الصفحة ═══ */
+  .body{flex:1; display:flex; min-height:0}
+  .work{flex:1; display:flex; flex-direction:column; min-width:0; min-height:0}
+
+  .stage{flex:1; display:flex; gap:12px; padding:12px; min-height:0; position:relative;
+    background-image:radial-gradient(color-mix(in srgb, var(--primary) 35%, transparent) 0.5px, transparent 0.5px);
+    background-size:22px 22px;
+  }
+  .stage.single .pane.control{display:none}
+
+  /* شريط أدوات الكاميرا العائم */
+  .icon-rail{
+    flex:none; width:56px; display:flex; flex-direction:column; align-items:center; gap:10px;
+    padding:16px 0; background:var(--card-solid); border-inline-end:1px solid var(--border);
+  }
+  .icon-rail button{
+    width:36px; height:36px; border:0; border-radius:11px; background:transparent; color:var(--muted);
+    display:flex; align-items:center; justify-content:center; transition:.15s;
+  }
+  .icon-rail button:hover{background:color-mix(in srgb, var(--primary) 14%, transparent); color:var(--fg)}
+  .icon-rail button.on{color:var(--primary); background:color-mix(in srgb, var(--primary) 16%, transparent)}
+  .icon-rail button svg{width:18px; height:18px}
+  .icon-rail .sep{width:24px; height:1px; background:var(--border); margin:2px 0}
+  .pane{
+    flex:1; position:relative; min-width:0; min-height:0; border-radius:18px; overflow:hidden;
+    background:var(--scene); border:1px solid var(--border); display:flex; flex-direction:column;
+    box-shadow:0 30px 60px -30px rgba(0,0,0,.6);
+  }
+  .pane iframe{flex:1; width:100%; height:100%; border:0; display:block; background:var(--scene)}
+  .pane-label{
+    position:absolute; top:12px; inset-inline-start:12px; z-index:3;
+    display:inline-flex; align-items:center; gap:8px; height:28px; padding:0 12px; border-radius:999px;
+    background:var(--card); backdrop-filter:blur(10px); border:1px solid var(--border);
+  }
+  .pane-label .dot{width:9px; height:9px; border-radius:50%; flex:none}
+  .pane-label.patient .dot{background:var(--patient)}
+  .pane-label.control .dot{background:var(--control)}
+  .pane-label .ar{font-size:.76rem; font-weight:600}
+  .pane-label .en{font-size:.58rem; letter-spacing:1.1px; color:var(--muted); font-family:var(--font-mono)}
+
+  .empty{
+    position:absolute; inset:0; z-index:2; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:10px; text-align:center; background:var(--scene);
+  }
+  .empty.hidden{display:none}
+  .empty .ic{opacity:.35}
+  .empty .ic svg{width:26px; height:26px}
+  .empty .t{font-family:var(--font-display); font-weight:600; font-size:.9rem}
+  .empty .d{font-size:.76rem; color:var(--muted); max-width:220px; line-height:1.7}
+
+  /* المسار الجينومي */
+  .track{flex:none; margin:0 12px 12px; padding:12px 14px; border-radius:var(--r);
+    background:var(--card-solid); border:1px solid var(--border)}
+  .track.hidden{display:none}
+  .track-head{display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap}
+  .track-title{font-family:var(--font-display); font-size:.76rem; font-weight:600}
+  .mono-s{font-family:var(--font-mono); font-size:.64rem; color:var(--muted)}
+  .chip{font-size:.64rem; padding:3px 9px; border-radius:999px; border:1px solid var(--border);
+    background:transparent; color:var(--muted); white-space:nowrap; cursor:pointer}
+  .chip:hover{color:var(--fg)}
+  .chip.on{background:var(--fg); color:var(--card-solid); border-color:var(--fg)}
+
+  .gb{display:grid; grid-template-columns:96px 1fr; align-items:stretch}
+  .gb-lbl{display:flex; align-items:center; justify-content:flex-end; gap:5px;
+    padding:0 8px; font-size:.58rem; color:var(--muted); font-family:var(--font-mono);
+    border-inline-end:1px solid var(--border); border-bottom:1px solid var(--border);
+    background:color-mix(in srgb, var(--fg) 2.5%, transparent); white-space:nowrap}
+  .gb-lbl b{font-family:var(--font-display); font-size:.62rem; color:var(--fg); font-weight:600}
+  .gb-row{position:relative; border-bottom:1px solid var(--border); overflow:hidden}
+  .gb-grid{position:absolute; inset:0; pointer-events:none}
+  .gb-grid i{position:absolute; top:0; bottom:0; width:1px;
+    background:color-mix(in srgb, var(--fg) 9%, transparent)}
+
+  /* المسطرة */
+  .gb-rule{height:24px}
+  .gb-rule .maj{position:absolute; bottom:0; width:1px; height:7px; background:var(--muted)}
+  .gb-rule .min{position:absolute; bottom:0; width:1px; height:4px;
+    background:color-mix(in srgb, var(--muted) 55%, transparent)}
+  .gb-rule .lab{position:absolute; top:3px; transform:translateX(-50%); font-family:var(--font-mono);
+    font-size:.55rem; color:var(--muted); white-space:nowrap}
+  .gb-rule .lab.s{transform:none; inset-inline-start:3px}
+  .gb-rule .lab.e{transform:none; inset-inline-end:3px}
+
+  /*  "مناطق" مرقّمة */
+  .gb-tad{height:16px; display:flex}
+  .gb-tad .seg{position:relative; height:100%; border-inline-end:1px solid var(--card-solid);
+    display:flex; align-items:center; justify-content:center; overflow:hidden}
+  .gb-tad .seg span{font-family:var(--font-mono); font-size:.5rem; color:var(--card-solid);
+    mix-blend-mode:luminosity; font-weight:700}
+  .gb-tad .zoom-box{position:absolute; top:0; bottom:0; border-inline:1.5px solid var(--primary);
+    background:color-mix(in srgb, var(--primary) 16%, transparent); pointer-events:none}
+
+  /* مسارات البروتينات  */
+  .gb-feat{height:34px; background:
+    repeating-linear-gradient(0deg, transparent 0 16px, color-mix(in srgb,var(--fg) 3%, transparent) 16px 17px)}
+  .gb-feat .axis{position:absolute; inset-inline:0; top:50%; height:1px;
+    background:color-mix(in srgb, var(--fg) 12%, transparent)}
+  .tick{position:absolute; width:9px; height:9px; border-radius:2px; cursor:pointer; transition:.12s;
+    transform:translateX(-50%); border:1px solid color-mix(in srgb, #000 25%, transparent)}
+  .tick:hover{outline:2px solid var(--primary); outline-offset:1px; z-index:3}
+  .tick.on{outline:2px solid var(--fg); outline-offset:1px; z-index:4}
+  .tick.absent{background:transparent!important; border:1px dashed currentColor}
+  .tick .stem{position:absolute; inset-inline-start:50%; width:1px; background:currentColor; opacity:.45}
+
+  .track-legend{display:flex; gap:12px; flex-wrap:nowrap; overflow:hidden; padding:5px 10px;
+    font-size:.57rem; color:var(--muted); font-family:var(--font-mono)}
+  .lg-sw{display:inline-block; width:8px; height:8px; border-radius:2px; margin-inline-end:4px;
+    vertical-align:-1px; border:1px solid color-mix(in srgb,#000 25%, transparent)}
+
+  /* اللوحة الجانبية */
+  .side{
+    flex:none; width:300px; border-inline-start:1px solid var(--border); background:var(--card-solid);
+    display:flex; flex-direction:column; min-height:0; transition:width .2s, opacity .2s;
+  }
+  .side.wide{width:min(600px, 46vw)}
+  .side.closed{width:0; opacity:0; overflow:hidden; border:0}
+  .tabs{display:flex; gap:2px; padding:10px 12px 0; flex:none}
+  .tab{
+    flex:1; height:30px; border:0; border-radius:8px; background:transparent; color:var(--muted);
+    font-size:12px; font-weight:500; transition:.15s;
+  }
+  .tab.on{background:color-mix(in srgb, var(--primary) 16%, transparent); color:var(--fg)}
+  .tabpane{display:none; flex:1; min-height:0; flex-direction:column; padding:12px}
+  .tabpane.on{display:flex}
+
+  .field{display:flex; flex-direction:column; gap:7px; padding:11px 0; border-bottom:1px solid var(--border)}
+  .field:last-child{border-bottom:0}
+  .field .lbl{font-size:.66rem; color:var(--muted); letter-spacing:.4px}
+  .row{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  input[type=range]{flex:1; accent-color:var(--primary)}
+  .inp{
+    height:30px; padding:0 10px; border-radius:9px; border:1px solid var(--border);
+    background:transparent; color:var(--fg); font-size:12px; outline:none; width:100%;
+  }
+  .inp:focus{border-color:var(--primary)}
+
+  .plist{flex:1; overflow:auto; margin-top:8px; display:flex; flex-direction:column; gap:2px}
+  .plist::-webkit-scrollbar{width:5px}
+  .plist::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px}
+  .pitem{
+    display:flex; align-items:center; gap:9px; padding:7px 9px; border-radius:9px; cursor:pointer;
+    border:1px solid transparent; transition:.13s;
+  }
+  .pitem:hover{background:color-mix(in srgb, var(--fg) 5%, transparent)}
+  .pitem.sel{border-color:var(--primary)}
+  .pitem.off{opacity:.4}
+  .pitem input{accent-color:var(--primary); width:14px; height:14px; flex:none; cursor:pointer}
+  .pdot{width:8px; height:8px; border-radius:50%; flex:none}
+  .pname{flex:1; font-size:12px; font-family:var(--font-mono); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .ptag{font-size:.6rem; color:var(--muted); flex:none}
+
+  table.pt{width:100%; border-collapse:collapse; font-size:11.5px}
+  table.pt td:nth-child(n+3){white-space:nowrap}
+  table.pt th{
+    position:sticky; top:0; background:var(--card-solid); text-align:start; padding:7px 6px;
+    font-weight:600; font-size:.63rem; color:var(--muted); cursor:pointer; border-bottom:1px solid var(--border);
+  }
+  table.pt td{padding:6px; border-bottom:1px solid var(--border)}
+  table.pt tr.on td{background:color-mix(in srgb, var(--primary) 12%, transparent)}
+  .mono{font-family:var(--font-mono)}
+  .st-dot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-inline-end:5px}
+  .tbl-wrap{flex:1; overflow:auto; margin-top:8px}
+  .tbl-wrap::-webkit-scrollbar{width:5px;height:5px}
+  .tbl-wrap::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px}
+  .hint{font-size:.62rem; color:var(--muted); line-height:1.7}
+</style>
+</head>
+<body>
+
+<script>
+(function(){ try{ var p=new URLSearchParams(location.search); if(p.get('theme')==='light') document.documentElement.setAttribute('data-theme','light'); }catch(e){} })();
+</script>
+
+<!--  الشريط العلوي  -->
+<div class="topbar">
+  <div class="brand">
+    <div class="logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#08201c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 4c0 4 10 4 10 8s-10 4-10 8"/><path d="M17 4c0 4-10 4-10 8s10 4 10 8"/>
+      </svg>
+    </div>
+    <div class="name">Chromo<span>Gen</span></div>
+  </div>
+
+  <div class="segmented">
+    <button class="seg-btn on" id="modeSplit" onclick="setMode('split')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="7" height="16" rx="1.5"/><rect x="14" y="4" width="7" height="16" rx="1.5"/></svg>
+      شاشتين
+    </button>
+    <button class="seg-btn" id="modeStack" onclick="setMode('stack')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="3" width="14" height="14" rx="2"/><rect x="8" y="7" width="14" height="14" rx="2" fill="var(--scene)"/></svg>
+      تراكب
+    </button>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="status idle" id="statusPill">
+    <span class="pulse"></span><span class="txt" id="statusTxt">بانتظار البيانات</span>
+  </div>
+
+  <button class="btn-primary" onclick="document.getElementById('fi').click()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></svg>
+    استيراد
+  </button>
+  <input type="file" id="fi" accept=".json" onchange="loadFile(this)">
+
+  <button class="ghost-btn on" id="btnPanel" onclick="togglePanel()" title="اللوحة الجانبية">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg>
+  </button>
+</div>
+
+<div class="body">
+  <aside class="icon-rail">
+    <button id="btnTrackHeader" onclick="toggleTrack()" title="المسار الجيني">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="10" width="18" height="4" rx="1"/><path d="M3 5h18M3 19h18"/></svg>
+    </button>
+    <button id="btnProtPanel" onclick="toggleProteinPanel()" title="البروتينات">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><circle cx="12" cy="11" r="2.3"/><path d="M12 2v6.7M4 6.5l7 4M20 6.5l-7 4"/></svg>
+    </button>
+    <button onclick="exportCSV()" title="تصدير CSV">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>
+    </button>
+    <div class="sep"></div>
+    <button id="floatRot" class="on" onclick="ctlToggle('rot','floatRot')" title="تدوير تلقائي">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5.3L21 9"/><path d="M21 4v5h-5"/><path d="M20 12a8 8 0 0 1-14 5.3L3 15"/><path d="M3 20v-5h5"/></svg>
+    </button>
+    <button id="floatReset" onclick="ctl({reset:1})" title="إعادة توسيط / احتواء الشكل كامل">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V5a1 1 0 0 1 1-1h4"/><path d="M15 4h4a1 1 0 0 1 1 1v4"/><path d="M20 15v4a1 1 0 0 1-1 1h-4"/><path d="M9 20H5a1 1 0 0 1-1-1v-4"/></svg>
+    </button>
+    <button id="floatSync" class="on" onclick="toggleSync()" title="ربط حركة الكاميرا بين الشاشتين">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15a3 3 0 0 0 4.24 0l3-3a3 3 0 0 0-4.24-4.24l-.53.53"/><path d="M15 9a3 3 0 0 0-4.24 0l-3 3a3 3 0 0 0 4.24 4.24l.53-.53"/></svg>
+    </button>
+  </aside>
+  <div class="work">
+    <!-- الشاشات -->
+    <div class="stage" id="stage">
+      <div class="pane patient">
+        <div class="pane-label patient"><span class="dot"></span><span class="ar">المريض</span><span class="en">PATIENT</span></div>
+        <div class="empty" id="emptyPatient">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 4c0 4 10 4 10 8s-10 4-10 8"/><path d="M17 4c0 4-10 4-10 8s10 4 10 8"/></svg></div>
+          <div class="t">لا توجد بنية بعد</div>
+          <div class="d">استورد ملف JSON لعرض بنية المريض</div>
+        </div>
+        <iframe id="framePatient" src="hic_viewer.html?side=patient&embedded=1" title="عارض المريض"></iframe>
+      </div>
+
+      <div class="pane control">
+        <div class="pane-label control"><span class="dot"></span><span class="ar">السليم</span><span class="en">CONTROL</span></div>
+        <div class="empty" id="emptyControl">
+          <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 4c0 4 10 4 10 8s-10 4-10 8"/><path d="M17 4c0 4-10 4-10 8s10 4 10 8"/></svg></div>
+          <div class="t">لا توجد بنية بعد</div>
+          <div class="d">استورد ملف JSON لعرض البنية السليمة</div>
+        </div>
+        <iframe id="frameControl" src="hic_viewer.html?side=control&embedded=1" title="عارض السليم"></iframe>
+      </div>
+    </div>
+
+    <!-- المسار الجينومي -->
+    <div class="track" id="track">
+      <div class="track-head">
+        <span class="track-title">المسار الجينومي</span>
+        <span class="mono-s" id="trackCoords">—</span>
+        <div id="trackFilters" style="display:flex; gap:5px; flex-wrap:wrap"></div>
+        <span class="spacer"></span>
+        <button class="chip" onclick="toggleTrack()">إخفاء ✕</button>
+      </div>
+      <div class="gb">
+        <div class="gb-lbl"><b>bp</b></div>
+        <div class="gb-row gb-rule" id="gbRule"></div>
+
+        <div class="gb-lbl"><b>TADs</b></div>
+        <div class="gb-row" id="gbTadRow"><div class="gb-tad" id="tadStrip"></div></div>
+
+        <div class="gb-lbl"><b>مريض</b><span>P</span></div>
+        <div class="gb-row gb-feat" id="lanePatient"></div>
+
+        <div class="gb-lbl"><b>سليم</b><span>C</span></div>
+        <div class="gb-row gb-feat" id="laneControl"></div>
+      </div>
+      <div class="track-legend" id="trackLegend"></div>
+    </div>
+  </div>
+
+  <!--  اللوحة الجانبية -->
+  <aside class="side" id="side">
+    <div class="tabs">
+      <button class="tab on" id="tabProt"  onclick="setTab('prot')">البروتينات</button>
+      <button class="tab"    id="tabView"  onclick="setTab('view')">العرض</button>
+    </div>
+
+    <!-- تبويب البروتينات -->
+    <div class="tabpane on" id="paneProt">
+      <input class="inp" type="search" id="protSearch" placeholder="بحث عن بروتين…" oninput="renderProteinList()">
+      <div class="row" style="margin-top:8px">
+        <button class="chip" onclick="setAllVisible(true)">إظهار الكل</button>
+        <button class="chip" onclick="setAllVisible(false)">إخفاء الكل</button>
+        <span class="spacer"></span>
+        <span class="mono-s" id="protCount">—</span>
+      </div>
+      <div class="row" id="protFilters" style="margin-top:8px"></div>
+      <div class="plist" id="protList"></div>
+      <div class="hint" style="margin-top:8px">
+      </div>
+    </div>
+
+    <!-- تبويب العرض -->
+    <div class="tabpane" id="paneView">
+      <div class="field">
+        <span class="lbl">تمثيل البروتين</span>
+        <div class="segmented">
+          <button class="seg-btn on" id="rAtoms"  onclick="setRepr('atoms','rAtoms')">⦿ ذرات</button>
+          <button class="seg-btn"    id="rRibbon" onclick="setRepr('ribbon','rRibbon')">〰 شريط</button>
+          <button class="seg-btn"    id="rAuto"   onclick="setRepr('auto','rAuto')">تلقائي</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">تكبير البنى <span class="mono-s" id="magBadge">×6</span></span>
+        <input type="range" id="cMag" min="1" max="30" step="1" value="6"
+               oninput="ctl({magnify:+this.value}); document.getElementById('magBadge').textContent='×'+this.value">
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+
+window.CHROMO_API_BASE = 'http://127.0.0.1:8000/api';
+
+const ctlState = {rot:true, proteins:true, lod:true};
+
+function ctl(obj, btnId){
+  frames().forEach(f=> tellFrame(f, {type:'chromo-ctl', ctl:obj}));
+  if(btnId){ ['cSm','cRw'].forEach(id=> document.getElementById(id)?.classList.toggle('on', id===btnId)); }
+}
+function ctlToggle(key, btnId){
+  ctlState[key] = !ctlState[key];
+  document.getElementById(btnId)?.classList.toggle('on', ctlState[key]);
+  ctl({[key]: ctlState[key]});
+}
+function setRepr(mode, btnId){
+  ['rAtoms','rRibbon','rAuto'].forEach(id=> document.getElementById(id)?.classList.toggle('on', id===btnId));
+  ctl({repr:mode});
+}
+
+let loadedData=null, currentMode='split', camSyncOn=true;
+
+/* حالة البروتينات */
+const STATUS = {
+  missing : {label:'مفقود',  color:'#e5766f', rank:0},
+  weakened: {label:'أضعف',   color:'#e0b24d', rank:1},
+  gained  : {label:'مكتسب',  color:'#7aa2f7', rank:2},
+  stronger: {label:'أقوى',   color:'#6fd3c0', rank:3},
+  stable  : {label:'مستقر',  color:'#8eb69b', rank:4}
+};
+let protFilter='all', sortKey='status', sortDir=1, selectedProt=null;
+let DELTA_THRESHOLD = 0.15;
+function setDeltaThreshold(v){
+  DELTA_THRESHOLD = Math.max(0, +v || 0);
+  const el=document.getElementById('deltaThrVal');
+  if(el) el.textContent = '±' + DELTA_THRESHOLD.toFixed(2);
+  renderTrack(); renderTable(); renderProteinList();
+}
+/* البروتينات الملغى تفعيلها بتنبعث للعارضين */
+const hiddenProts = new Set();
+
+function classify(e){
+  const hasP=!!(e.patient && e.patient.present!==false);
+  const hasC=!!(e.control && e.control.present!==false);
+  const d=numOrNull(e.delta_score);
+  if(e.is_missing || (!hasP && hasC)) return 'missing';
+  if(hasP && !hasC) return 'gained';
+  if(hasP && hasC && d!=null && d <= -DELTA_THRESHOLD) return 'weakened';
+  if(hasP && hasC && d!=null && d >=  DELTA_THRESHOLD) return 'stronger';
+  return 'stable';
+}
+
+function absPos(sideEntry, sideData, fallback){
+  if(!sideEntry || sideEntry.present===false || !sideData) return null;
+  const raw = sideEntry.position_index ?? fallback;
+  if(raw==null || !isFinite(Number(raw))) return null;
+  const abs = Number(sideData.start) + Math.abs(Number(raw));
+  return (abs>=sideData.start && abs<=sideData.end) ? abs : null;
+}
+function pctOf(abs, sideData){
+  return ((abs - sideData.start) / (sideData.end - sideData.start)) * 100;
+}
+
+function findCoordByBp(abs, coords){
+  if(abs==null || !Array.isArray(coords)) return null;
+  for(const c of coords){
+    const m = /^(\d+)kb-(\d+)kb$/.exec(c.region || '');
+    if(!m) continue;
+    const startBp = Number(m[1])*1000, endBp = Number(m[2])*1000;
+    if(abs>=startBp && abs<endBp) return c;
+  }
+  return null;
+}
+function tadAt(abs, sideData){
+  const c = findCoordByBp(abs, sideData?.coords_raw);
+  return c ? (c.tad_id ?? null) : null;
+}
+function numOrNull(v){ return (v!=null && isFinite(Number(v))) ? Number(v) : null; }
+
+function protRows(){
+  const bp = loadedData?.binding_proteins;
+  if(!bp) return [];
+  const P = loadedData.patient, C = loadedData.control;
+  return Object.entries(bp).map(([key,e])=>{
+    const st = classify(e);
+    const pAbs = absPos(e.patient, P, e.position_index);
+    const cAbs = absPos(e.control, C, e.position_index);
+    const anyAbs = pAbs ?? cAbs;
+    const tad = tadAt(pAbs, P) ?? tadAt(cAbs, C) ?? tadAt(anyAbs, P) ?? tadAt(anyAbs, C);
+    return {
+      key, name:e.protein_name||key, st, entry:e,
+      pScore: numOrNull(e.patient?.binding_score),
+      cScore: numOrNull(e.control?.binding_score),
+      delta : (e.patient && e.control) ? numOrNull(e.delta_score) : null,
+      pAbs, cAbs, anyAbs, tad,
+      onTrack: pAbs!=null || cAbs!=null
+    };
+  });
+}
+
+/* الإطارات والتزامن */
+function frames(){
+  return [document.getElementById('framePatient'),
+          document.getElementById('frameControl')].filter(Boolean);
+}
+function tellFrame(f, msg){ try{ f.contentWindow.postMessage(msg,'*'); }catch(e){} }
+
+function pushSyncState(){
+  const active = (currentMode==='stack') ? false : camSyncOn;
+  frames().forEach((f,i)=> tellFrame(f, {type:'chromo-cam-init', sync:active, leader:i===0}));
+  document.getElementById('floatSync')?.classList.toggle('on', camSyncOn);
+}
+function toggleSync(){ camSyncOn=!camSyncOn; pushSyncState(); }
+
+window.addEventListener('message', ev=>{
+  const d=ev.data; if(!d||!d.type) return;
+  if(d.type!=='chromo-cam' && d.type!=='chromo-cam-claim') return;
+  if(currentMode==='stack' || !camSyncOn) return;
+  const fs=frames();
+  const from=fs.find(f=>f.contentWindow===ev.source);
+  if(!from) return;
+  if(d.type==='chromo-cam-claim'){
+    fs.forEach(f=>{ if(f!==from) tellFrame(f,{type:'chromo-cam-yield'}); });
+    return;
+  }
+  fs.forEach(f=>{ if(f!==from) tellFrame(f,d); });
+});
+
+/* لستة البروتينات — إظهار/إخفاء كل بروتين */
+function pushVisibility(){
+  frames().forEach(f=> tellFrame(f, {type:'chromo-protein-visibility', hidden:[...hiddenProts]}));
+}
+function toggleProtVisible(key, on){
+  if(on) hiddenProts.delete(key); else hiddenProts.add(key);
+  pushVisibility(); renderProteinList();
+}
+function setAllVisible(on){
+  const rows = visibleRows();
+  if(on) rows.forEach(r=> hiddenProts.delete(r.key));
+  else   rows.forEach(r=> hiddenProts.add(r.key));
+  pushVisibility(); renderProteinList();
+}
+function visibleRows(){
+  const q=(document.getElementById('protSearch')?.value||'').trim().toLowerCase();
+  return protRows()
+    .filter(r=> protFilter==='all' || r.st===protFilter)
+    .filter(r=> !q || r.name.toLowerCase().includes(q) || r.key.toLowerCase().includes(q))
+    .sort((a,b)=> STATUS[a.st].rank-STATUS[b.st].rank || a.name.localeCompare(b.name));
+}
+
+function renderProteinList(){
+  const box=document.getElementById('protList');
+  const all=protRows();
+  const rows=visibleRows();
+  document.getElementById('protCount').textContent =
+    all.length ? `${all.length - hiddenProts.size}/${all.length} ظاهر` : '—';
+
+
+  const present={}; all.forEach(r=>present[r.st]=(present[r.st]||0)+1);
+  document.getElementById('protFilters').innerHTML =
+    `<span class="chip ${protFilter==='all'?'on':''}" onclick="setFilter('all')">الكل ${all.length}</span>`+
+    Object.keys(STATUS).filter(k=>present[k]).map(k=>
+      `<span class="chip ${protFilter===k?'on':''}" onclick="setFilter('${k}')"
+        style="${protFilter===k?'':'color:'+STATUS[k].color}">${STATUS[k].label} ${present[k]}</span>`).join('');
+
+  box.innerHTML='';
+  if(!rows.length){
+    box.innerHTML='<div class="hint" style="padding:14px 4px">لا بروتينات لعرضها.</div>';
+    return;
+  }
+  rows.forEach(r=>{
+    const on=!hiddenProts.has(r.key);
+    const el=document.createElement('div');
+    el.className='pitem'+(on?'':' off')+(selectedProt===r.key?' sel':'');
+    el.innerHTML=
+      `<input type="checkbox" ${on?'checked':''}>`+
+      `<span class="pdot" style="background:${STATUS[r.st].color}"></span>`+
+      `<span class="pname" title="${r.name}">${r.name}</span>`+
+      `<span class="ptag">${STATUS[r.st].label}</span>`;
+    el.querySelector('input').onclick=e=>{ e.stopPropagation(); toggleProtVisible(r.key, e.target.checked); };
+    el.onclick=()=> selectProt(r.key);
+    box.appendChild(el);
+  });
+}
+
+/*  المسار الجينومي */
+function renderTrack(){
+  const rows=protRows(), P=loadedData?.patient;
+  if(!rows.length || !P) return;
+
+  const visibleRows = rows.filter(r=>
+    (protFilter==='all' || r.st===protFilter) && !hiddenProts.has(r.key));
+  const allAbs = visibleRows.map(r=>r.anyAbs).filter(v=>v!=null);
+  let zStart=P.start, zEnd=P.end;
+  if(allAbs.length){
+    const mn=Math.min(...allAbs), mx=Math.max(...allAbs);
+    const pad=Math.max((mx-mn)*0.15, (P.resolution||50)*0.5);
+    zStart=Math.max(P.start, mn-pad); zEnd=Math.min(P.end, mx+pad);
+    if(zEnd<=zStart){ zStart=P.start; zEnd=P.end; }
+  }
+  const zoomed = zStart>P.start || zEnd<P.end;
+  const span = zEnd-zStart;
+  const pctZ = abs => ((abs-zStart)/span)*100;
+  const fmt  = bp => bp>=1e6 ? (bp/1e6).toFixed(zoomed?3:2)+'M' : Math.round(bp/1e3)+'kb';
+
+  document.getElementById('trackCoords').textContent =
+    `${P.chrom}:${Math.round(zStart).toLocaleString()}-${Math.round(zEnd).toLocaleString()}`+
+    (zoomed?`  (${fmt(span)} من أصل ${fmt(P.end-P.start)})`:`  (${fmt(span)})`);
+
+  const rule=document.getElementById('gbRule');
+  let rh='';
+  for(let i=0;i<=20;i++){
+    const pc=i*5;
+    if(i%4===0){
+      rh+=`<i class="maj" style="inset-inline-start:${pc}%"></i>`;
+      const bp=zStart+span*(pc/100);
+      const cls = i===0?'lab s' : i===20?'lab e' : 'lab';
+      rh+=`<span class="${cls}" style="${i===0||i===20?'':'inset-inline-start:'+pc+'%'}">${(bp/1e6).toFixed(zoomed?3:2)}M</span>`;
+    } else rh+=`<i class="min" style="inset-inline-start:${pc}%"></i>`;
+  }
+  rule.innerHTML=rh;
+
+  const gridHTML='<div class="gb-grid">'+
+    [20,40,60,80].map(pc=>`<i style="inset-inline-start:${pc}%"></i>`).join('')+'</div>';
+
+  const strip=document.getElementById('tadStrip');
+  strip.innerHTML='';
+  const nT=P.n_tads||1, colors=P.tad_colors||['#8eb69b'];
+  const counts=new Array(nT).fill(0);
+  (P.coords_raw||[]).forEach(r=> counts[r.tad_id||0]++);
+  const total=counts.reduce((a,b)=>a+b,0)||1;
+  for(let i=0;i<nT;i++){
+    const f=(counts[i]||1)/total;
+    strip.insertAdjacentHTML('beforeend',
+      `<div class="seg" title="TAD ${i+1} — ${counts[i]||0} bin" style="flex:${f}; background:${colors[i]||'#8eb69b'}"><span>${i+1}</span></div>`);
+  }
+  const tadRow=document.getElementById('gbTadRow');
+  tadRow.querySelector('.zoom-box')?.remove();
+  if(zoomed){
+    const l=((zStart-P.start)/(P.end-P.start))*100, w=((zEnd-zStart)/(P.end-P.start))*100;
+    tadRow.insertAdjacentHTML('beforeend',
+      `<div class="zoom-box" style="inset-inline-start:${l.toFixed(2)}%; width:${Math.max(w,0.6).toFixed(2)}%"></div>`);
+  }
+
+  /*  الفلاتر  */
+  const fl=document.getElementById('trackFilters');
+  const present={}; rows.forEach(r=>present[r.st]=(present[r.st]||0)+1);
+  fl.innerHTML=`<span class="chip ${protFilter==='all'?'on':''}" onclick="setFilter('all')">الكل ${rows.length}</span>`+
+    Object.keys(STATUS).filter(k=>present[k]).map(k=>
+      `<span class="chip ${protFilter===k?'on':''}" onclick="setFilter('${k}')"
+        style="${protFilter===k?'':'color:'+STATUS[k].color}">${STATUS[k].label} ${present[k]}</span>`).join('');
+
+  /*  مسارات البروتينات  */
+  const lp=document.getElementById('lanePatient'), lc=document.getElementById('laneControl');
+  lp.innerHTML=gridHTML+'<div class="axis"></div>';
+  lc.innerHTML=gridHTML+'<div class="axis"></div>';
+  const rowsUsed={left:[], right:[]};
+  rows.forEach(r=>{
+    if(protFilter!=='all' && r.st!==protFilter) return;
+    if(hiddenProts.has(r.key)) return;
+    const col=STATUS[r.st].color;
+    const mk=(abs,lane,absent,side)=>{
+      if(abs==null) return;
+      const pct=pctZ(abs);
+      const used=rowsUsed[side];
+      let row=0;
+      while(used[row] && used[row].some(x=>Math.abs(x-pct)<2.2)) row++;
+      if(!used[row]) used[row]=[];
+      used[row].push(pct);
+      row=Math.min(row,2);
+      const el=document.createElement('div');
+      el.className='tick'+(absent?' absent':'')+(selectedProt===r.key?' on':'');
+      el.style.insetInlineStart=pct.toFixed(2)+'%';
+      el.style.top=(3+row*10)+'px';
+      el.style.color=col; if(!absent) el.style.background=col;
+      el.innerHTML=`<i class="stem" style="top:9px; height:${Math.max(14-row*10,2)}px"></i>`;
+      el.title=`${r.name} · ${STATUS[r.st].label}\n${P.chrom}:${Math.round(abs).toLocaleString()}`;
+      el.onclick=()=>selectProt(r.key);
+      lane.appendChild(el);
+    };
+    mk(r.pAbs ?? (r.st==='missing'? r.cAbs : null), lp, r.pAbs==null, 'right');
+    mk(r.cAbs ?? (r.st==='gained' ? r.pAbs : null), lc, r.cAbs==null, 'left');
+  });
+
+  document.getElementById('trackLegend').innerHTML =
+    Object.keys(STATUS).filter(k=>present[k]).map(k=>
+      `<span><span class="lg-sw" style="background:${STATUS[k].color}"></span>${STATUS[k].label}</span>`).join('')+
+    `<span style="opacity:.7"><span class="lg-sw" style="border:1px dashed var(--muted)"></span>غياب بهذه الجهة</span>`;
+}
+
+function setFilter(f){
+  protFilter=f; renderTrack(); renderTable(); renderProteinList();
+  frames().forEach(fr=> tellFrame(fr,{type:'chromo-protein-filter', filter:f}));
+}
+function selectProt(key){
+  selectedProt = (selectedProt===key) ? null : key;
+  renderTrack(); renderTable(); renderProteinList();
+  frames().forEach(fr=> tellFrame(fr,{type:'chromo-protein-focus', protein:selectedProt}));
+}
+
+/*  الجدول */
+const COLS=[
+  {k:'name',   t:'البروتين'},
+  {k:'status', t:'الحالة'},
+  {k:'pScore', t:'مريض'},
+  {k:'cScore', t:'سليم'},
+  {k:'delta',  t:'الفرق'},
+  {k:'pos',    t:'الموقع'},
+  {k:'tad',    t:'TAD'}
+];
+
+function renderTable(){
+  const head=document.getElementById('ptHead'), body=document.getElementById('ptBody');
+  if(!head||!body) return;
+  head.innerHTML='<tr>'+COLS.map(c=>
+    `<th onclick="sortBy('${c.k}')">${c.t}${sortKey===c.k?(sortDir>0?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
+
+  const q=(document.getElementById('protSearch')?.value||'').trim().toLowerCase();
+  let rows=protRows()
+    .filter(r=> protFilter==='all' || r.st===protFilter)
+    .filter(r=> !q || r.name.toLowerCase().includes(q) || r.key.toLowerCase().includes(q));
+
+  const val=(r,k)=>({ name:r.name, status:STATUS[r.st].rank, pScore:r.pScore??-1,
+                      cScore:r.cScore??-1, delta:r.delta??0, pos:r.anyAbs??-1, tad:r.tad??-1 }[k]);
+  rows.sort((a,b)=>{
+    const x=val(a,sortKey), y=val(b,sortKey);
+    if(typeof x==='string') return x.localeCompare(y)*sortDir;
+    return (x-y)*sortDir;
+  });
+
+  document.getElementById('tableCount').textContent=`${rows.length} بروتين`;
+  body.innerHTML = rows.map(r=>{
+    const s=STATUS[r.st];
+    return `<tr class="${selectedProt===r.key?'on':''}" onclick="selectProt('${r.key}')">
+      <td class="mono">${r.name}</td>
+      <td><span class="st-dot" style="background:${s.color}"></span>${s.label}</td>
+      <td class="mono">${r.pScore==null?'—':r.pScore.toFixed(2)}</td>
+      <td class="mono">${r.cScore==null?'—':r.cScore.toFixed(2)}</td>
+      <td class="mono" style="color:${r.delta==null?'var(--muted)':r.delta<0?'#e0b24d':'#6fd3c0'}">${
+        r.delta==null?'—':(r.delta>0?'+':'')+r.delta.toFixed(2)}</td>
+      <td class="mono">${r.anyAbs==null?'—':Math.round(r.anyAbs).toLocaleString()}</td>
+      <td class="mono">${r.tad==null?'—':r.tad+1}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="7" style="padding:16px; text-align:center; color:var(--muted)">لا نتائج</td></tr>`;
+}
+function sortBy(k){ if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=1; } renderTable(); }
+
+function exportCSV(){
+  const rows=protRows().filter(r=> protFilter==='all' || r.st===protFilter);
+  const head=['protein','status','patient_score','control_score','delta','position_bp','tad'];
+  const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const csv=[head.join(',')].concat(rows.map(r=>[
+    r.name, STATUS[r.st].label, r.pScore??'', r.cScore??'', r.delta??'',
+    r.anyAbs==null?'':Math.round(r.anyAbs), r.tad==null?'':r.tad+1
+  ].map(esc).join(','))).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`binding_proteins_${loadedData?.patient?.chrom||'region'}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+/*  واجهة */
+function setTab(t){
+  const map={prot:['tabProt','paneProt'], view:['tabView','paneView']};
+  Object.entries(map).forEach(([k,[tab,pane]])=>{
+    document.getElementById(tab).classList.toggle('on', k===t);
+    document.getElementById(pane).classList.toggle('on', k===t);
+  });
+  if(t==='prot')  renderProteinList();
+}
+function togglePanel(){
+  const s=document.getElementById('side');
+  s.classList.toggle('closed');
+  document.getElementById('btnPanel').classList.toggle('on', !s.classList.contains('closed'));
+}
+function toggleTrack(){
+  const t=document.getElementById('track');
+  t.classList.toggle('hidden');
+  const open=!t.classList.contains('hidden');
+  document.getElementById('btnTrack')?.classList.toggle('on', open);
+  document.getElementById('btnTrackHeader')?.classList.toggle('on', open);
+  if(open) renderTrack();
+}
+
+function toggleProteinPanel(){
+  const s=document.getElementById('side');
+  const btn=document.getElementById('btnProtPanel');
+  const alreadyOpenOnProt = !s.classList.contains('closed') && document.getElementById('tabProt').classList.contains('on');
+  if(alreadyOpenOnProt){
+    s.classList.add('closed');
+    document.getElementById('btnPanel').classList.remove('on');
+  } else {
+    s.classList.remove('closed');
+    document.getElementById('btnPanel').classList.add('on');
+    setTab('prot');
+  }
+  btn.classList.toggle('on', !alreadyOpenOnProt);
+}
+
+function setStatus(text, live){
+  document.getElementById('statusTxt').textContent=text;
+  document.getElementById('statusPill').classList.toggle('idle', !live);
+}
+function hideEmpty(which){
+  document.getElementById(which==='patient'?'emptyPatient':'emptyControl')?.classList.add('hidden');
+}
+
+function setMode(mode){
+  currentMode=mode;
+  const stage=document.getElementById('stage');
+  document.getElementById('modeSplit').classList.toggle('on', mode==='split');
+  document.getElementById('modeStack').classList.toggle('on', mode==='stack');
+  if(mode==='stack'){ stage.classList.add('single'); reloadFrames('both'); }
+  else { stage.classList.remove('single'); reloadFrames('split'); }
+  pushSyncState();
+}
+
+function reloadFrames(mode){
+  if(!loadedData) return;
+  const send=(frame, side, which)=>{
+    const post=()=>{ try{
+      frame.contentWindow.postMessage({type:'chromo-load', payload:loadedData, side}, '*');
+      if(which) hideEmpty(which);
+      pushVisibility();
+    }catch(e){} };
+    if(frame.dataset.ready==='1') post();
+    else frame.onload=()=>{ frame.dataset.ready='1'; post(); };
+    setTimeout(post, 300);
+    setTimeout(pushSyncState, 350);
+  };
+  if(mode==='both'){
+    send(document.getElementById('framePatient'), 'both', 'patient');
+  } else {
+    send(document.getElementById('framePatient'), 'patient', 'patient');
+    send(document.getElementById('frameControl'), 'control', 'control');
+  }
+}
+
+function afterData(){
+  renderProteinList(); renderTable();
+  if(!document.getElementById('track').classList.contains('hidden')) renderTrack();
+}
+
+function loadFile(input){
+  const file=input.files[0]; if(!file) return;
+  setStatus('جاري المعالجة…', true);
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const parsed=JSON.parse(e.target.result);
+      loadedData=(parsed.patient||parsed.control)?parsed:{patient:parsed};
+      afterData();
+      reloadFrames(currentMode==='stack'?'both':'split');
+      setStatus(file.name, true);
+    }catch(err){ alert('خطأ في الملف: '+err.message); setStatus('فشل التحميل', false); }
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+async function bootFromAPI(){
+  const params=new URLSearchParams(location.search);
+  const outputId=(params.get('output_id')||params.get('output')||'').trim();
+  if(!outputId) return;
+  setStatus('جاري الجلب… #'+outputId, true);
+  try{
+    const base=(window.CHROMO_API_BASE||'/api').replace(/\/$/,'');
+    const path=(window.CHROMO_VIZ_PATH||(id=>`/genomics/output/${id}/full/`))(outputId);
+    const token=params.get('token')||localStorage.getItem('chromogen-token')||'';
+    const headers={'Accept':'application/json'}; if(token) headers['Authorization']='Bearer '+token;
+    const res=await fetch(base+path,{headers});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const payload=await res.json();
+    loadedData=(payload.patient||payload.control)?payload:{patient:payload};
+    afterData();
+    reloadFrames('split');
+    setStatus('output #'+outputId, true);
+  }catch(err){ console.error('[compare] API load failed:', err); setStatus('تعذّر الجلب — استورد ملف', false); }
+}
+
+window.addEventListener('load', ()=>{
+  bootFromAPI();
+  setTimeout(()=>{ pushSyncState(); ctl({repr:'atoms'}); }, 600);
+});
+</script>
+</body>
+</html>

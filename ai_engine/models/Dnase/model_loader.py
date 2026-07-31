@@ -112,7 +112,7 @@ def load_basset_model(weights_path: str = None) -> nn.Module:
         return _model
 
     print("Loading Basset model...")
-    basset_dir = r"C:\Users\dell\.kipoi\models\Basset"
+    basset_dir = r"C:\Users\Lenovo\.kipoi\models\Basset"
 
     if weights_path is None:
         default = os.path.join(basset_dir, "pretrained_model_reloaded_th.pth")

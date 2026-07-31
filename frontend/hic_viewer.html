@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChromoGen · Chromatin 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500&family=Cairo:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b2b26; --scene:#08201c; --fg:#daf1de; --muted:#8eb69b; --primary:#8eb69b;
+    --border:rgba(218,241,222,.14); --card:rgba(11,43,38,.72);
+    --warn:#e0b24d; --danger:#e5766f;
+    --font-display:"Space Grotesk","Cairo",sans-serif;
+    --font-sans:"Inter","Cairo",sans-serif;
+    --font-mono:"JetBrains Mono",monospace;
+  }
+  :root[data-theme="light"]{
+    --bg:#f2f9f3; --scene:#0a201d; --fg:#051f20; --muted:#3f6155; --primary:#163832;
+    --border:rgba(5,31,32,.12); --card:rgba(255,255,255,.82);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--fg);font-family:var(--font-sans);overflow:hidden}
+
+  #cv{position:absolute;inset:0}
+  #cv canvas{display:block;width:100%!important;height:100%!important;cursor:grab}
+  #cv canvas:active{cursor:grabbing}
+
+  /*  التحميل مطابق للبروتين */
+  #loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:var(--scene);gap:.9rem;z-index:6;transition:opacity .3s}
+  #loading.hidden{opacity:0;pointer-events:none}
+  .spin{width:34px;height:34px;border:2.5px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #load-msg{font-size:12px;color:var(--muted);max-width:80%;text-align:center;line-height:1.7}
+  #load-msg.err{color:var(--danger)}
+
+  /* toolbar  */
+  .toolbar{position:absolute;top:12px;inset-inline-start:12px;z-index:4;display:flex;gap:8px;align-items:center}
+  .tbtn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:10px;
+    border:1px solid var(--border);background:var(--card);backdrop-filter:blur(8px);color:var(--fg);
+    font-size:12px;cursor:pointer;transition:border-color .15s;white-space:nowrap}
+  .tbtn:hover{border-color:color-mix(in oklch,var(--primary) 45%,transparent)}
+  .tbtn.on{border-color:var(--primary);color:var(--primary)}
+  .tsep{width:1px;height:20px;background:var(--border);margin:0 2px}
+
+  /* تحكّم السماكة يظهر عند الضغط على زر السماكة */
+  .thick-ctrl{display:none;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:10px;
+    border:1px solid var(--border);background:var(--card);backdrop-filter:blur(8px)}
+  .thick-ctrl.show{display:inline-flex}
+  .thick-ctrl label{font-size:11px;color:var(--muted);white-space:nowrap}
+  .thick-ctrl input[type=range]{-webkit-appearance:none;appearance:none;width:90px;height:4px;border-radius:3px;
+    background:var(--border);outline:none;cursor:pointer}
+  .thick-ctrl input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:14px;height:14px;
+    border-radius:50%;background:var(--primary);cursor:pointer;border:2px solid var(--scene)}
+  .thick-ctrl input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--primary);
+    cursor:pointer;border:2px solid var(--scene)}
+  .thick-ctrl .tval{font-size:11px;color:var(--fg);font-family:var(--font-mono);min-width:24px;text-align:center}
+  #fi{display:none}
+
+  /* بطاقة العنوان */
+  .title-card{position:absolute;top:12px;inset-inline-end:12px;z-index:4;background:var(--card);backdrop-filter:blur(8px);
+    border:1px solid var(--border);border-radius:12px;padding:.6rem .9rem;max-width:240px}
+  .title-card .t{font-family:var(--font-display);font-weight:600;font-size:.9rem}
+  .title-card .s{font-size:.72rem;color:var(--muted);margin-top:.15rem;font-family:var(--font-mono)}
+
+  :root.embedded .toolbar,
+  :root.embedded .legend,
+  :root.embedded .panel,
+  :root.embedded .hint,
+  :root.embedded #scaleBadge{display:none!important}
+  :root.embedded .title-card{display:none}
+  :root.embedded .hint{display:none}
+  :root.embedded .toolbar{top:56px;inset-inline-start:12px;transform:scale(.92);transform-origin:top right}
+  :root.embedded .legend{bottom:10px;inset-inline-start:10px;padding:.4rem .6rem;gap:.4rem}
+  :root.embedded .legend .clr{width:16px;height:16px}
+  :root.embedded .legend .lbl{font-size:.62rem}
+
+
+  .legend{position:absolute;bottom:12px;inset-inline-start:12px;z-index:4;background:var(--card);backdrop-filter:blur(8px);
+    border:1px solid var(--border);border-radius:12px;padding:.55rem .8rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .legend .lbl{font-size:.68rem;color:var(--muted);margin-inline-end:.2rem}
+  .clr{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform .12s}
+  .clr:hover{transform:scale(1.12)}
+  .clr.on{border-color:var(--fg)}
+
+  .hint{position:absolute;bottom:12px;inset-inline-end:12px;z-index:3;font-size:11px;color:var(--muted);
+    font-family:var(--font-mono);background:var(--card);border:1px solid var(--border);border-radius:8px;
+    padding:.4rem .7rem;backdrop-filter:blur(8px);pointer-events:none}
+
+ 
+  body.compact .toolbar,
+  body.compact .hint,
+  body.compact .title-card,
+  body.compact .panel{display:none!important}
+  body.compact .legend{bottom:10px;inset-inline-start:10px;padding:.4rem .6rem}
+  body.compact .legend .clr{width:16px;height:16px}
+
+  .panel{position:absolute;top:0;inset-inline-end:0;height:100%;width:290px;z-index:5;
+    background:var(--card);backdrop-filter:blur(14px);border-inline-start:1px solid var(--border);
+    padding:3.4rem 1rem 1rem;overflow-y:auto;transform:translateX(100%);transition:transform .28s ease;
+    display:flex;flex-direction:column;gap:1.1rem}
+  :root[dir="rtl"] .panel{transform:translateX(-100%)}
+  .panel.open{transform:translateX(0)!important}
+  .panel::-webkit-scrollbar{width:5px}
+  .panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .panel-close{position:absolute;top:12px;inset-inline-start:12px;width:28px;height:28px;border-radius:8px;
+    border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer;font-size:14px}
+  .sec h4{font-family:var(--font-display);font-size:.72rem;font-weight:600;color:var(--primary);
+    text-transform:uppercase;letter-spacing:.5px;margin-bottom:.55rem}
+  .row{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;padding:.18rem 0;color:var(--muted)}
+  .row .val{color:var(--fg);font-family:var(--font-mono)}
+  .row .val.hi{color:var(--primary)}
+  .bar{height:5px;background:var(--border);border-radius:3px;margin-top:.4rem;overflow:hidden}
+  .bar-fill{height:100%;background:var(--primary);border-radius:3px;transition:width .4s}
+  #tad-list{display:flex;flex-direction:column;gap:3px}
+
+  /* لستة بروتينات الارتباط */
+  #protein-list{display:flex;flex-direction:column;gap:2px;max-height:230px;overflow-y:auto}
+  #protein-list::-webkit-scrollbar{width:4px}
+  #protein-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+  .prot-item{display:flex;align-items:center;gap:.45rem;font-size:.68rem;padding:.3rem .45rem;
+    border-radius:7px;cursor:pointer;color:var(--muted);transition:background .15s}
+  .prot-item:hover,.prot-item.active{background:color-mix(in oklch,var(--primary) 14%,transparent);color:var(--fg)}
+  .prot-item.unplaced{opacity:.55;cursor:default}
+  .prot-dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .prot-name{font-family:var(--font-mono);font-weight:500;color:var(--fg);flex:none}
+  .prot-tag{font-size:.6rem;opacity:.85;flex:1;text-align:start}
+  .prot-delta{font-family:var(--font-mono);font-size:.62rem;flex:none}
+  .prot-warn{color:var(--warn);font-size:.7rem;flex:none}
+  .tad-item{display:flex;align-items:center;gap:.5rem;font-size:.7rem;padding:.28rem .45rem;border-radius:7px;
+    cursor:pointer;color:var(--muted);transition:background .15s}
+  .tad-item:hover,.tad-item.active{background:color-mix(in oklch,var(--primary) 14%,transparent);color:var(--fg)}
+  .tad-sw{width:9px;height:9px;border-radius:50%;flex:none}
+
+  #tip{position:absolute;z-index:7;pointer-events:none;display:none;background:var(--card);backdrop-filter:blur(8px);
+    border:1px solid var(--border);border-radius:9px;padding:.5rem .7rem;font-size:.7rem;font-family:var(--font-mono);
+    color:var(--fg);max-width:200px;line-height:1.8}
+
+  #isolate-overlay{position:fixed;inset:0;z-index:20;display:none;background:var(--scene)}
+  #isolate-overlay.visible{display:block}
+  #isolate-canvas{position:absolute;inset:0;width:100%;height:100%}
+  .iso-info{position:absolute;top:16px;inset-inline-end:16px;width:210px;background:var(--card);backdrop-filter:blur(8px);
+    border:1px solid var(--border);border-radius:12px;padding:1rem}
+  .iso-info .row{font-size:.72rem}
+  .iso-info .btn{display:block;width:100%;margin-top:6px;height:30px;border-radius:9px;border:1px solid var(--border);
+    background:transparent;color:var(--fg);font-size:11px;cursor:pointer;font-family:var(--font-sans)}
+  .iso-info .btn.on{border-color:var(--primary);color:var(--primary)}
+</style>
+</head>
+<body>
+
+<script>
+(function(){ try{ var p=new URLSearchParams(location.search);
+  if(p.get('theme')==='light') document.documentElement.setAttribute('data-theme','light');
+  if(p.get('compact')==='1') document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('compact');});
+
+  var ACCENTS={
+    green :{primary:'#8eb69b',muted:'#8eb69b',scene:'#08201c',bg:'#0b2b26',card:'rgba(13,42,37,.66)'},
+    blue  :{primary:'#8fa9d4',muted:'#8fa9d4',scene:'#0d1526',bg:'#111a2e',card:'rgba(20,30,54,.66)'},
+    purple:{primary:'#b19cd0',muted:'#b19cd0',scene:'#1a1226',bg:'#20182e',card:'rgba(37,26,54,.66)'},
+    lilac :{primary:'#b3a3c4',muted:'#b3a3c4',scene:'#1c1626',bg:'#231d2e',card:'rgba(42,34,54,.66)'},
+    rose  :{primary:'#cf9d94',muted:'#cf9d94',scene:'#241413',bg:'#2e1b19',card:'rgba(54,30,28,.66)'},
+    wine  :{primary:'#c48a92',muted:'#c48a92',scene:'#210f12',bg:'#2a1418',card:'rgba(54,20,24,.66)'},
+    gold  :{primary:'#d0b878',muted:'#d0b878',scene:'#221a0d',bg:'#2b2211',card:'rgba(54,44,20,.66)'},
+    slate :{primary:'#9fb0ba',muted:'#9fb0ba',scene:'#12181c',bg:'#171e22',card:'rgba(23,30,34,.66)'},
+  };
+  var a=p.get('accent'); if(a && ACCENTS[a] && a!=='green'){
+    var c=ACCENTS[a], r=document.documentElement.style;
+    r.setProperty('--primary',c.primary); r.setProperty('--muted',c.muted);
+    r.setProperty('--scene',c.scene); r.setProperty('--bg',c.bg); r.setProperty('--card',c.card);
+  }
+}catch(e){} })();
+</script>
+
+<div id="cv"></div>
+
+<div class="toolbar">
+  <button class="tbtn on" id="btnSm" onclick="switchMode('smooth',this)">〰 خيط ناعم</button>
+  <button class="tbtn"    id="btnRw" onclick="switchMode('raw',this)">⦿ نقاط</button>
+  <span class="tsep"></span>
+  <button class="tbtn on" id="btnR" onclick="toggleRot()">⟳ دوران</button>
+  <button class="tbtn on" id="btnControl" onclick="toggleControl()" style="display:none">◑ السليم</button>
+  <button class="tbtn" onclick="resetCam()">⊙ توسيط</button>
+  <button class="tbtn" id="btnThick" onclick="toggleThick()">≡ سماكة</button>
+  <div class="thick-ctrl" id="thickCtrl">
+    <label>رفيع</label>
+    <input type="range" id="thickRange" min="2" max="14" step="1" value="6" oninput="onThick(this.value)">
+    <label>سميك</label>
+    <span class="tval" id="thickVal">0.6</span>
+  </div>
+  <span class="tsep"></span>
+  <button class="tbtn on" id="btnProt" onclick="toggleProteins()">⬤ بروتينات</button>
+  <button class="tbtn on" id="btnLod" onclick="toggleLOD()" title="عرض البنية الذرية عند الاقتراب">⬢ بنى</button>
+  <div class="thick-ctrl show" id="magCtrl">
+    <label>تكبير</label>
+    <input type="range" id="magRange" min="1" max="30" step="1" value="6" oninput="onMag(this.value)">
+    <span class="tval" id="magVal">×6</span>
+  </div>
+  <span class="tsep"></span>
+  <button class="tbtn" id="btnPanel" onclick="togglePanel()">☰ تفاصيل</button>
+  <button class="tbtn" onclick="document.getElementById('fi').click()">📂</button>
+  <input type="file" id="fi" accept=".json" onchange="loadJSON(this)">
+  <button id="btnGlow" onclick="toggleEffect('glow')" style="display:none"></button>
+  <button id="btnBound" onclick="toggleEffect('bounds')" style="display:none"></button>
+  <button id="btnRmsd" onclick="toggleEffect('rmsd')" style="display:none"></button>
+</div>
+
+<div class="title-card">
+  <div class="t">Chromatin 3D</div>
+  <div class="s" id="hdr-info">— بانتظار البيانات —</div>
+</div>
+
+<div class="legend">
+  <span class="lbl">لون:</span>
+  <div class="clr on" onclick="setClr('emerald',this)" title="زمردي" style="background:linear-gradient(135deg,#2f6b57,#8eb69b,#daf1de)"></div>
+  <div class="clr" onclick="setClr('plasma',this)" title="بلازما" style="background:conic-gradient(#f97316,#818cf8,#f97316)"></div>
+  <div class="clr" onclick="setClr('cool',this)" title="بارد" style="background:conic-gradient(#06b6d4,#10b981,#06b6d4)"></div>
+  <div class="clr" onclick="setClr('health',this)" title="صحة/مرض" style="background:conic-gradient(#22c55e,#ef4444,#22c55e)"></div>
+  <div class="clr" onclick="setClr('density',this)" title="كثافة" style="background:linear-gradient(135deg,#8eb69b,#daf1de)"></div>
+  <div class="clr" onclick="setClr('tad',this)" title="TAD" style="background:conic-gradient(#8eb69b,#818cf8,#e0b24d,#8eb69b)"></div>
+</div>
+
+<div class="hint" id="scaleBadge" style="inset-inline-end:auto; inset-inline-start:12px; bottom:58px">×6 — مكبّر، ليس بالمقياس</div>
+<div class="hint">🖱 سحب · ⚙ تكبير ·  تفاصيل</div>
+
+<div class="panel" id="panel">
+  <button class="panel-close" onclick="togglePanel()">✕</button>
+  <div class="sec">
+    <h4>المعلومات الجينية</h4>
+    <div class="row"><span>الكروموسوم</span><span class="val hi" id="p-chrom">—</span></div>
+    <div class="row"><span>البداية</span><span class="val" id="p-start">—</span></div>
+    <div class="row"><span>النهاية</span><span class="val" id="p-end">—</span></div>
+    <div class="row"><span>الدقة</span><span class="val" id="p-res">—</span></div>
+    <div class="row"><span>النقاط</span><span class="val" id="p-pts">—</span></div>
+    <div class="row"><span>TADs</span><span class="val hi" id="p-tads">—</span></div>
+    <div class="bar"><div class="bar-fill" id="stress-bar" style="width:0%"></div></div>
+    <div class="row" style="padding-top:.3rem"><span>دقة MDS</span><span class="val" id="stress-val" style="font-size:.66rem">—</span></div>
+    <div class="row"><span>DSCC</span><span class="val" id="p-dscc">—</span></div>
+    <div class="row"><span>نسبة الانطواء</span><span class="val" id="p-collapse">—</span></div>
+  </div>
+  <div class="sec" id="align-sec" style="display:none">
+    <h4>محاذاة المريض/السليم</h4>
+    <div class="row"><span>انحراف البنية</span><span class="val hi" id="a-dev">—</span></div>
+    <div class="row"><span>RMSD</span><span class="val" id="a-rmsd">—</span></div>
+    <div class="row"><span>نقاط متقابلة</span><span class="val" id="a-pairs">—</span></div>
+    <div class="row"><span>طريقة المطابقة</span><span class="val" id="a-mode">—</span></div>
+    <div class="row"><span>انعكاس</span><span class="val" id="a-mirror">—</span></div>
+  </div>
+  <div class="sec" id="protein-sec" style="display:none">
+    <h4>بروتينات الارتباط</h4>
+    <div id="protein-summary" style="font-size:.66rem;color:var(--muted);margin-bottom:.5rem;line-height:1.8"></div>
+    <div id="protein-list"></div>
+  </div>
+  <div class="sec">
+    <h4>مناطق TAD</h4>
+    <div id="tad-list"></div>
+  </div>
+  <div class="sec">
+    <h4>النقطة المحددة</h4>
+    <div class="row"><span>المنطقة</span><span class="val hi" id="s-reg">—</span></div>
+    <div class="row"><span>المجموعة</span><span class="val" id="s-tad">—</span></div>
+    <div class="row"><span>الكثافة</span><span class="val" id="s-den">—</span></div>
+    <div class="row"><span>الانحراف</span><span class="val" id="s-dev">—</span></div>
+    <div class="row"><span>X</span><span class="val" id="s-x">—</span></div>
+    <div class="row"><span>Y</span><span class="val" id="s-y">—</span></div>
+    <div class="row"><span>Z</span><span class="val" id="s-z">—</span></div>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<div id="isolate-overlay">
+  <canvas id="isolate-canvas"></canvas>
+  <div class="iso-info">
+    <div style="font-family:var(--font-display);font-weight:600;color:var(--primary);margin-bottom:.6rem" id="iso-title">TAD معزول</div>
+    <div class="row"><span>النقاط</span><span class="val hi" id="iso-pts">—</span></div>
+    <div class="row"><span>الكثافة</span><span class="val" id="iso-den">—</span></div>
+    <button class="btn on" id="iso-rot">⏸ إيقاف الدوران</button>
+    <button class="btn" id="iso-reset"> إعادة توجيه</button>
+    <button class="btn" id="iso-png"> حفظ صورة</button>
+    <button class="btn" style="border-color:var(--muted);color:var(--muted)" onclick="exitIsolate()">← العودة</button>
+  </div>
+</div>
+
+<div id="loading">
+  <div class="spin"></div>
+  <p id="load-msg">جاري تحميل المحرك…</p>
+</div>
+
+<script>
+function togglePanel(){
+  const p=document.getElementById('panel');
+  p.classList.toggle('open');
+  document.getElementById('btnPanel')?.classList.toggle('on', p.classList.contains('open'));
+}
+
+function toggleThick(){
+  const c=document.getElementById('thickCtrl');
+  c.classList.toggle('show');
+  document.getElementById('btnThick')?.classList.toggle('on', c.classList.contains('show'));
+}
+
+function onMag(v){
+  document.getElementById('magVal').textContent='×'+v;
+  const b=document.getElementById('scaleBadge');
+  if(b) b.textContent = '×'+v+' — مكبّر، ليس بالمقياس';
+  if(typeof setProteinMagnify==='function') setProteinMagnify(v);
+}
+function onThick(v){
+  document.getElementById('thickVal').textContent=(v/10).toFixed(1);
+  if(typeof setRadius==='function') setRadius(+v);
+}
+</script>
+<script>
+  window.CHROMO_API_BASE = 'http://127.0.0.1:8000/api';
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js_hic/hic.js"></script>
+</body>
+</html>

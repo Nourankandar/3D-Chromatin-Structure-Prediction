@@ -115,7 +115,9 @@ class AnalysisReportViewSet(
         }
         
         # 1. قراءة الـ HTML الخارجي من مجلد الـ templates ودمجه بالبيانات
-        html_string = render_to_string("genomics/medical_report_pdf.html", context)
+        #html_string = render_to_string("genomics/medical_report_pdf.html", context)
+
+        html_string = render_to_string("medical_report_pdf.html", context)
         
         # 2. إنشاء الـ HTTP Response المخصص لملفات الـ PDF وتحويله عبر WeasyPrint
         response = HttpResponse(content_type="application/pdf")

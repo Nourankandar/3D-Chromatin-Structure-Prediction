@@ -87,6 +87,7 @@ const DICT = {
     viewer_hint:'Drag to rotate · scroll to zoom', viewer_no_data:'No structure to display. Open a viewer from a completed result.',
     viewer_reset:'Reset view', viewer_autorotate:'Auto-rotate', viewer_points:'Analysis points',
     viewer_open_rcsb:'Open on RCSB', select_pdb:'PDB structure', summary:'Summary', region_size:'Region size',
+    viewer_compare_control:'Compare with healthy control', viewer_report:'Report',
     toast_patient_added:'Patient added.', toast_patient_updated:'Patient updated.', toast_patient_deleted:'Patient deleted.',
     toast_test_deleted:'Test deleted.', toast_retry_started:'The test is queued again.', toast_error:'Something went wrong. Please try again.',
   },
@@ -174,6 +175,7 @@ const DICT = {
     viewer_hint:'اسحب للتدوير · مرّر للتكبير', viewer_no_data:'لا توجد بنية للعرض. افتح العارض من نتيجة مكتملة.',
     viewer_reset:'إعادة ضبط العرض', viewer_autorotate:'دوران تلقائي', viewer_points:'نقاط التحليل',
     viewer_open_rcsb:'فتح في RCSB', select_pdb:'بنية PDB', summary:'الملخص', region_size:'حجم المنطقة',
+    viewer_compare_control:'قارن مع العيّنة السليمة', viewer_report:'التقرير',
     toast_patient_added:'تمت إضافة المريض.', toast_patient_updated:'تم تحديث المريض.', toast_patient_deleted:'تم حذف المريض.',
     toast_test_deleted:'تم حذف الاختبار.', toast_retry_started:'أُعيدت جدولة الاختبار.', toast_error:'حدث خطأ ما. يرجى المحاولة مرة أخرى.',
   }
@@ -196,8 +198,7 @@ function applyTheme(){
   scenes.forEach(s => s.refreshColors());
 }
 
-/* -- نظام الثيمات اللونية  --
-   */
+/* -- نظام الثيمات اللونية  --*/
 const ACCENTS = [
   { id:'green',  label:'أخضر',   labelEn:'Green',  swatch:'#8eb69b' },   // الافتراضي
   { id:'blue',   label:'أزرق',   labelEn:'Blue',   swatch:'#7087bb' },

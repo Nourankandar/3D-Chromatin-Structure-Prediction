@@ -1,6 +1,6 @@
 /* ============================================================
    10. VIEWERS
-   الإطار المشترك للعارضين المصغّرين داخل لوحة الداشبورد 
+   العارضات
    ============================================================ */
 function viewerFrame({title, desc, backRoute, backLabel, panel, canvasId}){
   return `<div class="wrap">
@@ -44,39 +44,59 @@ function renderChromatin(view){
   const patient = S.patients.find(p=>p.genomic_inputs.some(g=>g.id===S.activeTest));
   if(!test || test.status!=='completed'){ viewerEmpty(view,'dashboard',t('go_to_patients')); return; }
 
-  const pts = test.report?.analysis_points ?? 0;
+  const pts = test.report?.analysis_points ?? null;
+  const regionSize = test.report?.region_size ?? (test.end_pos - test.start_pos);
+  const outputId = test.output_data_id;
+  const authToken = localStorage.getItem('chromogen-token') || '';
+  const compareHref = outputId
+    ? `hic_compare.html?output_id=${encodeURIComponent(outputId)}` + (authToken ? `&token=${encodeURIComponent(authToken)}` : '')
+    : null;
+
   const panel = `
     <div class="card" style="padding:1.25rem">
       <div class="between" style="margin-bottom:.5rem"><p style="font-weight:500">${esc(patient.name)}</p>${statusBadge(test.status)}</div>
       ${row(t('patient_mrn'), esc(patient.mrn))}
       ${row(t('field_chromosome'), `<span class="mono">${esc(test.chromosome)}</span>`)}
       ${row(t('region'), `<span class="mono xs">${fmtNum(test.start_pos)} – ${fmtNum(test.end_pos)}</span>`)}
-      ${row(t('region_size'), fmtRegion(test.report.region_size))}
+      ${row(t('region_size'), fmtRegion(regionSize))}
       ${row(t('cell_type'), esc(test.cell_type))}
-      ${row(t('viewer_points'), fmtNum(pts))}
+      ${pts!=null ? row(t('viewer_points'), fmtNum(pts)) : ''}
       ${row(t('created_at'), fmtDate(test.created_at))}
     </div>
-    ${test.report.summary ? `<div class="card" style="padding:1.25rem">
-      <p class="xs muted">${t('summary')}</p><p class="sm-t" style="margin-top:.5rem">${esc(test.report.summary)}</p></div>`:''}`;
+    ${test.report?.summary ? `<div class="card" style="padding:1.25rem">
+      <p class="xs muted">${t('summary')}</p><p class="sm-t" style="margin-top:.5rem">${esc(test.report.summary)}</p></div>`:''}
+    ${compareHref ? `<div style="display:flex; gap:8px">
+      <a class="btn outline" style="flex:1" target="_blank" rel="noreferrer" href="${compareHref}">${ICON.external}<span>${t('viewer_compare_control')}</span></a>
+      <button class="btn outline" style="flex:1" onclick="openReportModal(${test.id})">${ICON.file}<span>${t('viewer_report')}</span></button>
+    </div>` : ''}`;
 
   view.innerHTML = viewerFrame({
     title:t('chromatin_viewer_title'), desc:t('chromatin_viewer_desc'),
     backRoute:'dashboard', backLabel:t('back_to_patients'), panel, canvasId:'chromatinCanvas'
   });
 
-  
-  const outputId = test.output_data_id;
   const wrap = view.querySelector('.canvas-wrap');
 
   if (outputId && wrap) {
     const themeName = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-    const token = localStorage.getItem('access') || localStorage.getItem('access_token') || '';
     const src = `hic_viewer.html?output_id=${encodeURIComponent(outputId)}&theme=${themeName}&accent=${accent}`
-              + (token ? `&token=${encodeURIComponent(token)}` : '');
+              + (authToken ? `&token=${encodeURIComponent(authToken)}` : '');
     wrap.innerHTML = `<iframe id="chromatinFrame" src="${src}" title="Chromatin 3D viewer"
       style="width:100%;height:clamp(380px,60vh,620px);border:0;display:block;border-radius:18px;background:var(--card)"></iframe>`;
+
+    
+    const frame = view.querySelector('#chromatinFrame');
+    const postCtl = (msg) => frame.contentWindow?.postMessage({type:'chromo-ctl', ctl: msg}, '*');
+    const sw = view.querySelector('#autoRotate');
+    if (sw) sw.onclick = () => {
+      const on = sw.getAttribute('aria-checked') !== 'true';
+      sw.setAttribute('aria-checked', on);
+      postCtl({rot: on});
+    };
+    const rb = view.querySelector('#resetView');
+    if (rb) rb.onclick = () => postCtl({reset: true});
   } else {
-    const beads = Math.min(220, Math.max(60, pts));
+    const beads = Math.min(220, Math.max(60, pts||0));
     bindViewer(view, createScene(view.querySelector('#chromatinCanvas'), buildChromatin(test.id, beads), {dist:13}));
   }
 }
@@ -92,7 +112,6 @@ async function searchProteinForViewer(gene){
       S.activeProtein = { gene:data.gene, uniprot_id:data.uniprot_id, protein_name:data.protein_name, pdb_ids:data.pdb_ids, predicted:false };
       S.activePdb = data.pdb_ids[0];
     } else if(data && data.uniprot_id){
-      // ما في بنية تجريبية بـ RCSB → منستعمل تنبؤ AlphaFold (بنية متوقّعة مش مقاسة)
       S.activeProtein = { gene:data.gene, uniprot_id:data.uniprot_id, protein_name:data.protein_name, pdb_ids:[], predicted:true };
       S.activePdb = null;
       toast(t('protein_predicted_note'));
@@ -189,4 +208,122 @@ function renderProtein(view){
     const fr = document.getElementById('proteinFrame'); if (fr) fr.src = proteinSrc();
     const link = view.querySelector('a[href*="rcsb.org/structure"]'); if (link) link.href = `https://www.rcsb.org/structure/${S.activePdb}`;
   };
+}
+
+/*التقرير*/
+let _currentReportId = null;
+
+function reportModalHTML(){
+  return `
+  <div id="reportModalOverlay" style="display:none;position:fixed;inset:0;background:rgba(4,16,14,.72);
+    backdrop-filter:blur(3px);align-items:center;justify-content:center;z-index:200" onclick="if(event.target===this) closeReportModal()">
+    <div style="background:linear-gradient(180deg,var(--card),var(--background));border-radius:18px;width:92%;max-width:460px;
+      border:1px solid var(--border);box-shadow:0 30px 70px -20px rgba(0,0,0,.6);overflow:hidden;max-height:85vh;display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:20px 22px 16px;border-bottom:1px solid var(--border);flex:none">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div style="width:38px;height:38px;border-radius:10px;background:color-mix(in srgb, var(--primary) 15%, transparent);
+            display:flex;align-items:center;justify-content:center;color:var(--primary)">${ICON.file}</div>
+          <div><p style="font-weight:600;font-size:15px;margin:0" id="reportModalTitle">${t('viewer_report')}</p></div>
+        </div>
+        <span onclick="closeReportModal()" style="cursor:pointer;color:var(--muted-foreground);font-size:16px;padding:2px">✕</span>
+      </div>
+      <div style="padding:18px 22px;overflow-y:auto" id="reportModalBody">
+        <p class="sm-t muted">${t('loading')||'...'}</p>
+      </div>
+    </div>
+  </div>`;
+}
+function ensureReportModal(){
+  if(!document.getElementById('reportModalOverlay'))
+    document.body.insertAdjacentHTML('beforeend', reportModalHTML());
+}
+function closeReportModal(){
+  const o=document.getElementById('reportModalOverlay'); if(o) o.style.display='none';
+  _currentReportId=null;
+}
+async function openReportModal(testId){
+  ensureReportModal();
+  const overlay=document.getElementById('reportModalOverlay');
+  const body=document.getElementById('reportModalBody');
+  overlay.style.display='flex';
+  body.innerHTML=`<p class="sm-t muted">جاري الجلب...</p>`;
+  try{
+    const inputDetail = await api.get(`/genomics/${testId}/`);
+    const reportId = inputDetail?.output?.report_id;
+    if(!reportId){ body.innerHTML=`<p class="sm-t muted">لا يوجد تقرير مرتبط بهذا التحليل بعد.</p>`; return; }
+    await loadReport(reportId);
+  }catch(e){
+    body.innerHTML=`<p class="sm-t" style="color:var(--destructive)">تعذّر جلب التقرير.</p>`;
+  }
+}
+async function loadReport(reportId){
+  _currentReportId = reportId;
+  const body=document.getElementById('reportModalBody');
+  body.innerHTML=`<p class="sm-t muted">جاري الجلب...</p>`;
+  try{
+    const r = await api.get(`/reports/${reportId}/`);
+    renderReportBody(r);
+  }catch(e){
+    body.innerHTML=`<p class="sm-t" style="color:var(--destructive)">تعذّر جلب التقرير.</p>`;
+  }
+}
+function renderReportBody(r){
+  const body=document.getElementById('reportModalBody');
+  const st = r.status; // draft | generating | completed | failed — قيم حقيقية من الباك
+  if(st==='draft' || st==='generating'){
+    body.innerHTML=`<div style="text-align:center;padding:24px 0">
+      <p class="sm-t muted">${st==='generating' ? 'التقرير عم يتولّد الآن...' : 'التقرير لسا ما بلّش توليده.'}</p>
+      <button class="btn outline" style="margin-top:12px" onclick="loadReport(${r.id})">تحديث الحالة</button>
+    </div>`;
+    return;
+  }
+  if(st==='failed'){
+    body.innerHTML=`<div style="text-align:center;padding:20px 0">
+      <p class="sm-t" style="color:var(--destructive)">فشل توليد التقرير.</p>
+      <button class="btn outline" style="margin-top:12px" onclick="regenerateReport(${r.id})">أعد المحاولة</button>
+    </div>`;
+    return;
+  }
+
+  body.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="display:flex;gap:8px;align-items:center">
+        <span style="background:color-mix(in srgb, var(--primary) 16%, transparent);color:var(--primary);
+          font-size:11px;padding:4px 12px;border-radius:999px">مكتمل</span>
+        <span class="mono-s muted" style="font-size:11px">${fmtDate(r.created_at)}</span>
+      </div>
+      <button title="إعادة توليد" onclick="regenerateReport(${r.id})"
+        style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer">↻</button>
+    </div>
+    <div style="background:var(--muted);border-radius:12px;padding:14px;margin-bottom:14px">
+      <p class="xs muted" style="text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px">التشخيص المحتمل</p>
+      <p class="sm-t" style="margin:0">${esc(r.detected_disease || '—')}</p>
+    </div>
+    <div style="background:var(--muted);border-radius:12px;padding:14px;margin-bottom:18px">
+      <p class="xs muted" style="text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px">الملخّص</p>
+      <p class="sm-t" style="white-space:pre-wrap;line-height:1.8;margin:0">${esc(r.summary_text || '—')}</p>
+    </div>
+    <button class="btn" style="width:100%" onclick="exportReportPDF(${r.id})">${ICON.file}<span>تصدير التقرير PDF</span></button>
+  `;
+}
+async function regenerateReport(reportId){
+  const body=document.getElementById('reportModalBody');
+  body.innerHTML=`<p class="sm-t muted">جاري إعادة الطلب...</p>`;
+  try{
+    await api.post(`/reports/${reportId}/regenerate/`, {});
+    await loadReport(reportId);
+  }catch(e){
+    body.innerHTML=`<p class="sm-t" style="color:var(--destructive)">تعذّر إعادة التوليد.</p>`;
+  }
+}
+async function exportReportPDF(reportId){
+  try{
+    const res = await axios.get(`${API_BASE}/reports/${reportId}/export-pdf/`, {responseType:'blob'});
+    const blobUrl = URL.createObjectURL(res.data);
+    const a = document.createElement('a');
+    a.href = blobUrl; a.download = `report_${reportId}.pdf`; a.click();
+    URL.revokeObjectURL(blobUrl);
+  }catch(e){
+    alert('PDF تعذّر تصدير');
+  }
 }

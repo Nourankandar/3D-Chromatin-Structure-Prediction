@@ -1,6 +1,6 @@
 /* ============================================================
    11. WIRING
-   مستمعو الأحداث، تسجيل الدخول، استعادة الجلسة
+    تسجيل الدخول، استعادة الجلسة
    ============================================================ */
 document.querySelectorAll('.js-theme').forEach(b=>b.onclick=()=>{ theme = theme==='dark'?'light':'dark'; applyTheme(); if(['settings','chromatin','protein'].includes(S.route)) renderRoute(); });
 document.querySelectorAll('.js-lang').forEach(b=>b.onclick=()=>{ locale = locale==='en'?'ar':'en'; applyLocale(); });
@@ -64,7 +64,7 @@ applyTheme(); applyLocale(); applyAccent();
 /*  DNA حقن أشكال */
 injectDnaField(document.getElementById('loginDnaField'), 14);
 
-/* استعادة الجلسة: لو في توكن مخزّن وصالح، ادخل مباشرة بدل شاشة الترحيب/الدخول */
+
 (async function restoreSession(){
   if (!_accessToken) return;
   try {

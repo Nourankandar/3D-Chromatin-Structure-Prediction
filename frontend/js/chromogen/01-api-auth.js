@@ -31,7 +31,6 @@ axios.interceptors.response.use(r=>r, async err=>{
   const orig   = err.config || {};
   const status = err.response && err.response.status;
   const url    = orig.url || '';
-  // لا نجدّد على طلبات الدخول/التحديث/الخروج نفسها، ولا نكرّر المحاولة أكثر من مرة
   const skip = url.includes('/auth/login') || url.includes('/auth/token/refresh') || url.includes('/auth/logout');
 
   if (status === 401 && !orig._retried && !skip && _refreshToken){
@@ -41,7 +40,7 @@ axios.interceptors.response.use(r=>r, async err=>{
       saveTokens(rr.data.access, rr.data.refresh || _refreshToken);
       orig.headers = orig.headers || {};
       orig.headers['Authorization'] = 'Bearer ' + _accessToken;
-      return axios(orig);   // أعد تنفيذ الطلب الأصلي بالتوكن الجديد
+      return axios(orig);   
     } catch(e){
       clearTokens();
       if (typeof go === 'function') go('login');
@@ -92,6 +91,7 @@ const api = {
 const I = (p,extra="") => `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${extra}>${p}</svg>`;
 const ICON = {
   dna:      I('<path d="M6 3c0 6 12 6 12 12M6 21c0-6 12-6 12-12"/><path d="M7 6h10M7 18h10M8.5 9.5h7M8.5 14.5h7" stroke-width="1.1"/>'),
+  file:     I('<path d="M14 3v5h5M6 3h9l5 5v13H6z"/><path d="M9 13h6M9 17h6"/>'),
   users:    I('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/>'),
   flask:    I('<path d="M10 2v6.5L4.5 18A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-3L14 8.5V2"/><path d="M8.5 2h7M7 15h10"/>'),
   boxes:    I('<path d="M12 2 4 6v12l8 4 8-4V6z"/><path d="M4 6l8 4 8-4M12 22V10"/>'),

@@ -71,7 +71,7 @@ def generate_clinical_llm_report(patient_data, alignment_info, delta_analysis, m
 
         # 7. استدعاء الموديل 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.5-flash',
             contents=user_context,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
