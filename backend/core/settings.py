@@ -13,14 +13,6 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# The ai_engine/ package (DNase, motif scanning, protein docking, LLM report
-# models) lives as a sibling of backend/ at the repository root, e.g.:
-#   repo/
-#     backend/   <- BASE_DIR
-#     ai_engine/
-# It is not installed as a package, so its parent must be added to sys.path
-# explicitly or `from ai_engine.models...` fails no matter how Django/Celery
-# is launched (manage.py, gunicorn, a Celery worker, etc).
 REPO_ROOT = BASE_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -74,6 +66,7 @@ INSTALLED_APPS = [
     'apps.patients',
     'apps.genomics',
     'apps.reports',
+    'apps.proteomics',
 ]
 
 MIDDLEWARE = [

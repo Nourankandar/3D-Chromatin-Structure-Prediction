@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 from unittest.mock import patch
 
-from services.calculating_3d.coords_service import (
+from backend.services.genomics.calculating_3d.coords_service import (
     hic_to_json,
     convert_hic_to_3d_coords,
     HiCValidationError,

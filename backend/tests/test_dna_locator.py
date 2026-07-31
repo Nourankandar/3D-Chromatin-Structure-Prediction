@@ -13,7 +13,7 @@ import tempfile
 import pytest
 from unittest.mock import patch, MagicMock
 
-from services.Genome_reference1.DNA_locator import (
+from backend.services.genomics.Genome_reference1.DNA_locator import (
     locate_patient_sequence,
     SequenceLocationError,
     SequenceAmbiguityError,

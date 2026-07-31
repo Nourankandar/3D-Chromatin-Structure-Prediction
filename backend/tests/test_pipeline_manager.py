@@ -15,7 +15,7 @@ Hi-C predictor, coords_service) متعمولها mock بالكامل — هاد 
 import pytest
 from unittest.mock import patch, MagicMock
 
-from services.pipeline_manager import GenomicPipelineManager
+from backend.services.genomics.pipeline_manager import GenomicPipelineManager
 
 
 def _make_input_data_mock():

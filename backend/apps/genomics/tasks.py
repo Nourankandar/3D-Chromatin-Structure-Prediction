@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
     time_limit=660,)
 def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
     from apps.genomics.models import InputData, OutputData
-    from services.pipeline_manager import GenomicPipelineManager, PipelineCancelledError
+    from backend.services.genomics.pipeline_manager import GenomicPipelineManager, PipelineCancelledError
 
     logger.info("[Task %s] Pipeline started for InputData id=%s", self.request.id, input_data_id)
 
@@ -100,7 +100,7 @@ def generate_llm_report_task(self, output_data_id: int) -> dict:
     """
     from apps.genomics.models import OutputData
     from apps.reports.models import AnalysisReport
-    from services.llm_service.bridge import run_llm_report_bridge
+    from backend.services.genomics.llm_service.bridge import run_llm_report_bridge
 
     logger.info("[LLM Task] Initiating report generation for OutputData ID=%s", output_data_id)
 

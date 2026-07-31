@@ -323,7 +323,7 @@ class SearchProteinAPIView(APIView):
             return Response({"error": "Query parameter 'gene' is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            from services.scanning_motifs.protein_search import search_protein_by_gene
+            from backend.services.genomics.scanning_motifs.protein_search import search_protein_by_gene
 
             result = search_protein_by_gene(gene)
         except Exception as exc:

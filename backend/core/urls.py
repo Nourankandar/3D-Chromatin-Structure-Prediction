@@ -41,5 +41,6 @@ urlpatterns = [
     path('api/genomics/', include('apps.genomics.urls')),
     path('api/reports/', include('apps.reports.urls')),
     path('api/auth/', include('apps.accounts.urls')),
+    path('api/proteomics/', include('apps.proteomics.urls')),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

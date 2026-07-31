@@ -110,7 +110,7 @@ class GenomicPipelineManager:
     # Internal pipeline steps
     # ------------------------------------------------------------------
     def _step_locate(self, patient_fasta_path: str, chromosome: str, input_data) -> dict:
-        from services.Genome_reference1.DNA_locator import locate_patient_sequence
+        from backend.services.genomics.Genome_reference1.DNA_locator import locate_patient_sequence
         chromosome = normalize_chromosome_name(chromosome)
         self._update_status(input_data, "pending")  # ما في status مخصص لهاد بالـ model حالياً
         logger.info("[Pipeline %s] -> Locating patient sequence on %s", self.input_data_id, chromosome)
@@ -126,7 +126,7 @@ class GenomicPipelineManager:
 
     def _step_fetch_reference(self, coords: dict, input_data) -> str:
         from django.conf import settings
-        from services.Genome_reference1.fetcher import fetch_reference_sequence_as_fasta_file
+        from backend.services.genomics.Genome_reference1.fetcher import fetch_reference_sequence_as_fasta_file
 
         logger.info("[Pipeline %s] -> Fetching healthy reference sequence", self.input_data_id)
 
@@ -145,7 +145,7 @@ class GenomicPipelineManager:
         return control_fasta_path
 
     def _step_dnase(self, fasta_path: str, enformer_id: int, input_data, tag: str) -> str:
-        from services.DNASE.predictor import predict_dnase_profiles
+        from backend.services.genomics.DNASE.predictor import predict_dnase_profiles
 
         self._update_status(input_data, "predicting_dnase")
         logger.info("[Pipeline %s] -> DNase prediction started (%s)", self.input_data_id, tag)
@@ -166,7 +166,7 @@ class GenomicPipelineManager:
         import json
         import numpy as np
         from django.conf import settings
-        from services.scanning_motifs.scanner import (
+        from backend.services.genomics.scanning_motifs.scanner import (
             calculate_spatial_docking,
             run_motif_delta_analysis,
         )
@@ -272,7 +272,7 @@ class GenomicPipelineManager:
         return affected_proteins
 
     def _step_hic(self, fasta_path: str, dnase_file: str, input_data, coords: dict, tag: str) -> str:
-        from services.HI_C.predictorHIC import generate_hic_matrices
+        from backend.services.genomics.HI_C.predictorHIC import generate_hic_matrices
 
         self._update_status(input_data, "generating_hic")
         logger.info("[Pipeline %s] -> Hi-C generation started (%s)", self.input_data_id, tag)
@@ -292,7 +292,7 @@ class GenomicPipelineManager:
         logger.info("[Pipeline %s] Hi-C done (%s): %s", self.input_data_id, tag, hic_file)
         return hic_file
     def _step_3d(self, hic_file_path: str, input_data, tag: str) -> str:
-        from services.calculating_3d.coords_service import convert_hic_to_3d_coords
+        from backend.services.genomics.calculating_3d.coords_service import convert_hic_to_3d_coords
 
         self._update_status(input_data, "generating_hic_coords")
         logger.info("[Pipeline %s] -> Starting 3D MDS transformation (%s)", self.input_data_id, tag)
