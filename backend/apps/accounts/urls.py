@@ -15,6 +15,8 @@ urlpatterns = [
     # --- NEW URLS ---
     path("forgot-password/", ForgotPasswordAPIView.as_view(), name="forgot_password"),
     path("reset-password/", ResetPasswordAPIView.as_view(), name="reset_password"),
+    path("verify-signup/", VerifySignupOTPAPIView.as_view(), name="verify_signup_otp"),
+    path("resend-signup-otp/", ResendSignupOTPAPIView.as_view(), name="resend_signup_otp"),     
 ]
 
 # GET  /api/auth/MyAccountAPIView/             -> returns the currently authenticated user

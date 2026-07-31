@@ -85,3 +85,11 @@ class ResetPasswordSerializer(serializers.Serializer):
 
     def validate_new_password(self, value):
         return validate_strong_password(value)
+
+class VerifySignupOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    code = serializers.CharField(max_length=6)
+
+
+class ResendSignupOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
