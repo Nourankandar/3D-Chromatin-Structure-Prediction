@@ -13,6 +13,7 @@ from django.core.files.base import ContentFile
 from .models import ProteinInputData, ProteinOutputData
 from services.proteomics.pipeline_manager import run_full_analysis
 from services.proteomics.structure_fetcher import fetch_structure_as_string
+from services.proteomics.esmfold_predictor import predict_structure
 
 logger = logging.getLogger(__name__)
 
@@ -93,26 +94,36 @@ def _run_pipeline_steps(input_data: ProteinInputData) -> None:
     if _check_cancelled(input_data):
         return
 
-    # ── الخطوة 3: تجهيز ملف البنية 3D (تجريبي أو تنبؤي) ──────────────────
+    # ── الخطوة 3: تجهيز ملف البنية 3D (ESMFold على تسلسل المريض دائماً) ──
+    # ملاحظة تصميم مهمة: أي PDB تجريبي من RCSB (لو صار تطابق بالخطوة
+    # السابقة) يمثّل فقط البروتين *السليم المرجعي* - لا يعكس إطلاقاً أثر
+    # طفرات المريض الفعلية على الشكل الفراغي. لهذا نستخدم ESMFold دائماً
+    # على تسلسل المريض نفسه كمصدر البنية المعروضة فعلياً، بغض النظر عن
+    # نتيجة sequence_matcher.
     input_data.status = ProteinInputData.Status.PREDICTING_STRUCTURE
     input_data.save(update_fields=["status"])
 
     protein_match = analysis_result.get("protein_match")
+    patient_aa_sequence = analysis_result["translation"]["amino_acid_sequence"]
 
-    if protein_match and protein_match.get("matched_pdb_id"):
-        structure_source = ProteinOutputData.StructureSource.PDB_EXPERIMENTAL
-        pdb_content = fetch_structure_as_string(protein_match["matched_pdb_id"])
-        confidence_score = 100.0
-    else:
-        # TODO: ربط esmfold_predictor.py الفعلي هنا (لم يُبنَ بعد بهذا التمرير)
-        # from services.proteomics.esmfold_predictor import predict_structure
-        # pdb_content, confidence_score = predict_structure(patient_aa_sequence)
-        structure_source = ProteinOutputData.StructureSource.ESMFOLD_PREDICTED
-        pdb_content = None
-        confidence_score = None
+    prediction = predict_structure(patient_aa_sequence)
+
+    structure_source = ProteinOutputData.StructureSource.ESMFOLD_PREDICTED
+    pdb_content = prediction["pdb_content"]
+    confidence_score = prediction["confidence_score"]
+
+    if prediction["warnings"]:
         logger.warning(
-            "[ProteinPipeline] ESMFold fallback غير مُفعّل بعد - "
-            "سيُحفظ السجل بدون ملف بنية."
+            "[ProteinPipeline] تحذيرات ESMFold لـ input_data_id=%s: %s",
+            input_data.id,
+            prediction["warnings"],
+        )
+
+    if not prediction["success"]:
+        logger.warning(
+            "[ProteinPipeline] فشل ESMFold لـ input_data_id=%s - "
+            "سيُحفظ السجل بدون ملف بنية متنبأة.",
+            input_data.id,
         )
 
     if _check_cancelled(input_data):
@@ -144,12 +155,17 @@ def _run_pipeline_steps(input_data: ProteinInputData) -> None:
             "total_mutations": comparison.get("total_mutations"),
             "counts_by_type": comparison.get("counts_by_type"),
             "llm_report": analysis_result.get("llm_report"),
-            "warnings": analysis_result.get("warnings", []),
+            # دمج تحذيرات الـ pipeline العامة مع تحذيرات ESMFold تحديداً،
+            # حتى توصل كل رسائل الفشل/التنبيه للفرونت إند وليس فقط للـ logs.
+            "warnings": analysis_result.get("warnings", []) + prediction["warnings"],
         },
     )
 
     if pdb_content:
-        filename = f"{protein_match['matched_pdb_id']}.pdb" if protein_match else "structure.pdb"
+        # اسم فريد مرتبط بالـ input_data.id (بدل اسم ثابت "structure.pdb")
+        # لتفادي أي تضارب أسماء ملفات بين تحليلات مختلفة، خصوصاً أن
+        # المصدر الآن هو ESMFold دائماً وليس PDB ID مميز من RCSB.
+        filename = f"esmfold_patient_{input_data.id}.pdb"
         output_data.structure_file.save(
             filename, ContentFile(pdb_content), save=False
         )
