@@ -7,7 +7,8 @@ and a lightweight UniProt protein search used by the frontend.
 
 import logging
 import os
-
+from celery import current_app
+from django.db import transaction
 from django.conf import settings
 from rest_framework import status, viewsets
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -103,6 +104,7 @@ class InputDataViewSet(viewsets.ModelViewSet):
         return Response(data)
 
 
+
     @action(detail=True, methods=["post"], url_path="stop")
     def stop(self, request, pk=None):
         input_data = self.get_object()
@@ -113,6 +115,13 @@ class InputDataViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if input_data.celery_task_id:
+            current_app.control.revoke(
+                input_data.celery_task_id,
+                terminate=True,
+                signal="SIGTERM",
+            )
+
         old_status = input_data.status
 
         def rollback_status():
@@ -121,19 +130,29 @@ class InputDataViewSet(viewsets.ModelViewSet):
 
         try:
             with atomic_with_cleanup(cleanup_fn=rollback_status, log_prefix="StopAnalysis"):
-                input_data.status = "cancelling"
+                input_data.status = "cancelled"
                 input_data.save(update_fields=["status"])
         except Exception as exc:
-            return Response({"error": f"Failed to stop analysis: {exc}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": f"Failed to stop analysis: {exc}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         return Response(
-            {"message": "Cancellation requested", "input_data_id": input_data.id, "status": "cancelling"},
-            status=status.HTTP_202_ACCEPTED,
+            {"message": "Analysis stopped successfully", "input_data_id": input_data.id, "status": "cancelled"},
+            status=status.HTTP_200_OK,
         )
-
 # ─────────────────────────────────────────────────────────────────────────────
 # POST /api/genomics/run-test/
 # ─────────────────────────────────────────────────────────────────────────────
+def _launch_pipeline_task(input_data_id: int) -> None:
+    """
+    بتنطلق بس بعد ما الـ transaction تتثبت (commit) فعلياً —
+    منشان نضمن إنه InputData موجود بالداتابيز 100% قبل ما نبعت الـ task،
+    وقبل ما نحاول نحفظ الـ celery_task_id عليه.
+    """
+    async_result = run_genomic_pipeline_task.delay(input_data_id)
+    InputData.objects.filter(pk=input_data_id).update(celery_task_id=async_result.id)
 
 
 class RunGenomicTestAPIView(APIView):
@@ -201,7 +220,7 @@ class RunGenomicTestAPIView(APIView):
                     dna_sequence_file=relative_fasta_path,
                     status="pending",
                 )
-                run_genomic_pipeline_task.delay(input_data.id)
+                transaction.on_commit(lambda: _launch_pipeline_task(input_data.id))
         except Exception as exc:
             return Response(
                 {"error": f"Failed to start genomic pipeline: {exc}"},
@@ -216,7 +235,7 @@ class RunGenomicTestAPIView(APIView):
             },
             status=status.HTTP_202_ACCEPTED,
         )
-
+    
 # apps/genomics/views.py
 class OutputDataFullDetailAPIView(APIView):
     """
@@ -335,3 +354,56 @@ class SearchProteinAPIView(APIView):
 
         return Response(result, status=status.HTTP_200_OK)
 
+
+from .models import GeneProteinResult
+from .serializers import GeneListItemSerializer, GeneDetailSerializer
+
+class GeneListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, output_id):
+        genes = GeneProteinResult.objects.filter(output_data_id=output_id)
+        return Response(GeneListItemSerializer(genes, many=True).data)
+
+
+class GeneDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, output_id, gene_id):
+        try:
+            gene = GeneProteinResult.objects.get(output_data_id=output_id, gene_id=gene_id)
+        except GeneProteinResult.DoesNotExist:
+            return Response({"error": "Gene not found for this output"}, status=status.HTTP_404_NOT_FOUND)
+
+        data = GeneDetailSerializer(gene).data
+
+        # تحميل نقاط الاحداثيات (مريض/سليم) اللي بتقع ضمن مدى الجين
+        from .models import OutputData
+        import json
+        output = OutputData.objects.get(pk=output_id)
+
+        def _region_points(field_file):
+            if not field_file:
+                return []
+            abs_path = os.path.join(settings.MEDIA_ROOT, field_file.name)
+            if not os.path.exists(abs_path):
+                return []
+            with open(abs_path, "r", encoding="utf-8") as f:
+                coords = json.load(f).get("coords_raw", [])
+            points = []
+            for point in coords:
+                region = point.get("region", "")
+                try:
+                    start_kb, end_kb = region.replace("kb", "").split("-")
+                    p_start = int(start_kb) * 1000
+                    p_end = int(end_kb) * 1000
+                except (ValueError, AttributeError):
+                    continue
+                if p_end > gene.gene_start and p_start < gene.gene_end:
+                    points.append(point)
+            return points
+
+        data["patient_3d_region"] = _region_points(output.coords_patient_file)
+        data["control_3d_region"] = _region_points(output.coords_control_file)
+
+        return Response(data)

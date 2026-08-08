@@ -44,7 +44,14 @@ STATICFILES_DIRS = [
     BASE_DIR.parent / 'frontend',
 ]
 
-GENOME_REFERENCE_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'genome_reference'))# ─────────────────────────────────────────────────────────────────────────────
+GENOME_REFERENCE_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'genome_reference'))
+# ─────────────────────────────────────────────────────────────────────────────
+# GTF Annotation (GENCODE) — لازمة لـ gtf_index.py (تحديد الجينات المتقاطعة)
+# ─────────────────────────────────────────────────────────────────────────────
+GTF_ANNOTATION_PATH = os.path.join(GENOME_REFERENCE_ROOT, "gencode.v50.basic.annotation.gtf.gz")
+GTF_INDEX_CACHE_PATH = os.path.join(GENOME_REFERENCE_ROOT, "gtf_index_cache.pkl")
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Installed apps
 # ─────────────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -66,7 +73,6 @@ INSTALLED_APPS = [
     'apps.patients',
     'apps.genomics',
     'apps.reports',
-    'apps.proteomics',
 ]
 
 MIDDLEWARE = [

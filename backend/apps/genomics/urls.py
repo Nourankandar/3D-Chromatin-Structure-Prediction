@@ -15,6 +15,8 @@ urlpatterns = [
     path("search-protein/", SearchProteinAPIView.as_view(), name="search-protein"),
 
     path("output/<int:output_id>/full/", OutputDataFullDetailAPIView.as_view(), name="output-full-detail"),
+    path("output/<int:output_id>/genes/", GeneListAPIView.as_view(), name="genes-list"),
+    path("output/<int:output_id>/genes/<str:gene_id>/", GeneDetailAPIView.as_view(), name="gene-detail"),
     
     path('', include(router.urls)),
 ]

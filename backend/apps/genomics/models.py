@@ -50,7 +50,7 @@ class InputData(models.Model):
 
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending', verbose_name="Processing Status")
     created_at = models.DateTimeField(auto_now_add=True)
-
+    celery_task_id = models.CharField(max_length=255, null=True, blank=True)
     def __str__(self):
         return f"Input for {self.patient.name} - {self.chromosome}:{self.start_pos}-{self.end_pos}"
 
@@ -96,3 +96,66 @@ class OutputData(models.Model):
         verbose_name = "Genomic Output"
         verbose_name_plural = "Genomic Outputs"
         ordering = ['-generated_at']
+
+
+'''
+gene_protein_result
+'''
+class GeneProteinResult(models.Model):
+    """
+    نتيجة تحليل جين واحد (ترجمة + مقارنة طفرة) — سجل منفصل لكل جين
+    ضمن نفس OutputData، بدل ما تكون كل الجينات مضغوطة بحقل JSON واحد
+    كبير — بيسهّل الفلترة/البحث لاحقاً (مثلاً: "جيبلي كل الجينات يلي
+    فيها missense" عبر ORM مباشرة بدل ما نفكك JSON بايثونياً).
+    """
+
+    MUTATION_TYPE_CHOICES = [
+        ('none', 'No Mutation'),
+        ('silent', 'Silent'),
+        ('missense', 'Missense'),
+        ('nonsense', 'Nonsense'),
+        ('frameshift', 'Frameshift'),
+    ]
+
+    output_data = models.ForeignKey(
+        'OutputData', on_delete=models.CASCADE, related_name='genes'
+    )
+
+    gene_id = models.CharField(max_length=50)
+    gene_name = models.CharField(max_length=50, db_index=True) 
+    protein_name = models.CharField(max_length=255, null=True, blank=True) 
+    transcript_id = models.CharField(max_length=50)
+    strand = models.CharField(max_length=1, choices=[('+', '+'), ('-', '-')])
+
+    gene_start = models.PositiveBigIntegerField()
+    gene_end = models.PositiveBigIntegerField()
+
+    is_complete_in_patient_sample = models.BooleanField(default=True)
+
+    error = models.TextField(null=True, blank=True)
+
+    mutation_type = models.CharField(
+        max_length=12, choices=MUTATION_TYPE_CHOICES, null=True, blank=True
+    )
+    mutated_codons = models.JSONField(default=list, blank=True)  
+
+    # المريض
+    patient_mrna_sequence = models.TextField(null=True, blank=True)
+    patient_amino_acid_sequence = models.TextField(null=True, blank=True)
+    patient_translation_warnings = models.JSONField(default=list, blank=True)
+
+    # السليم
+    control_mrna_sequence = models.TextField(null=True, blank=True)
+    control_amino_acid_sequence = models.TextField(null=True, blank=True)
+    control_translation_warnings = models.JSONField(default=list, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.gene_name} ({self.mutation_type or 'error'}) — Output {self.output_data_id}"
+
+    class Meta:
+        verbose_name = "Gene Protein Analysis Result"
+        verbose_name_plural = "Gene Protein Analysis Results"
+        unique_together = ('output_data', 'gene_id')
+        ordering = ['gene_name']

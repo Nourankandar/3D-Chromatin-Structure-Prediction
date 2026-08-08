@@ -13,8 +13,8 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings") 
 django.setup()
 
-from backend.services.genomics.Genome_reference1.DNA_locator import locate_patient_sequence, SequenceLocationError
-import backend.services.genomics.Genome_reference1.DNA_locator as dna_locator
+from backend.services.genomics.referenceGenome.DNA_locator import locate_patient_sequence, SequenceLocationError
+import backend.services.genomics.referenceGenome.DNA_locator as dna_locator
 
 if __name__ == "__main__":
     print("🎉 تم التعرف على المسارات واستيراد الدالة بنجاح!")

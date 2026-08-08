@@ -1,6 +1,5 @@
 """
-services/proteomics/translator.py
-
+services/genomics/referenceGenome/translator.py
 مسؤولية هذا الملف: تحويل تسلسل DNA (أو RNA) إلى تسلسل أحماض أمينية (Protein)
 باستخدام الشفرة الوراثية القياسية (Standard Genetic Code).
 
@@ -80,7 +79,7 @@ def _sanitize_sequence(raw_sequence: str, warnings: List[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# 3. البحث عن كودون البداية (Start Codon)
+# 3. البحث عن كودون البداية (Start Codon) — يُستخدم فقط لو skip_atg_search=False
 # ---------------------------------------------------------------------------
 def _find_start_index(sequence: str) -> int:
     """
@@ -93,17 +92,27 @@ def _find_start_index(sequence: str) -> int:
 # ---------------------------------------------------------------------------
 # 4. التابع الرئيسي: الترجمة الكاملة
 # ---------------------------------------------------------------------------
-def translate_dna_to_protein(raw_sequence: str) -> TranslationResult:
+def translate_dna_to_protein(
+    raw_sequence: str,
+    skip_atg_search: bool = False,
+) -> TranslationResult:
     """
     يحول تسلسل DNA/RNA خام إلى سلسلة أحماض أمينية وفق الشفرة الوراثية القياسية.
 
     Args:
-        raw_sequence: السلسلة الخام كما وردت من الملف المرفوع (قد تحتوي أحرف صغيرة،
-                      مسافات، أو حتى RNA).
+        raw_sequence: السلسلة الخام (قد تحتوي أحرف صغيرة، مسافات، أو RNA).
+        skip_atg_search: لو True، يبدأ الترجمة من أول حرف بالتسلسل مباشرة
+                          بدون أي بحث عن ATG — يُستخدم حصراً لما يكون
+                          التسلسل قادم من splicer.py (extract_mature_cds)،
+                          لأنه بهاي الحالة بداية الترجمة مؤكدة 100% من
+                          حدود CDS بملف GTF نفسه، والبحث العشوائي عن ATG
+                          ممكن يلتقط ATG خاطئ لو صدفة تكرر داخل الـ CDS
+                          (upstream في-frame match غير حقيقي).
+                          لو False (الافتراضي)، يبحث عن أول ATG بالتسلسل —
+                          يُستخدم فقط للاختبار المستقل أو لو ما توفر GTF.
 
     Returns:
-        TranslationResult: قاموس يحتوي على تسلسل الأحماض الأمينية، وحالة وجود
-        كودون البداية، وحالة التوقف عند كودون إيقاف طبيعي، وقائمة التحذيرات.
+        TranslationResult
     """
     warnings: List[str] = []
 
@@ -119,33 +128,43 @@ def translate_dna_to_protein(raw_sequence: str) -> TranslationResult:
             "warnings": warnings,
         }
 
-    # 2) البحث عن كودون البداية ATG
-    start_index = _find_start_index(sequence)
-    has_start_codon = start_index != -1
+    # 2) تحديد نقطة بداية الترجمة
+    if skip_atg_search:
+        # التسلسل جاي من splicer.py — أصلاً مقصوص بدقة من حدود CDS بالـ GTF
+        coding_sequence = sequence
+        has_start_codon = sequence.startswith(START_CODON)
+        if not has_start_codon:
+            warnings.append(
+                "التسلسل القادم من الـ splicer لا يبدأ بـ ATG كما هو متوقع — "
+                "تحقق من حدود الـ CDS بملف GTF أو من دقة عملية القص."
+            )
+    else:
+        start_index = _find_start_index(sequence)
+        has_start_codon = start_index != -1
 
-    if not has_start_codon:
-        warnings.append(
-            "لم يتم العثور على كودون بداية (ATG) في التسلسل؛ "
-            "لا يمكن بدء عملية الترجمة."
-        )
-        return {
-            "amino_acid_sequence": "",
-            "has_start_codon": False,
-            "stopped_at_stop_codon": False,
-            "warnings": warnings,
-        }
+        if not has_start_codon:
+            warnings.append(
+                "لم يتم العثور على كودون بداية (ATG) في التسلسل؛ "
+                "لا يمكن بدء عملية الترجمة."
+            )
+            return {
+                "amino_acid_sequence": "",
+                "has_start_codon": False,
+                "stopped_at_stop_codon": False,
+                "warnings": warnings,
+            }
 
-    coding_sequence = sequence[start_index:]
+        coding_sequence = sequence[start_index:]
 
     # 3) التحقق من أن الطول من مضاعفات 3 (Frameshift check)
     remainder = len(coding_sequence) % 3
+    start_index_for_reporting = 0 if skip_atg_search else sequence.find(coding_sequence)
     if remainder != 0:
         warnings.append(
             f"طول التسلسل القابل للترجمة ({len(coding_sequence)} قاعدة) "
             f"ليس من مضاعفات 3. سيتم تجاهل آخر {remainder} قاعدة/قواعد غير مكتملة "
-            f"(احتمال Frameshift)."
+            f"(احتمال Frameshift حقيقي لو المصدر splicer — راجع طول الـ CDS بالـ GTF)."
         )
-        # قص الأحرف الزائدة غير المكتملة في نهاية التسلسل
         coding_sequence = coding_sequence[: len(coding_sequence) - remainder]
 
     # 4) الترجمة كودون-كودون مع التوقف عند كودون الإيقاف
@@ -163,9 +182,8 @@ def translate_dna_to_protein(raw_sequence: str) -> TranslationResult:
         amino_acid = CODON_TABLE.get(codon)
 
         if amino_acid is None:
-            # كودون يحتوي على N أو حرف مجهول لم يُترجم من القاموس
             amino_acids.append(UNKNOWN_AA_SYMBOL)
-            unknown_codon_positions.append(start_index + i)
+            unknown_codon_positions.append(start_index_for_reporting + i)
         else:
             amino_acids.append(amino_acid)
 
@@ -178,7 +196,8 @@ def translate_dna_to_protein(raw_sequence: str) -> TranslationResult:
     if not stopped_at_stop_codon:
         warnings.append(
             "انتهى التسلسل قبل الوصول إلى كودون إيقاف طبيعي "
-            "(TAA / TAG / TGA)."
+            "(TAA / TAG / TGA) — لو المصدر splicer، هاد يعني الـ CDS المُعرّف "
+            "بالـ GTF غير مكتمل أو في مشكلة بحدود القص."
         )
 
     return {
@@ -189,21 +208,68 @@ def translate_dna_to_protein(raw_sequence: str) -> TranslationResult:
     }
 
 
-# ---------------------------------------------------------------------------
-# اختبار سريع عند تشغيل الملف مباشرة
-# ---------------------------------------------------------------------------
-if __name__ == "__main__":
-    test_cases = [
-        "atgGTCCACCTGACTCCTGAGGAGAAGTAAextra",  # سليم + كودون إيقاف
-        "uugAUGGUCCACCUGACUCCUGAGGAGAAGUGA",     # RNA يحتاج تحويل
-        "ATGGTCCACCTGACTCCTGAGGAGAAG",           # بدون كودون إيقاف
-        "ATGGTCNACCTGACTCCTGAGTAA",              # يحتوي N
-        "GGGATGGTCCACTGA",                       # ATG ليست في البداية
-        "CCCTTTGGG",                             # بدون ATG إطلاقاً
-        "ATGGTCCACCTGACTCCTGAGGAGAAGT",          # طول غير مضاعف لـ 3
-    ]
+# إضافة على translator.py
 
-    for seq in test_cases:
-        result = translate_dna_to_protein(seq)
-        print(f"Input: {seq}")
-        print(f"Result: {result}\n")
+AMINO_ACID_FULL_NAMES: Dict[str, str] = {
+    "A": "Ala", "R": "Arg", "N": "Asn", "D": "Asp", "C": "Cys",
+    "E": "Glu", "Q": "Gln", "G": "Gly", "H": "His", "I": "Ile",
+    "L": "Leu", "K": "Lys", "M": "Met", "F": "Phe", "P": "Pro",
+    "S": "Ser", "T": "Thr", "W": "Trp", "Y": "Tyr", "V": "Val",
+    "*": "Stop", "X": "Unknown",
+}
+
+
+class CodonInfo(TypedDict):
+    codon_number: int          # 1-based
+    codon: str                 # بصيغة mRNA (U مش T)
+    amino_acid: str            # "Val (V)" مثلاً
+    genomic_position: int      # موقع أول حرف بالكودون عالكروموسوم
+
+
+def build_codon_map(
+    mature_cds: str,
+    position_map: List[int],
+    skip_atg_search: bool = True,
+) -> List[CodonInfo]:
+    """
+    يبني قائمة كاملة بكل كودون مترجم مع رقمه وموقعه الجينومي — بالاعتماد
+    على mature_cds و position_map (الطالعين من
+    splicer.extract_mature_cds_with_position_map، بنفس الطول بالضبط).
+
+    ملاحظة: هاي دالة منفصلة عن translate_dna_to_protein — بترجع تفاصيل
+    كل كودون (مفيدة لعرض الطفرة بدقة)، بينما translate_dna_to_protein
+    بترجع الملخص (سلسلة الأحماض الأمينية + تحذيرات).
+    """
+    warnings: List[str] = []
+    sequence = _sanitize_sequence(mature_cds, warnings)
+
+    if len(sequence) != len(position_map):
+        # لو صار تنظيف (شيل أحرف غير صالحة)، الطول بيختل — نوقف بأمان
+        raise ValueError(
+            f"طول التسلسل بعد التنظيف ({len(sequence)}) لا يطابق طول "
+            f"position_map ({len(position_map)}) — تأكد من نظافة مدخلات CDS."
+        )
+
+    remainder = len(sequence) % 3
+    if remainder:
+        sequence = sequence[: len(sequence) - remainder]
+
+    codons: List[CodonInfo] = []
+    for codon_index, i in enumerate(range(0, len(sequence), 3), start=1):
+        codon_dna = sequence[i : i + 3]
+        codon_mrna = codon_dna.replace("T", "U")
+
+        if codon_dna in STOP_CODONS:
+            break
+
+        amino_acid_letter = CODON_TABLE.get(codon_dna, UNKNOWN_AA_SYMBOL)
+        full_name = AMINO_ACID_FULL_NAMES.get(amino_acid_letter, "Unknown")
+
+        codons.append({
+            "codon_number": codon_index,
+            "codon": codon_mrna,
+            "amino_acid": f"{full_name} ({amino_acid_letter})",
+            "genomic_position": position_map[i],
+        })
+
+    return codons

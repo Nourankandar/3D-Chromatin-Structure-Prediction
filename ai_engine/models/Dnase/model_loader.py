@@ -22,7 +22,7 @@ fc.1 تتوقع 2400 مدخل بدل 2000 الحقيقية -> size mismatch عن
   10 * 200 channels = 2000  ✅ يطابق شكل fc.1.weight الحقيقي (1000, 2000)
 ====================================================================
 """
-import os, sys, glob, torch
+import os, sys, glob, torch, urllib.request
 import torch.nn as nn
 from collections import OrderedDict
 
@@ -104,6 +104,36 @@ def _remap(raw: OrderedDict) -> OrderedDict:
     return new
 
 
+
+BASSET_WEIGHTS_URL = "https://zenodo.org/record/1466068/files/pretrained_model_reloaded_th.pth?download=1"
+
+
+def _ensure_weights_downloaded(basset_dir: str, filename: str = "pretrained_model_reloaded_th.pth") -> str:
+    """
+    لو ملف الأوزان مش موجود محلياً، ينزّله تلقائياً من Zenodo
+    (نفس المصدر الرسمي المذكور بـ model.yaml تبع kipoi/models).
+    """
+    os.makedirs(basset_dir, exist_ok=True)
+    target_path = os.path.join(basset_dir, filename)
+
+    if os.path.exists(target_path):
+        return target_path
+
+    print(f"  [Download] ملف أوزان Basset مش موجود — عم يتنزّل من Zenodo (~ملفات ضخمة، قد يأخذ وقت)...")
+    try:
+        urllib.request.urlretrieve(BASSET_WEIGHTS_URL, target_path)
+        print("  [Download] تم التنزيل بنجاح ✅")
+    except Exception as exc:
+        # تنظيف ملف ناقص لو فشل التنزيل بمنتصف الطريق
+        if os.path.exists(target_path):
+            os.remove(target_path)
+        raise FileNotFoundError(
+            f"فشل تنزيل أوزان Basset تلقائياً من {BASSET_WEIGHTS_URL}: {exc}\n"
+            f"حمّليه يدوياً وحطيه بـ: {target_path}"
+        )
+
+    return target_path
+
 _model = None
 
 def load_basset_model(weights_path: str = None) -> nn.Module:
@@ -112,7 +142,8 @@ def load_basset_model(weights_path: str = None) -> nn.Module:
         return _model
 
     print("Loading Basset model...")
-    basset_dir = r"C:\Users\Lenovo\.kipoi\models\Basset"
+    basset_dir = os.getenv("KIPOI_HOME", os.path.expanduser("~/.kipoi"))
+    basset_dir = os.path.join(basset_dir, "models", "Basset")
 
     if weights_path is None:
         default = os.path.join(basset_dir, "pretrained_model_reloaded_th.pth")
@@ -121,6 +152,9 @@ def load_basset_model(weights_path: str = None) -> nn.Module:
         else:
             found = glob.glob(os.path.join(basset_dir, "**", "*.pth"), recursive=True)
             weights_path = found[0] if found else None
+
+        if not weights_path:
+            weights_path = _ensure_weights_downloaded(basset_dir)
 
     if not weights_path or not os.path.exists(weights_path):
         raise FileNotFoundError(f"Weights not found in: {basset_dir}")

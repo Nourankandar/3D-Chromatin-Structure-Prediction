@@ -12,12 +12,12 @@ from celery.exceptions import SoftTimeLimitExceeded
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=2, default_retry_delay=30, acks_late=True, track_started=True,soft_time_limit=600,   
+@shared_task(bind=True, max_retries=2, default_retry_delay=30, acks_late=True, track_started=True, soft_time_limit=600,
     time_limit=660,)
 def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
-    from apps.genomics.models import InputData, OutputData
+    from apps.genomics.models import InputData, OutputData, GeneProteinResult
     from backend.services.genomics.pipeline_manager import GenomicPipelineManager, PipelineCancelledError
-
+    from backend.services.genomics.scanning_motifs.protein_search import get_protein_names_for_genes_batch
     logger.info("[Task %s] Pipeline started for InputData id=%s", self.request.id, input_data_id)
 
     try:
@@ -30,16 +30,11 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
         manager = GenomicPipelineManager(input_data_id=input_data_id)
         results: dict = manager.run()
     except SoftTimeLimitExceeded:
-        # ← هاد الجزء الجديد المهم: تجاوز الـ 5 دقايق
         logger.error("[Task] Pipeline TIMEOUT (>5min) for InputData id=%s — marking as failed", input_data_id)
         input_data.status = "failed"
         input_data.save(update_fields=["status"])
         return {"status": "failed", "reason": "timeout_exceeded"}
     except PipelineCancelledError:
-        # ← إلغاء صريح من المستخدم (status="cancelling") — مكتشف داخل
-        # GenomicPipelineManager._check_cancelled بين خطوات الـ pipeline.
-        # ما في داعي لـ retry هون أبداً، ولا لإعادة فحص الـ status لأنه
-        # إحنا يلي رفعنا الاستثناء وعارفين السبب أصلاً.
         logger.info("[Task] Pipeline cancelled by user. Cleaning up InputData ID=%s", input_data_id)
         if input_data.dna_sequence_file and input_data.dna_sequence_file.storage.exists(input_data.dna_sequence_file.name):
             input_data.dna_sequence_file.delete(save=False)
@@ -48,8 +43,6 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
     except Exception as exc:
         input_data.refresh_from_db()
         if input_data.status == "cancelling":
-            # حالة احتياطية: إلغاء اكتُشف بطريقة تانية (مثلاً استثناء غير
-            # متوقع صار بالتزامن مع طلب stop) — نفس منطق التنظيف السابق.
             logger.info("[Task] Pipeline stopped by user. Cleaning up InputData ID=%s", input_data_id)
             if input_data.dna_sequence_file and input_data.dna_sequence_file.storage.exists(input_data.dna_sequence_file.name):
                 input_data.dna_sequence_file.delete(save=False)
@@ -75,13 +68,67 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
                     "generated_at": timezone.now(),
                 },
             )
+            from apps.reports.models import AnalysisReport
+            AnalysisReport.objects.update_or_create(
+                output_data=output_data,
+                defaults={
+                    "source_payload": results["report_payload"],
+                    "status": "draft",
+                    "summary_text": "AI clinical engine is analyzing chromatin folds...",
+                },
+            )
+
+            # ─── حفظ نتائج الجينات/البروتينات — سجل منفصل لكل جين ───
+            # نمسح أي نتائج قديمة لنفس الـ output (حالة regenerate/إعادة تشغيل)
+            # حتى ما تصير تكرارات أو نتائج قديمة عالقة
+            GeneProteinResult.objects.filter(output_data=output_data).delete()
+
+            proteins_diff = results["report_payload"].get("amino_acid_and_protein_diff", [])
+            # الإحداثيات الحقيقية (gene_start/gene_end) موجودة بس بـ "genes"،
+            # مش بـ "amino_acid_and_protein_diff" — لازم lookup عبر gene_id
+            genes_info = results["report_payload"].get("genes", [])
+            genes_by_id = {g["gene_id"]: g for g in genes_info}
+
+            gene_names_list = [gene["gene_name"] for gene in proteins_diff]
+            # طلب واحد "جماعي" بالتوازي بدل ما نستنى كل جين لحاله بالتسلسل
+            protein_names_by_gene = get_protein_names_for_genes_batch(gene_names_list)
+
+            gene_rows = []
+            for gene in proteins_diff:
+                gene_coords = genes_by_id.get(gene["gene_id"], {})
+
+                protein_names = protein_names_by_gene.get(gene["gene_name"], [])
+                protein_name = ", ".join(protein_names) if protein_names else None
+
+                gene_rows.append(GeneProteinResult(
+                    output_data=output_data,
+                    gene_id=gene["gene_id"],
+                    gene_name=gene["gene_name"],
+                    protein_name=protein_name,
+                    transcript_id=gene.get("transcript_id", ""),
+                    strand=gene.get("strand", "+"),
+                    gene_start=gene_coords.get("gene_start", 0),
+                    gene_end=gene_coords.get("gene_end", 0),
+                    is_complete_in_patient_sample=gene.get("is_complete_in_patient_sample", True),
+                    error=gene.get("error"),
+                    mutation_type=gene.get("mutation_type"),
+                    mutated_codons=gene.get("mutated_codons", []),
+                    patient_mrna_sequence=gene.get("patient", {}).get("mrna_sequence"),
+                    patient_amino_acid_sequence=gene.get("patient", {}).get("amino_acid_sequence"),
+                    patient_translation_warnings=gene.get("patient", {}).get("translation_warnings", []),
+                    control_mrna_sequence=gene.get("control", {}).get("mrna_sequence"),
+                    control_amino_acid_sequence=gene.get("control", {}).get("amino_acid_sequence"),
+                    control_translation_warnings=gene.get("control", {}).get("translation_warnings", []),
+                ))
+            GeneProteinResult.objects.bulk_create(gene_rows)
+            
             InputData.objects.filter(pk=input_data_id).update(status="completed")
     except Exception:
         input_data.status = "failed"
         input_data.save(update_fields=["status"])
         raise
 
-    logger.info("[Task] Pipeline completed → OutputData id=%s", output_data.id)
+    logger.info("[Task] Pipeline completed → OutputData id=%s (%d genes saved)", output_data.id, len(gene_rows))
     generate_llm_report_task.delay(output_data.id)
 
     return {"output_data_id": output_data.id, "status": "completed"}
