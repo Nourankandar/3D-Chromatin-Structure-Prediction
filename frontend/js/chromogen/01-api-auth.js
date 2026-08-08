@@ -1,8 +1,7 @@
 /* ============================================================
-   -1. BACKEND  
+   BACKEND  
    ============================================================ */
 const API_BASE = 'http://127.0.0.1:8000/api';
-
 
 axios.defaults.withCredentials = false;
 
@@ -32,6 +31,7 @@ axios.interceptors.response.use(r=>r, async err=>{
   const orig   = err.config || {};
   const status = err.response && err.response.status;
   const url    = orig.url || '';
+  // لا نجدّد على طلبات الدخول/التحديث/الخروج نفسها، ولا نكرّر المحاولة أكثر من مرة
   const skip = url.includes('/auth/login') || url.includes('/auth/token/refresh') || url.includes('/auth/logout');
 
   if (status === 401 && !orig._retried && !skip && _refreshToken){
@@ -41,7 +41,7 @@ axios.interceptors.response.use(r=>r, async err=>{
       saveTokens(rr.data.access, rr.data.refresh || _refreshToken);
       orig.headers = orig.headers || {};
       orig.headers['Authorization'] = 'Bearer ' + _accessToken;
-      return axios(orig);   
+      return axios(orig);  
     } catch(e){
       clearTokens();
       if (typeof go === 'function') go('login');
@@ -93,6 +93,10 @@ const I = (p,extra="") => `<svg viewBox="0 0 24 24" width="18" height="18" fill=
 const ICON = {
   dna:      I('<path d="M6 3c0 6 12 6 12 12M6 21c0-6 12-6 12-12"/><path d="M7 6h10M7 18h10M8.5 9.5h7M8.5 14.5h7" stroke-width="1.1"/>'),
   file:     I('<path d="M14 3v5h5M6 3h9l5 5v13H6z"/><path d="M9 13h6M9 17h6"/>'),
+  chevronUp:   I('<path d="M18 15l-6-6-6 6"/>'),
+  chevronDown: I('<path d="M6 9l6 6 6-6"/>'),
+  eye:      I('<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/>'),
+  eyeOff:   I('<path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.66 19.66 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a19.86 19.86 0 0 1-3.22 4.55"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>'),
   users:    I('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/>'),
   flask:    I('<path d="M10 2v6.5L4.5 18A2 2 0 0 0 6.2 21h11.6a2 2 0 0 0 1.7-3L14 8.5V2"/><path d="M8.5 2h7M7 15h10"/>'),
   boxes:    I('<path d="M12 2 4 6v12l8 4 8-4V6z"/><path d="M4 6l8 4 8-4M12 22V10"/>'),

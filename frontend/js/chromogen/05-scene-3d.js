@@ -10,8 +10,6 @@ const hex2rgb = h => { const v=h.replace('#',''); return [parseInt(v.slice(0,2),
 const mix = (a,b,tt) => a.map((v,i)=>Math.round(v+(b[i]-v)*tt));
 const rgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
 
-/* حوّل أي لون CSS (hex / oklch / rgb / اسم) إلى [r,g,b] عبر رسمه على كانفس 1×1.
-   يعمل مع oklch (متصفّحات حديثة)، ويرجع أخضر احتياطي لو اللون غير مدعوم. */
 const _colCanvas = document.createElement('canvas'); _colCanvas.width = _colCanvas.height = 1;
 const _colCtx = _colCanvas.getContext('2d', { willReadFrequently:true });
 function resolveColor(v){

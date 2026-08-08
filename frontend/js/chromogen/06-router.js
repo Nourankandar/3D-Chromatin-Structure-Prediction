@@ -11,7 +11,6 @@ const NAV = [
   {id:'profile',   key:'nav_profile',   icon:'users'},
   {id:'settings',  key:'nav_settings',  icon:'settings'},
 ];
-
 function renderNav(){
   const html = NAV.map(n=>`<a class="navlink ${(S.route===n.id || (S.route==='patient' && n.id==='dashboard'))?'active':''}" data-go="${n.id}" href="#">${ICON[n.icon]}<span>${t(n.key)}</span></a>`).join('');
   const top = document.getElementById('topNav');
@@ -19,9 +18,12 @@ function renderNav(){
 }
 function go(route){
   S.route = route;
-  const inApp = !['landing','login'].includes(route);
+  const inApp = !['landing','login','forgot','reset','signup'].includes(route);
   document.getElementById('screen-landing').hidden = route!=='landing';
   document.getElementById('screen-login').hidden   = route!=='login';
+  document.getElementById('screen-forgot').hidden  = route!=='forgot';
+  document.getElementById('screen-reset').hidden   = route!=='reset';
+  document.getElementById('screen-signup').hidden  = route!=='signup';
   document.getElementById('shell').hidden          = !inApp;
   window.scrollTo(0,0);
   renderNav(); renderRoute();
@@ -33,7 +35,7 @@ document.addEventListener('click', e=>{
 
 
 /* ============================================================
-   5b. OVERVIEW  +  PROFILE   (كل الأرقام مشتقّة من S.patients)
+   5b. OVERVIEW  +  PROFILE  
    ============================================================ */
 const RUNNING_SET = ['pending','predicting_dnase','generating_hic','running'];
 
@@ -162,12 +164,17 @@ function openPasswordModal(){
       <div class="ct-modal-bd">
         <p class="sm-t muted" style="margin-bottom:1.1rem">${t('pw_desc')}</p>
         <div class="stack" style="gap:.9rem">
-          <div class="field"><label class="label" for="pwOld">${t('pw_old')}</label>
-            <input id="pwOld" class="input" type="password" autocomplete="current-password" placeholder="${t('pw_old_ph')}"></div>
-          <div class="field"><label class="label" for="pwNew">${t('pw_new')}</label>
-            <input id="pwNew" class="input" type="password" autocomplete="new-password" placeholder="${t('pw_new_ph')}"></div>
-          <div class="field"><label class="label" for="pwConfirm">${t('pw_confirm')}</label>
-            <input id="pwConfirm" class="input" type="password" autocomplete="new-password" placeholder="${t('pw_confirm_ph')}"></div>
+          <div class="field" style="position:relative"><label class="label" for="pwOld">${t('pw_old')}</label>
+            <input id="pwOld" class="input" type="password" autocomplete="current-password" placeholder="${t('pw_old_ph')}" style="padding-inline-end:2.5rem">
+            <button type="button" class="js-eye" data-target="pwOld" style="position:absolute;inset-inline-end:.6rem;top:2.05rem;background:none;border:0;cursor:pointer;color:var(--muted-foreground)">${ICON.eye}</button></div>
+          <div class="field" style="position:relative"><label class="label" for="pwNew">${t('pw_new')}</label>
+            <input id="pwNew" class="input" type="password" autocomplete="new-password" placeholder="${t('pw_new_ph')}" style="padding-inline-end:2.5rem">
+            <button type="button" class="js-eye" data-target="pwNew" style="position:absolute;inset-inline-end:.6rem;top:2.05rem;background:none;border:0;cursor:pointer;color:var(--muted-foreground)">${ICON.eye}</button>
+            <div id="pwNewStrength" style="display:flex;gap:4px;margin-top:6px"><div></div><div></div><div></div></div>
+            <p class="xs muted" style="margin-top:.35rem">${t('reset_hint')}</p></div>
+          <div class="field" style="position:relative"><label class="label" for="pwConfirm">${t('pw_confirm')}</label>
+            <input id="pwConfirm" class="input" type="password" autocomplete="new-password" placeholder="${t('pw_confirm_ph')}" style="padding-inline-end:2.5rem">
+            <button type="button" class="js-eye" data-target="pwConfirm" style="position:absolute;inset-inline-end:.6rem;top:2.05rem;background:none;border:0;cursor:pointer;color:var(--muted-foreground)">${ICON.eye}</button></div>
         </div>
         <div style="margin-top:1.25rem;display:flex;gap:.5rem;justify-content:flex-end">
           <button class="btn outline" id="pwCancel">${t('cells_cancel')}</button>
@@ -180,6 +187,27 @@ function openPasswordModal(){
   el.addEventListener('click', e=>{ if(e.target===el) closePasswordModal(); });
   el.querySelector('#pwClose').onclick  = closePasswordModal;
   el.querySelector('#pwCancel').onclick = closePasswordModal;
+  el.querySelectorAll('.js-eye').forEach(btn=>{
+    const input = el.querySelector('#'+btn.dataset.target);
+    if(!input) return;
+    btn.onclick = ()=>{
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.innerHTML = show ? ICON.eyeOff : ICON.eye;
+    };
+  });
+  el.querySelector('#pwNew').addEventListener('input', e=>{
+    const v = e.target.value;
+    let score = 0;
+    if(v.length>=8) score=1;
+    if(v.length>=8 && /[A-Z]/.test(v) && /[a-z]/.test(v)) score=2;
+    if(v.length>=8 && /[A-Z]/.test(v) && /[a-z]/.test(v) && /[0-9]/.test(v) && /[!@#$%^&*(),.?":{}|<>\-_+=/\[\]~`]/.test(v)) score=3;
+    const colors=['#e5766f','#e0b24d','#8eb69b'];
+    el.querySelectorAll('#pwNewStrength div').forEach((d,i)=>{
+      d.style.height='4px'; d.style.borderRadius='2px';
+      d.style.background = i<score ? colors[score-1] : 'var(--muted)';
+    });
+  });
   // إغلاق بمفتاح Escape
   const onEsc = e => { if(e.key==='Escape'){ closePasswordModal(); document.removeEventListener('keydown', onEsc); } };
   document.addEventListener('keydown', onEsc);
@@ -194,8 +222,9 @@ function openPasswordModal(){
     const newp = (el.querySelector('#pwNew')||{}).value || '';
     const conf = (el.querySelector('#pwConfirm')||{}).value || '';
 
+    const pwRule = /^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>\-_+=/\[\]~`]).{8,}$/;
     if (!oldp || !newp || !conf)  return toast(t('pw_err_required'), 'error');
-    if (newp.length < 6)          return toast(t('pw_err_short'),    'error');
+    if (!pwRule.test(newp))       return toast(t('pw_err_short'),    'error');
     if (newp !== conf)            return toast(t('pw_err_match'),    'error');
     if (newp === oldp)            return toast(t('pw_err_same'),     'error');
 
@@ -218,7 +247,7 @@ function openPasswordModal(){
 function renderRoute(){
   clearScenes();
   if (S.route==='landing'){ renderLanding(); return; }
-  if (S.route==='login') return;
+  if (S.route==='login' || S.route==='forgot' || S.route==='reset' || S.route==='signup') return;
   const view = document.getElementById('view');
   ({overview:renderOverview, profile:renderProfile, dashboard:renderPatients, predict:renderPredict, settings:renderSettings, cells:renderCellTypes,
     chromatin:renderChromatin, protein:renderProtein, patient:renderPatientDetail}[S.route] || renderPatients)(view);

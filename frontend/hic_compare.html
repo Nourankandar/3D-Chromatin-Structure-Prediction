@@ -180,7 +180,10 @@
     transform:translateX(-50%); border:1px solid color-mix(in srgb, #000 25%, transparent)}
   .tick:hover{outline:2px solid var(--primary); outline-offset:1px; z-index:3}
   .tick.on{outline:2px solid var(--fg); outline-offset:1px; z-index:4}
-  .tick.absent{background:transparent!important; border:1px dashed currentColor}
+  .tick.absent{
+    background:transparent!important;
+    border:2px dashed currentColor; box-shadow:none;
+  }
   .tick .stem{position:absolute; inset-inline-start:50%; width:1px; background:currentColor; opacity:.45}
 
   .track-legend{display:flex; gap:12px; flex-wrap:nowrap; overflow:hidden; padding:5px 10px;
@@ -243,8 +246,43 @@
   .tbl-wrap{flex:1; overflow:auto; margin-top:8px}
   .tbl-wrap::-webkit-scrollbar{width:5px;height:5px}
   .tbl-wrap::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px}
-  .hint{font-size:.62rem; color:var(--muted); line-height:1.7}
+  .hint{font-size:.62rem; color:var(--muted); line-height:1.7}  .helix-btn{
+    flex:none; border:0; background:none; cursor:pointer; font-size:13px; line-height:1;
+    padding:2px 4px; border-radius:6px; opacity:.85;
+  }
+  .helix-btn:hover{background:color-mix(in srgb, var(--primary) 16%, transparent); opacity:1}
+
+  #helixOverlay{
+    display:none; position:fixed; inset:0; background:rgba(4,16,14,.78); backdrop-filter:blur(3px);
+    align-items:center; justify-content:center; z-index:300;
+  }
+  #helixCard{
+    background:linear-gradient(180deg,var(--card),var(--bg)); border-radius:18px; width:94%; max-width:760px;
+    max-height:88vh; overflow-y:auto; border:1px solid var(--border); box-shadow:0 30px 70px -20px rgba(0,0,0,.6);
+  }
+  .helix-head{display:flex; justify-content:space-between; align-items:flex-start; padding:18px 22px 14px; border-bottom:1px solid var(--border)}
+  .helix-body{padding:16px 22px 22px}
+  .helix-pair{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .helix-side{background:rgba(0,0,0,.15); border-radius:12px; padding:10px}
+  .helix-side p{text-align:center; font-size:11px; color:var(--muted); margin:0 0 4px}
+  .helix-legend{display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:12px; justify-content:center}
+  .helix-legend span{display:inline-flex; align-items:center; gap:5px}
+  .helix-sw{width:9px; height:9px; border-radius:3px; display:inline-block}
 </style>
+<div id="helixOverlay" onclick="if(event.target===this) closeHelixModal()">
+  <div id="helixCard">
+    <div class="helix-head">
+      <div>
+        <p style="font-weight:600; font-size:15px; margin:0">🧬 الحلزون الجزيئي الحقيقي</p>
+        <p class="xs muted" id="helixSubtitle" style="margin:2px 0 0"></p>
+      </div>
+      <span onclick="closeHelixModal()" style="cursor:pointer; color:var(--muted); font-size:16px">✕</span>
+    </div>
+    <div class="helix-body">
+      <div id="helixBodyContent"><p class="sm-t muted">جاري الجلب...</p></div>
+    </div>
+  </div>
+</div>
 </head>
 <body>
 
@@ -443,7 +481,6 @@ function setDeltaThreshold(v){
   if(el) el.textContent = '±' + DELTA_THRESHOLD.toFixed(2);
   renderTrack(); renderTable(); renderProteinList();
 }
-/* البروتينات الملغى تفعيلها بتنبعث للعارضين */
 const hiddenProts = new Set();
 
 function classify(e){
@@ -583,7 +620,8 @@ function renderProteinList(){
       `<input type="checkbox" ${on?'checked':''}>`+
       `<span class="pdot" style="background:${STATUS[r.st].color}"></span>`+
       `<span class="pname" title="${r.name}">${r.name}</span>`+
-      `<span class="ptag">${STATUS[r.st].label}</span>`;
+      `<span class="ptag">${STATUS[r.st].label}</span>`+
+      (selectedProt===r.key ? `<button class="helix-btn" title="عرض الحلزون الجزيئي الحقيقي" onclick="event.stopPropagation(); openHelixModal('${r.key}')">🧬</button>` : '');
     el.querySelector('input').onclick=e=>{ e.stopPropagation(); toggleProtVisible(r.key, e.target.checked); };
     el.onclick=()=> selectProt(r.key);
     box.appendChild(el);
@@ -666,10 +704,10 @@ function renderTrack(){
     if(protFilter!=='all' && r.st!==protFilter) return;
     if(hiddenProts.has(r.key)) return;
     const col=STATUS[r.st].color;
-    const mk=(abs,lane,absent,side)=>{
+    const mk=(abs,lane,absent,stackSide,bioSide)=>{
       if(abs==null) return;
       const pct=pctZ(abs);
-      const used=rowsUsed[side];
+      const used=rowsUsed[stackSide];
       let row=0;
       while(used[row] && used[row].some(x=>Math.abs(x-pct)<2.2)) row++;
       if(!used[row]) used[row]=[];
@@ -682,27 +720,34 @@ function renderTrack(){
       el.style.color=col; if(!absent) el.style.background=col;
       el.innerHTML=`<i class="stem" style="top:9px; height:${Math.max(14-row*10,2)}px"></i>`;
       el.title=`${r.name} · ${STATUS[r.st].label}\n${P.chrom}:${Math.round(abs).toLocaleString()}`;
-      el.onclick=()=>selectProt(r.key);
+      el.onclick=()=>selectProt(r.key, bioSide);
       lane.appendChild(el);
     };
-    mk(r.pAbs ?? (r.st==='missing'? r.cAbs : null), lp, r.pAbs==null, 'right');
-    mk(r.cAbs ?? (r.st==='gained' ? r.pAbs : null), lc, r.cAbs==null, 'left');
+    mk(r.pAbs ?? (r.st==='missing'? r.cAbs : null), lp, r.pAbs==null, 'right', 'patient');
+    mk(r.cAbs ?? (r.st==='gained' ? r.pAbs : null), lc, r.cAbs==null, 'left', 'control');
   });
 
   document.getElementById('trackLegend').innerHTML =
     Object.keys(STATUS).filter(k=>present[k]).map(k=>
       `<span><span class="lg-sw" style="background:${STATUS[k].color}"></span>${STATUS[k].label}</span>`).join('')+
-    `<span style="opacity:.7"><span class="lg-sw" style="border:1px dashed var(--muted)"></span>غياب بهذه الجهة</span>`;
+    `<span style="opacity:.85"><span class="lg-sw" style="border:1.5px dashed var(--destructive,#e5766f);background:color-mix(in srgb, var(--destructive,#e5766f) 18%, transparent)"></span>غياب بهذه الجهة (يقابل موقعه بالجهة الثانية)</span>`;
 }
 
 function setFilter(f){
   protFilter=f; renderTrack(); renderTable(); renderProteinList();
   frames().forEach(fr=> tellFrame(fr,{type:'chromo-protein-filter', filter:f}));
 }
-function selectProt(key){
+
+function selectProt(key, targetSide){
   selectedProt = (selectedProt===key) ? null : key;
   renderTrack(); renderTable(); renderProteinList();
-  frames().forEach(fr=> tellFrame(fr,{type:'chromo-protein-focus', protein:selectedProt}));
+  const msg = {type:'chromo-protein-focus', protein:selectedProt};
+  if(targetSide && selectedProt){
+    const f = document.getElementById(targetSide==='patient' ? 'framePatient' : 'frameControl');
+    if(f) tellFrame(f, msg);
+  } else {
+    frames().forEach(fr=> tellFrame(fr, msg));
+  }
 }
 
 /*  الجدول */
@@ -883,6 +928,150 @@ async function bootFromAPI(){
     reloadFrames('split');
     setStatus('output #'+outputId, true);
   }catch(err){ console.error('[compare] API load failed:', err); setStatus('تعذّر الجلب — استورد ملف', false); }
+}
+
+let _inputDetailCache = null;
+let _fastaCache = {}; 
+
+const BASE_COLOR = {A:'#6fd3c0', T:'#e5766f', C:'#7aa2f7', G:'#e0b24d'};
+function complementBase(b){ return {A:'T',T:'A',C:'G',G:'C'}[b] || b; }
+
+async function getInputDetail(){
+  if(_inputDetailCache) return _inputDetailCache;
+  const params = new URLSearchParams(location.search);
+  const inputId = params.get('input_id');
+  if(!inputId) throw new Error('لا يوجد input_id بالرابط');
+  const base=(window.CHROMO_API_BASE||'/api').replace(/\/$/,'');
+  const token=params.get('token')||localStorage.getItem('chromogen-token')||'';
+  const headers={'Accept':'application/json'}; if(token) headers['Authorization']='Bearer '+token;
+  const res = await fetch(base+`/genomics/${inputId}/`, {headers});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  _inputDetailCache = await res.json();
+  return _inputDetailCache;
+}
+
+async function fetchFastaSeq(url){
+  if(!url) return null;
+  if(_fastaCache[url]) return _fastaCache[url];
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('تعذّر جلب ملف الفاستا');
+  const raw = await res.text();
+  const seq = raw.split('\n').filter(l=>!l.startsWith('>')).join('').replace(/[^ACGTacgt]/g,'').toUpperCase();
+  _fastaCache[url] = seq;
+  return seq;
+}
+
+function windowAround(seq, positionIndex, span){
+  if(!seq) return '';
+  const half = Math.floor(span/2);
+  let start = Math.max(0, (positionIndex||0) - half);
+  let end = Math.min(seq.length, start + span);
+  start = Math.max(0, end - span);
+  return seq.slice(start, end);
+}
+
+function buildHelixSVG(seq, diffMask, width=220, height=380){
+  const RISE=16, RADIUS=34, TWIST=36, PHASE=144; 
+  const cx = width/2, topPad = 20;
+  const n = seq.length;
+  const pts1=[], pts2=[];
+  for(let i=0;i<n;i++){
+    const a1 = (i*TWIST) * Math.PI/180;
+    const a2 = a1 + PHASE*Math.PI/180;
+    const y = topPad + i*RISE;
+    pts1.push({x:cx+RADIUS*Math.cos(a1), y, depth:Math.sin(a1), base:seq[i]});
+    pts2.push({x:cx+RADIUS*Math.cos(a2), y, depth:Math.sin(a2), base:complementBase(seq[i])});
+  }
+  const rungs = pts1.map((p,i)=>({i, depth:(p.depth+pts2[i].depth)/2}));
+  rungs.sort((a,b)=>a.depth-b.depth);
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" width="100%" style="display:block">`;
+  const path1 = pts1.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const path2 = pts2.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  svg += `<polyline points="${path1}" fill="none" stroke="var(--muted)" stroke-width="2.5" opacity=".55"/>`;
+  svg += `<polyline points="${path2}" fill="none" stroke="var(--muted)" stroke-width="2.5" opacity=".55"/>`;
+
+  rungs.forEach(({i})=>{
+    const p1=pts1[i], p2=pts2[i];
+    const scale = 0.65 + 0.35*((p1.depth+1)/2); 
+    const isDiff = diffMask && diffMask[i];
+    const c1 = BASE_COLOR[p1.base]||'#888', c2 = BASE_COLOR[p2.base]||'#888';
+    svg += `<line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}"
+      stroke="${isDiff?'#fff':'var(--border)'}" stroke-width="${isDiff?2.5:1.4}" opacity="${0.4+0.5*scale}"/>`;
+    [ [p1,c1], [p2,c2] ].forEach(([p,c])=>{
+      svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(4*scale).toFixed(1)}" fill="${c}"
+        ${isDiff?`stroke="#fff" stroke-width="1.5"`:''}/>`;
+    });
+    if(isDiff){
+      svg += `<circle cx="${((p1.x+p2.x)/2).toFixed(1)}" cy="${p1.y.toFixed(1)}" r="${(RADIUS+8)}" fill="none"
+        stroke="#fff" stroke-width="1" stroke-dasharray="2,3" opacity=".5"/>`;
+    }
+  });
+  svg += `</svg>`;
+  return svg;
+}
+
+function closeHelixModal(){ document.getElementById('helixOverlay').style.display='none'; }
+
+async function openHelixModal(protKey){
+  const overlay = document.getElementById('helixOverlay');
+  const body = document.getElementById('helixBodyContent');
+  const sub = document.getElementById('helixSubtitle');
+  overlay.style.display='flex';
+  body.innerHTML = `<p class="sm-t muted">جاري الجلب...</p>`;
+  sub.textContent = '';
+
+  const row = protRows().find(r=>r.key===protKey);
+  if(!row){ body.innerHTML = `<p class="sm-t" style="color:var(--destructive,#e5766f)">تعذّر إيجاد بيانات هذا البروتين.</p>`; return; }
+
+  try{
+    const detail = await getInputDetail();
+    const patientUrl = detail.dna_sequence_file, controlUrl = detail.dna_control_file;
+    if(!patientUrl || !controlUrl){
+      body.innerHTML = `<p class="sm-t" style="color:var(--destructive,#e5766f)">لا توجد ملفات فاستا مرتبطة بهذا التحليل.</p>`;
+      return;
+    }
+    const [pSeq, cSeq] = await Promise.all([fetchFastaSeq(patientUrl), fetchFastaSeq(controlUrl)]);
+
+    const rel = (loadedData?.patient?.start!=null && row.pAbs!=null) ? (row.pAbs - loadedData.patient.start)
+              : (loadedData?.control?.start!=null && row.cAbs!=null) ? (row.cAbs - loadedData.control.start)
+              : null;
+    if(rel==null){
+      body.innerHTML = `<p class="sm-t" style="color:var(--destructive,#e5766f)">لا يوجد موقع حقيقي لهذا البروتين على أي من الجهتين.</p>`;
+      return;
+    }
+
+    const SPAN = 32;
+    const pWin = windowAround(pSeq, rel, SPAN);
+    const cWin = windowAround(cSeq, rel, SPAN);
+
+    const len = Math.min(pWin.length, cWin.length);
+    const diffMask = new Array(len).fill(false);
+    let diffCount = 0;
+    for(let i=0;i<len;i++){ if(pWin[i]!==cWin[i]){ diffMask[i]=true; diffCount++; } }
+
+    sub.textContent = `${row.name} · ${len} قاعدة حول الموقع الحقيقي · ${diffCount} فرق فعلي بين الجهتين`;
+    body.innerHTML = `
+      <div class="helix-pair">
+        <div class="helix-side"><p>السليم (control)</p>${buildHelixSVG(cWin, diffMask)}</div>
+        <div class="helix-side"><p>المريض (patient)</p>${buildHelixSVG(pWin, diffMask)}</div>
+      </div>
+      <div class="helix-legend">
+        <span><span class="helix-sw" style="background:${BASE_COLOR.A}"></span>A</span>
+        <span><span class="helix-sw" style="background:${BASE_COLOR.T}"></span>T</span>
+        <span><span class="helix-sw" style="background:${BASE_COLOR.C}"></span>C</span>
+        <span><span class="helix-sw" style="background:${BASE_COLOR.G}"></span>G</span>
+        <span style="opacity:.8">○ إطار متقطّع أبيض = قاعدة مختلفة فعلياً بين الجهتين</span>
+      </div>
+      <p class="xs muted" style="text-align:center; margin-top:10px">
+        كل قاعدة هون من ملف الفاستا الحقيقي تبع هذا التحليل. الشريط التكميلي مُشتق بقاعدة
+        واطسون-كريك الحتمية (A↔T, C↔G) — الأبعاد نسبية (3.4Å لكل قاعدة، 36° التفاف)
+        وليست بمقياس حقيقي دقيق.
+      </p>`;
+  }catch(err){
+    console.error('[helix] failed:', err);
+    body.innerHTML = `<p class="sm-t" style="color:var(--destructive,#e5766f)">تعذّر بناء العرض الجزيئي: ${err.message||err}</p>`;
+  }
 }
 
 window.addEventListener('load', ()=>{
