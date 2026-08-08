@@ -12,7 +12,7 @@ import shutil
 import pytest
 from unittest.mock import patch, MagicMock
 
-from services.Genome_reference1.fetcher import (
+from backend.services.genomics.referenceGenome.fetcher import (
     fetch_reference_sequence,
     fetch_reference_sequence_as_fasta_file,
     ReferenceFetchError,

@@ -13,14 +13,6 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# The ai_engine/ package (DNase, motif scanning, protein docking, LLM report
-# models) lives as a sibling of backend/ at the repository root, e.g.:
-#   repo/
-#     backend/   <- BASE_DIR
-#     ai_engine/
-# It is not installed as a package, so its parent must be added to sys.path
-# explicitly or `from ai_engine.models...` fails no matter how Django/Celery
-# is launched (manage.py, gunicorn, a Celery worker, etc).
 REPO_ROOT = BASE_DIR.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -52,7 +44,14 @@ STATICFILES_DIRS = [
     BASE_DIR.parent / 'frontend',
 ]
 
-GENOME_REFERENCE_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'genome_reference'))# ─────────────────────────────────────────────────────────────────────────────
+GENOME_REFERENCE_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'genome_reference'))
+# ─────────────────────────────────────────────────────────────────────────────
+# GTF Annotation (GENCODE) — لازمة لـ gtf_index.py (تحديد الجينات المتقاطعة)
+# ─────────────────────────────────────────────────────────────────────────────
+GTF_ANNOTATION_PATH = os.path.join(GENOME_REFERENCE_ROOT, "gencode.v50.basic.annotation.gtf.gz")
+GTF_INDEX_CACHE_PATH = os.path.join(GENOME_REFERENCE_ROOT, "gtf_index_cache.pkl")
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Installed apps
 # ─────────────────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -210,3 +209,15 @@ LOGGING = {
         'level': 'INFO',
     },
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Email (Gmail SMTP)
+# ─────────────────────────────────────────────────────────────────────────────
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

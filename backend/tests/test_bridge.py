@@ -15,7 +15,7 @@ import tempfile
 import pytest
 from unittest.mock import patch, MagicMock
 
-from services.llm_service.bridge import run_llm_report_bridge, _load_coords_json
+from backend.services.genomics.llm_service.bridge import run_llm_report_bridge, _load_coords_json
 
 
 def _make_output_data_mock(affected_proteins, coords_patient_file=None, coords_control_file=None):

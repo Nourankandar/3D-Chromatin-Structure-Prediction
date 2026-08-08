@@ -75,7 +75,7 @@ else:
 
 
 # ── 3. استيراد الجسر الحقيقي (predictorHIC.py) بدون أي تعديل ────────────
-from services.HI_C.predictorHIC import (
+from backend.services.genomics.HI_C.predictorHIC import (
     generate_hic_matrices,
     encode_dna_one_hot,
     MODEL_WINDOW_SIZE,

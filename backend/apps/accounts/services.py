@@ -19,17 +19,66 @@ logger = logging.getLogger("apps.accounts")
 
 class AuthService:
     @staticmethod
+    @staticmethod
     def register_user(username: str, password: str, email: str = "", is_staff: bool = True) -> User:
-        """Create a new staff/admin user account."""
+        """Create a new staff/admin user account (inactive until email verified)."""
         if User.objects.filter(username=username).exists():
             raise ValueError("This username is already registered.")
 
         user = User.objects.create_user(username=username, password=password, email=email)
         user.is_staff = is_staff
+        user.is_active = False   # <-- inactive until OTP verified
         user.save()
 
-        logger.info("User registered successfully: %s", user.username)
+        logger.info("User registered (pending verification): %s", user.username)
         return user
+
+    @staticmethod
+    def send_signup_otp(user: User) -> dict:
+        """Generate and email a signup verification code."""
+        code = str(random.randint(100000, 999999))
+        cache.set(f"signup_otp_{user.email}", code, timeout=900)  # 15 min
+
+        subject = "Verify your account"
+        message = f"Hello {user.username},\n\nYour verification code is: {code}\nThis code will expire in 15 minutes."
+
+        try:
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+            return {"status": "success", "message": "Verification code sent to your email."}
+        except Exception as e:
+            logger.error(f"Failed to send signup OTP to {user.email}: {str(e)}")
+            return {"status": "error", "message": "Account created, but failed to send verification email."}
+
+    @staticmethod
+    def verify_signup_otp(email: str, code: str) -> dict:
+        """Verify the signup code and activate the user."""
+        cached_code = cache.get(f"signup_otp_{email}")
+
+        if not cached_code:
+            return {"status": "error", "message": "Verification code has expired or does not exist."}
+        if cached_code != code:
+            return {"status": "error", "message": "Invalid verification code."}
+
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return {"status": "error", "message": "User not found."}
+
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+        cache.delete(f"signup_otp_{email}")
+
+        logger.info("User activated after OTP verification: %s", user.username)
+        return {"status": "success", "message": "Account verified successfully. You can now log in."}
+
+    @staticmethod
+    def resend_signup_otp(email: str) -> dict:
+        """Resend the signup verification code."""
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return {"status": "error", "message": "User not found."}
+        if user.is_active:
+            return {"status": "error", "message": "Account is already verified."}
+        return AuthService.send_signup_otp(user)
 
     @staticmethod
     def get_tokens_for_user(user: User) -> dict:
@@ -43,20 +92,39 @@ class AuthService:
     @staticmethod
     def login_user(request, username: str, password: str) -> dict:
         """Authenticate credentials and return tokens for staff/superusers only."""
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            if user.is_staff or user.is_superuser:
-                tokens = AuthService.get_tokens_for_user(user)
-                return {"status": "success", "tokens": tokens, "user": user}
+        
+        # نجيب المستخدم يدوياً أولاً عشان نقدر نميّز حالة "غير مفعّل"
+        user_obj = User.objects.filter(username=username).first()
+
+        if user_obj is None or not user_obj.check_password(password):
+            return {
+                "status": "unauthorized",
+                "message": "Invalid username or password.",
+            }
+
+        if not user_obj.is_active:
             return {
                 "status": "forbidden",
-                "message": "This account does not have admin/staff privileges.",
+                "message": "Please verify your email before logging in.",
             }
-        return {
-            "status": "unauthorized",
-            "message": "Invalid username or password.",
-        }
 
+        # الآن نستخدم authenticate() بشكل طبيعي (بيمرر لأنه is_active=True فعلاً)
+        user = authenticate(request, username=username, password=password)
+        if user is None:
+            # حالة نادرة: مثلاً backend مخصص رفض تسجيل الدخول لسبب تاني
+            return {
+                "status": "unauthorized",
+                "message": "Invalid username or password.",
+            }
+
+        if user.is_staff or user.is_superuser:
+            tokens = AuthService.get_tokens_for_user(user)
+            return {"status": "success", "tokens": tokens, "user": user}
+
+        return {
+            "status": "forbidden",
+            "message": "This account does not have admin/staff privileges.",
+        }
     @staticmethod
     def logout_user(refresh_token: str) -> None:
         """Blacklist the refresh token to invalidate the session."""

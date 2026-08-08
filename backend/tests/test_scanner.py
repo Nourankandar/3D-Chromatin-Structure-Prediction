@@ -33,7 +33,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from backend.services.scanning_motifs.protein_search import search_protein_by_gene
+from backend.services.genomics.scanning_motifs.protein_search import search_protein_by_gene
 from ai_engine.models.Proteins.ProteinStructures.protein_fetcher import ProteinStructureFetcher
 
 

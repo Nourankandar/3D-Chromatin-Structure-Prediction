@@ -16,8 +16,6 @@ from .services import AuthService
 
 
 class SignupAPIView(APIView):
-    """POST /api/auth/signup/ — create a new staff account."""
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -25,7 +23,7 @@ class SignupAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         try:
-            AuthService.register_user(
+            user = AuthService.register_user(
                 username=serializer.validated_data["username"],
                 password=serializer.validated_data["password"],
                 email=serializer.validated_data.get("email", ""),
@@ -34,11 +32,47 @@ class SignupAPIView(APIView):
         except ValueError as exc:
             return Response({"status": "error", "message": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        otp_result = AuthService.send_signup_otp(user)
+
         return Response(
-            {"status": "success", "message": "Account created successfully."},
+            {
+                "status": "success",
+                "message": "Account created. Please check your email for the verification code.",
+                "email_status": otp_result["status"],
+            },
             status=status.HTTP_201_CREATED,
         )
 
+
+class VerifySignupOTPAPIView(APIView):
+    """POST /api/auth/verify-signup/ — verify OTP and activate account."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = VerifySignupOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = AuthService.verify_signup_otp(
+            email=serializer.validated_data["email"],
+            code=serializer.validated_data["code"],
+        )
+        if result["status"] == "success":
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResendSignupOTPAPIView(APIView):
+    """POST /api/auth/resend-signup-otp/ — resend verification code."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResendSignupOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = AuthService.resend_signup_otp(email=serializer.validated_data["email"])
+        if result["status"] == "success":
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginAPIView(APIView):
     """POST /api/auth/login/ — authenticate and receive JWT tokens."""

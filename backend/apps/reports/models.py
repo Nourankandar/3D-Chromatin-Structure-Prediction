@@ -14,6 +14,10 @@ class AnalysisReport(models.Model):
     ]
 
     output_data = models.OneToOneField(OutputData, on_delete=models.CASCADE, related_name='report')
+    source_payload = models.JSONField(
+        blank=True, null=True, verbose_name="Deterministic Pipeline Payload (source for LLM)"
+    )
+    
     detected_disease = models.CharField(
         max_length=255, blank=True, null=True, verbose_name="Detected Condition / Disease"
     )

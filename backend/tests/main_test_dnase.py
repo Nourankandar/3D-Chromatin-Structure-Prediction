@@ -78,7 +78,7 @@ else:
 
 
 # ── 3. استيراد الجسر الحقيقي (predictor.py) بدون أي تعديل ──────────────
-from services.DNASE.predictor import predict_dnase_profiles, read_fasta_file
+from backend.services.genomics.DNASE.predictor import predict_dnase_profiles, read_fasta_file
 
 
 # ── 4. بناء ملف FASTA حقيقي مؤقت ────────────────────────────────────────

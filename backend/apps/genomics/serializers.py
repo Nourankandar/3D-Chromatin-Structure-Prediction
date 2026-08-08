@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from backend.core import settings
 
-from .models import CellType, InputData, OutputData
+from .models import *
 
 
 class CellTypeSerializer(serializers.ModelSerializer):
@@ -80,3 +80,13 @@ class OutputDataSerializer(serializers.ModelSerializer):
                 "is_missing": info.get("is_missing", False),
             })
         return proteins_payload
+
+class GeneListItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GeneProteinResult
+        fields = ['gene_id', 'gene_name', 'protein_name', 'mutation_type', 'is_complete_in_patient_sample', 'error']
+
+class GeneDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GeneProteinResult
+        exclude = ['output_data']

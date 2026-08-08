@@ -20,12 +20,11 @@ API layout:
     are wired to the exact same urlconf to avoid breaking it.
 """
 
+from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
 from django.views.generic import TemplateView
-
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -41,5 +40,15 @@ urlpatterns = [
     path('api/genomics/', include('apps.genomics.urls')),
     path('api/reports/', include('apps.reports.urls')),
     path('api/auth/', include('apps.accounts.urls')),
-]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+]
 
+FRONTEND_DIR = settings.BASE_DIR.parent / 'frontend'
+
+# تقديم فولدرات الـ CSS/JS مباشرة من الجذر (بدون بادئة /static/)
+# لأنه ملفات HTML بالفرونت عم تطلبها هيك مباشرة
+urlpatterns += static('css/', document_root=FRONTEND_DIR / 'css')
+urlpatterns += static('js/', document_root=FRONTEND_DIR / 'js')
+urlpatterns += static('css_hic/', document_root=FRONTEND_DIR / 'css_hic')
+urlpatterns += static('js_hic/', document_root=FRONTEND_DIR / 'js_hic')
+
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -8,7 +8,7 @@ import numpy as np
 from scipy.interpolate import splev, splprep
 from scipy.spatial.distance import pdist, squareform
 from sklearn.manifold import MDS
-
+from backend.services.genomics.proteomics.nucleosome_track import build_nucleosome_track
 warnings.filterwarnings("ignore")
 
 # ألوان الـ TADs (تُستخدم في العارض)
@@ -342,7 +342,8 @@ def detect_tads(dist_matrix, min_size=8):
 # ═══════════════════════════════════════
 
 def build_structure(path, alpha=0.5, smooth_points=1200, verbose=True,
-                    physics=False, resolution=5000, auto_alpha=False):
+                    physics=False, resolution=5000, auto_alpha=False,
+                    dnase_signal=None):
     matrix, info = load_hic_file(path, verbose, resolution)
     clean, valid = clean_matrix(matrix, verbose)
 
@@ -449,19 +450,32 @@ def build_structure(path, alpha=0.5, smooth_points=1200, verbose=True,
     quality = dscc(coords, clean)
     if verbose:
         print(f"[✓] dSCC = {quality:.4f} (المقياس المرجعي — الأعلى أفضل)")
+    nucleosome_track = []
+    if dnase_signal is not None:
+        nucleosome_track = build_nucleosome_track(
+            dnase_signal=dnase_signal,
+            coords_smooth=coords_smooth,   # القائمة يلي بنيناها فوق (list of dicts)
+            genomic_start=info["start"],
+            n_original_bins=len(coords_raw),
+            resolution=info["resolution"],
+        )
+        if verbose:
+            print(f"[✓] Nucleosome track — {len(nucleosome_track)} وحدة (200bp لكل وحدة)")
+
     return {
         "chrom": info["chrom"],
         "start": info["start"],
         "end": info["end"],
         "resolution": info["resolution"],
-        "stress": round(stress, 4),          # مُطبَّع 0–1
-        "dscc": round(quality, 4),           # المقياس المرجعي (الأعلى أفضل)
-        "collapse_ratio": round(collapse_ratio(coords), 2),  # >20 = مجسّم منهار
+        "stress": round(stress, 4),
+        "dscc": round(quality, 4),
+        "collapse_ratio": round(collapse_ratio(coords), 2),
         "n_tads": n_tads,
         "tad_colors": TAD_COLORS[:max(n_tads, 1)],
         "tad_boundaries": boundaries,
         "coords_raw": coords_raw,
         "coords_smooth": coords_smooth,
+        "nucleosome_track": nucleosome_track,   # ← جديد
         "stats": {
             "mean_step": round(float(steps.mean()), 4) if len(steps) else 0.0,
             "std_step": round(float(steps.std()), 4) if len(steps) else 0.0,
@@ -477,21 +491,23 @@ def build_structure(path, alpha=0.5, smooth_points=1200, verbose=True,
 # ═══════════════════════════════════════
 
 def run(input_path, control_path=None, alpha=0.5, smooth_points=1200,
-        output=None, physics=False, resolution=5000, auto_alpha=False):
+        output=None, physics=False, resolution=5000, auto_alpha=False,
+        dnase_patient=None, dnase_control=None):
     print("\n" + "=" * 52)
     print("  Hi-C → 3D Coordinates (v2)")
     print("=" * 52)
 
     print("\n— المريض —")
     patient = build_structure(input_path, alpha, smooth_points,
-                              physics=physics, resolution=resolution, auto_alpha=auto_alpha)
+                              physics=physics, resolution=resolution,
+                              auto_alpha=auto_alpha, dnase_signal=dnase_patient)
 
     payload = {"patient": patient}
     if control_path:
         print("\n— السليم —")
         payload["control"] = build_structure(control_path, alpha, smooth_points,
-                                            physics=physics, resolution=resolution, auto_alpha=auto_alpha)
-
+                                            physics=physics, resolution=resolution,
+                                            auto_alpha=auto_alpha, dnase_signal=dnase_control)
     if output is None:
         output = os.path.splitext(os.path.basename(input_path))[0] + "_coords.json"
 
