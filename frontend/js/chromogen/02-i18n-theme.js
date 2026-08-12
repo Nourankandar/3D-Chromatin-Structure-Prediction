@@ -1,4 +1,5 @@
 /* ============================================================
+   1. i18n
    قاموس عربي/إنجليزي، الثيم (فاتح/غامق)، الألوان، تنسيق الأرقام والتواريخ والمناطق الجينومية.
    ============================================================ */
 const DICT = {
@@ -196,12 +197,13 @@ const DICT = {
     viewer_hint:'اسحب للتدوير · مرّر للتكبير', viewer_no_data:'لا توجد بنية للعرض. افتح العارض من نتيجة مكتملة.',
     viewer_reset:'إعادة ضبط العرض', viewer_autorotate:'دوران تلقائي', viewer_points:'نقاط التحليل',
     viewer_open_rcsb:'فتح في RCSB', select_pdb:'بنية PDB', summary:'الملخص', region_size:'حجم المنطقة',
-    viewer_compare_control:'قارن مع العيّنة السليمة', viewer_report:'التقرير', viewer_gene_expr:'التعبير الجيني',
+    viewer_compare_control:'قارن', viewer_report:'التقرير', viewer_gene_expr:'التعبير الجيني',
     toast_patient_added:'تمت إضافة المريض.', toast_patient_updated:'تم تحديث المريض.', toast_patient_deleted:'تم حذف المريض.',
     toast_test_deleted:'تم حذف الاختبار.', toast_retry_started:'أُعيدت جدولة الاختبار.', toast_error:'حدث خطأ ما. يرجى المحاولة مرة أخرى.',
   }
 };
-let locale = 'en', theme = 'dark';
+let locale = 'en';
+let theme = (()=>{ try{ return localStorage.getItem('chromogen-theme') || 'dark'; }catch(e){ return 'dark'; } })();
 let accent = (()=>{ try{ return localStorage.getItem('chromogen-accent') || 'green'; }catch(e){ return 'green'; } })();
 const t = k => (DICT[locale][k] ?? DICT.en[k] ?? k);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -217,6 +219,7 @@ function applyTheme(){
   document.documentElement.classList.toggle('dark', theme==='dark');
   document.querySelectorAll('.js-theme').forEach(b => b.innerHTML = theme==='dark' ? ICON.sun : ICON.moon);
   scenes.forEach(s => s.refreshColors());
+  try{ localStorage.setItem('chromogen-theme', theme); }catch(e){}
 }
 
 /* -- نظام الثيمات اللونية  --

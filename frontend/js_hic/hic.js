@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════════════════
-     API  
+     API  إعدادات الـ  
    ══════════════════════════════════════════════════════════════════════ */
 const CHROMO_DEFAULT_VIZ_PATH = id => `/genomics/output/${id}/full/`;
 
@@ -33,12 +33,11 @@ function largestEigenVec4(N){
     v = w;
     if(diff < 1e-10) break;
   }
-  return v; 
+  return v; // [w, x, y, z]
 }
 
-
 function kabschQuaternion(A, B){
-
+  // مصفوفة التغاير 3×3
   let Sxx=0,Sxy=0,Sxz=0, Syx=0,Syy=0,Syz=0, Szx=0,Szy=0,Szz=0;
   for(let k=0;k<A.length;k++){
     const a=A[k], b=B[k];
@@ -46,14 +45,14 @@ function kabschQuaternion(A, B){
     Syx+=a.y*b.x; Syy+=a.y*b.y; Syz+=a.y*b.z;
     Szx+=a.z*b.x; Szy+=a.z*b.y; Szz+=a.z*b.z;
   }
-
+  // مصفوفة Horn المتناظرة 4×4
   const N=[
     [ Sxx+Syy+Szz,  Syz-Szy,      Szx-Sxz,      Sxy-Syx     ],
     [ Syz-Szy,      Sxx-Syy-Szz,  Sxy+Syx,      Szx+Sxz     ],
     [ Szx-Sxz,      Sxy+Syx,     -Sxx+Syy-Szz,  Syz+Szy     ],
     [ Sxy-Syx,      Szx+Sxz,      Syz+Szy,     -Sxx-Syy+Szz ]
   ];
-  const q = largestEigenVec4(N); 
+  const q = largestEigenVec4(N); // [w,x,y,z]
   return new THREE.Quaternion(q[1], q[2], q[3], q[0]).normalize();
 }
 
@@ -62,7 +61,6 @@ function rmsdOf(A, B){
   for(let k=0;k<A.length;k++) s += A[k].distanceToSquared(B[k]);
   return Math.sqrt(s / Math.max(A.length,1));
 }
-
 
 function pairPoints(pPts, cPts){
   const haveRegions = pPts[0]?.region && cPts[0]?.region;
@@ -80,18 +78,22 @@ function pairPoints(pPts, cPts){
   return { P: pPts.slice(0,n), C: cPts.slice(0,n), mode:'index' };
 }
 
+/* آخر نتيجة محاذاة — بتنعرض بلوحة التفاصيل */
 let alignInfo = null;
 
-
-let camSync = false;            
-let camLeader = false;         
-let camDirty = false;          
-let applyingRemoteCam = false;  
+/* ══════════════════════════════════════════════════════════════════════
+   تزامن الكاميرا بين شاشتي المقارنة
+   ══════════════════════════════════════════════════════════════════════ */
+let camSync = false;            // مفعّل؟ (بتحدده الصفحة الحاضنة)
+let camLeader = false;          // هل هالعارض هو القائد حالياً؟
+let camDirty = false;           // تغيّرت الكاميرا من آخر بثّ؟
+let applyingRemoteCam = false;  // عم نطبّق كاميرا جاية من برّا؟
 
 function camPost(msg){
   try{ if(window.parent && window.parent!==window) window.parent.postMessage(msg,'*'); }catch(e){}
 }
 
+/* بتنادى لما المستخدم يلمس هالشاشة — بتاخد القيادة */
 function claimCamLeadership(){
   if(!camSync || camLeader) return;
   camLeader = true;
@@ -111,27 +113,27 @@ function broadcastCam(){
 function applyRemoteCam(c){
   if(!c) return;
   if(focusOverride) return;     
-  camTween = null;              
+  camTween = null;             
   applyingRemoteCam = true;
   sph.theta=c.theta; sph.phi=c.phi; sph.r=c.r;
   pan.x=c.px; pan.y=c.py;
-  autoRot = !!c.autoRot;                 
+  autoRot = !!c.autoRot;                 // للعرض فقط — التابع ما بيدوّر لحالو
   const b=document.getElementById('btnR');
   if(b){ b.textContent = autoRot?'⏸':'▶'; b.classList.toggle('on', autoRot); }
   updateCam();
   applyingRemoteCam = false;
 }
 
-
-let bindingProteins = null;     
-let activeSide = 'patient';     
-let proteinGroup = null;        
+let bindingProteins = null;     // القاموس الخام من الباك
+let activeSide = 'patient';     // أي جهة معروضة بهالعارض
+let proteinGroup = null;        // THREE.Group فيه كل الـ markers
 let showProteins = true;
+
+
 let proteinMagnify = 60;
 function setProteinMagnify(v){ proteinMagnify=Math.max(1,+v||1); buildProteinMarkers(); }
-let sceneCenter = null;         
+let sceneCenter = null;        
 let alignTransform = null;      
-
 
 function resolveProteinCoordIndex(sideEntry, sideData, coords){
   if(!sideEntry) return {index:null, reason:'غير موجود بهذه الجهة'};
@@ -144,6 +146,7 @@ function resolveProteinCoordIndex(sideEntry, sideData, coords){
     return {index:null, reason:`coord_index=${i} خارج المدى (${coords.length})`};
   }
 
+ 
   const posRaw = sideEntry.position_index;
   if(posRaw==null || !isFinite(posRaw)) return {index:null, reason:'لا يوجد position_index'};
 
@@ -161,7 +164,7 @@ function resolveProteinCoordIndex(sideEntry, sideData, coords){
   return {index:null, reason:`لا توجد نقطة إحداثيات تغطي الموقع ${abs.toLocaleString()}bp`};
 }
 
-
+/* تصنيف حالة البروتين — بيحدد اللون والوصف */
 function classifyProtein(entry){
   const hasP = !!(entry.patient && entry.patient.present !== false);
   const hasC = !!(entry.control && entry.control.present !== false);
@@ -179,10 +182,6 @@ function classifyProtein(entry){
     return {key:'stable',   label:'مستقر',             color:'#8eb69b'};
   return {key:'unknown',    label:'غير محدد',          color:'#8a9a94'};
 }
-
-/* ══════════════════════════════════════════════════════════════════════
-   المعايرة والاتجاه — الطبقة العلمية
-   ══════════════════════════════════════════════════════════════════════ */
 
 function largestEigenVec3(M){
   let shift=0;
@@ -259,25 +258,25 @@ function calibrateScale(pts, resolution){
   if(!(meanStep > 1e-9)) return null;
 
   const nmPerBin = NM_PER_BIN_5KB * ((resolution || 5000) / 5000);
-  return nmPerBin / meanStep;          
+  return nmPerBin / meanStep;          // نانومتر لكل وحدة MDS
 }
 
 function trueSceneRadius(rec){
   if(!nmPerUnit || !rec?.extentA) return null;
-  const nm = rec.extentA * 0.1 / 2;   
-  return nm / nmPerUnit;               
+  const nm = rec.extentA * 0.1 / 2;    // نصف القطر بالنانومتر
+  return nm / nmPerUnit;               // بوحدات MDS
 }
 
 // ══ globals ══
 let scene,camera,renderer;
 let meshes={tube:null,glow:null,dots:null,bounds:null,rmsdTube:null};
 // ── حالة العرض المقارن (المريض + السليم) ──
-let controlData=null;          
-let controlMesh=null;          
-let showControl=true;          
+let controlData=null;          // بيانات السليم (لو متوفرة)
+let controlMesh=null;          // خيط السليم كطبقة منفصلة
+let showControl=true;          // إظهار/إخفاء طبقة السليم
 let sph={theta:.4,phi:1.2,r:80},pan={x:0,y:0};
 let drag=false,rDrag=false,prev={x:0,y:0};
-let autoRot=true,rotSpd=.001;
+let autoRot=true,rotSpd=.0002;
 let clrMode='emerald',tubeR=.6;
 let effects={glow:false,bounds:false,rmsd:false};
 let rawPts=[],smoothPts=[],viewMode='smooth';
@@ -295,7 +294,7 @@ function initThree(){
   const c=document.getElementById('cv');
   scene=new THREE.Scene();
   const bg=sceneColor();
-  scene.background=bg;                      
+  scene.background=bg;                       
   scene.fog=new THREE.FogExp2(bg.getHex(),.0016);
   camera=new THREE.PerspectiveCamera(55,c.clientWidth/c.clientHeight,.1,3000);
   updateCam();
@@ -348,18 +347,18 @@ function applyData(d){
   if(d.chrom && d.start!=null && d.end!=null)
     set('hdr-info', `${d.chrom} · ${(d.start/1e6).toFixed(2)}M → ${(d.end/1e6).toFixed(2)}M`);
 
-
   if(d.stress!=null && $('stress-bar')){
     const pct = Math.min(100, Math.max(5, (1 - Math.min(d.stress,1)) * 100));
     $('stress-bar').style.width = pct+'%';
     set('stress-val','Stress: '+Number(d.stress).toFixed(4));
   }
-  if(d.dscc!=null) set('p-dscc', Number(d.dscc).toFixed(4));
  
+  if(d.dscc!=null) set('p-dscc', Number(d.dscc).toFixed(4));
   if(d.collapse_ratio!=null) set('p-collapse', Number(d.collapse_ratio).toFixed(2));
 
   buildTADList(d);
   buildScene();
+  
   if(controlData) buildControlOverlay();
   buildProteinMarkers();
 }
@@ -388,6 +387,7 @@ function applyDualData(payload, side='both'){
     applyData(patient);
     return;
   }
+
   controlData = control;
   const btnC=document.getElementById('btnControl');
   if(btnC) btnC.style.display = controlData ? 'inline-flex' : 'none';
@@ -417,13 +417,14 @@ function buildControlOverlay(){
   const pCenter = centroid(ppts);
   const cCenter = centroid(canAlign ? C : cpts);
 
-  let quat = new THREE.Quaternion();      
-  let mirror = false;                     
+  let quat = new THREE.Quaternion();     
+  let mirror = false;                    
 
   if(canAlign){
     const Pc = P.map(p => new THREE.Vector3(p.x,p.y,p.z).sub(pCenter));
     const Cc = C.map(p => new THREE.Vector3(p.x,p.y,p.z).sub(cCenter));
 
+  
     const qDirect = kabschQuaternion(Cc, Pc);
     const rmsdDirect = rmsdOf(Cc.map(v => v.clone().applyQuaternion(qDirect)), Pc);
 
@@ -480,6 +481,7 @@ const ATOM_COLORS = { DNA:0xc9a84c, C:0xaaaaaa, N:0x4488ff, O:0xff4444, S:0xffdd
                       P:0xff8800, FE:0xff6600, ZN:0x8888ff, DEFAULT:0xcccccc };
 const ATOM_RADII  = { DNA:1.1, C:1.0, N:0.95, O:0.9, S:1.2, P:1.15, FE:1.3, ZN:1.25, DEFAULT:0.9 };
 
+
 const _DNA_RES = new Set(['DA','DT','DG','DC','A','T','G','C','U']);
 function parsePDB(text){
   const atoms=[];
@@ -501,7 +503,8 @@ function parsePDB(text){
   return atoms;
 }
 
-const NAME_CACHE = new Map();         
+
+const NAME_CACHE = new Map();        
 
 function normalizeGene(name){
   return String(name||'').split(/::|:|\//)[0]
@@ -556,7 +559,7 @@ async function resolveByGeneName(name){
     }
   }catch(e){}
 
-  NAME_CACHE.set(gene, out);         
+  NAME_CACHE.set(gene, out);          
   return out;
 }
 
@@ -575,13 +578,13 @@ function _touchCache(key){
   const v = PDB_CACHE.get(key);
   if(!v) return;
   v.pass = _lodPass;
-  PDB_CACHE.delete(key); PDB_CACHE.set(key, v);   
+  PDB_CACHE.delete(key); PDB_CACHE.set(key, v);  
 }
 function _evictCache(){
   if(PDB_CACHE.size <= PDB_MAX_CACHED) return;
   for(const [k, v] of [...PDB_CACHE]){
     if(PDB_CACHE.size <= PDB_MAX_CACHED) break;
-    if(v.pass === _lodPass) continue;            
+    if(v.pass === _lodPass) continue;             
     PDB_CACHE.delete(k);
   }
 }
@@ -605,7 +608,7 @@ async function loadStructure(key, src){
     }
     eff = resolved;
   }
-  rec.structureSource = eff.source || null;  
+  rec.structureSource = eff.source || null;   // experimental | predicted | null
   rec.accession = eff.accession || null;
 
   const urls = eff.kind==='url'
@@ -618,7 +621,7 @@ async function loadStructure(key, src){
       const res = await fetch(url, {signal: AbortSignal.timeout(15000)});
       if(!res.ok) continue;
       const text = await res.text();
-      if(!/^ATOM\s|\nATOM\s/.test(text)) continue;   
+      if(!/^ATOM\s|\nATOM\s/.test(text)) continue;  
       const atoms = parsePDB(text);
       if(!atoms.length) continue;
 
@@ -693,7 +696,7 @@ function updateLOD(){
   proteinGroup.children.forEach(holder=>{
     const ud = holder.userData;
     if(!ud || !ud.protein || ud.isHalo) return;
-    if(!holder.visible) return;      // المعزول مخفي → لا تحميل ولا رسم
+    if(!holder.visible) return;   
 
     const dist = camera.position.distanceTo(holder.position);
     const rec  = ud.src ? PDB_CACHE.get(ud.cacheKey) : null;
@@ -703,7 +706,7 @@ function updateLOD(){
     const apparent = drawR / Math.max(dist, 1e-6);
 
     let want;
-    if(reprMode === 'atoms')      want = 2;       
+    if(reprMode === 'atoms')      want = 2;        
     else if(reprMode === 'ribbon') want = 1;
     else want = ud.pinned ? 2                      
              : apparent > 0.030 ? 2
@@ -774,6 +777,7 @@ function updateLOD(){
 
 let camTween = null;
 let focusOverride = false; 
+
 function flyToProtein(key){
   if(!proteinGroup) return;
   const h = proteinGroup.children.find(m => m.userData?.protein===key && !m.userData?.isHalo);
@@ -798,13 +802,13 @@ function clearFocus(){
   camTween = null;
   focusOverride = false;
 }
+
 function stepCamTween(){
   if(!camTween) return;
   if(camSync && !camLeader && !focusOverride){ camTween = null; return; }
 
   camTween.t = Math.min(1, camTween.t + 0.055);
-  const e = 1 - Math.pow(1 - camTween.t, 3);         
-
+  const e = 1 - Math.pow(1 - camTween.t, 3);          
   pan.x = camTween.fromPan.x + (camTween.toPan.x - camTween.fromPan.x) * e;
   pan.y = camTween.fromPan.y + (camTween.toPan.y - camTween.fromPan.y) * e;
   sph.r = camTween.fromR     + (camTween.toR     - camTween.fromR)     * e;
@@ -829,6 +833,62 @@ function updateScaleBadge(anyStruct, dna, approx, exper, pred){
 function toggleLOD(){
   lodEnabled = !lodEnabled;
   document.getElementById('btnLod')?.classList.toggle('on', lodEnabled);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   markers البروتينات على الخيط + لستة اللوحة
+   ══════════════════════════════════════════════════════════════════════ */
+let highlightTRange = null;
+let highlightColor = {r:1, g:0.878, b:0.541};
+let curSegs = 0;
+let pulseRAF = null;
+
+function rebuildTubeOnly(hlRange, hlMult){
+  const pts = viewMode==='smooth' ? smoothPts : rawPts;
+  if(!pts || pts.length<2 || !meshes.tube || !sceneCenter) return;
+  const v3 = pts.map(p=> new THREE.Vector3(p.x-sceneCenter.x, p.y-sceneCenter.y, p.z-sceneCenter.z));
+  const curve = new THREE.CatmullRomCurve3(v3,false,'catmullrom',.5);
+  const segs = curSegs || Math.min(v3.length*4,1800);
+  const newGeo = buildRibbonGeometry(curve, segs, tubeR, hlRange, hlMult);
+  colorRibbon(newGeo, segs, pts);
+  meshes.tube.geometry.dispose();
+  meshes.tube.geometry = newGeo;
+}
+
+function startHighlightPulse(){
+  if(pulseRAF){ cancelAnimationFrame(pulseRAF); pulseRAF=null; }
+  if(!highlightTRange){ rebuildTubeOnly(null, 1); return; }
+  const t0 = performance.now();
+  const DUR = 2200;
+  const step = now=>{
+    const el = now - t0;
+    if(el < DUR){
+      const osc = Math.sin(el/170)*0.5 + 0.5;
+      rebuildTubeOnly(highlightTRange, 1.4 + osc*1.4);
+      pulseRAF = requestAnimationFrame(step);
+    } else {
+      rebuildTubeOnly(highlightTRange, 1.9); 
+      pulseRAF = null;
+    }
+  };
+  pulseRAF = requestAnimationFrame(step);
+}
+
+function highlightGeneRegion(points, colorHex){
+  highlightTRange = null;
+  if(colorHex!=null){
+    const c = new THREE.Color(colorHex);
+    highlightColor = {r:c.r, g:c.g, b:c.b};
+  }
+  if(points && points.length && rawPts.length>1 && sceneCenter){
+    const wanted = new Set(points.map(p=>p.region).filter(Boolean));
+    let minI=null, maxI=null;
+    rawPts.forEach((p,i)=>{
+      if(wanted.has(p.region)){ if(minI==null) minI=i; maxI=i; }
+    });
+    if(minI!=null) highlightTRange = {start:minI/(rawPts.length-1), end:maxI/(rawPts.length-1)};
+  }
+  startHighlightPulse();
 }
 
 function removeProteinMarkers(){
@@ -896,7 +956,7 @@ function buildProteinMarkers(){
     }
 
     entry.__resolved = { index:r.index, reason:r.reason, placed: !!pos, ghost };
-    if(!pos) return;   // بيضل باللستة بدون marker — ما منهار
+    if(!pos) return;  
 
     const color = new THREE.Color(cls.color);
     const holder = new THREE.Group();
@@ -921,6 +981,7 @@ function buildProteinMarkers(){
       cacheKey: key
     };
     proteinGroup.add(holder);
+
     if(cls.key==='missing' || cls.key==='gained'){
       const halo = new THREE.Mesh(
         new THREE.SphereGeometry(markerR*2.1, 16, 12),
@@ -945,6 +1006,7 @@ function buildProteinList(){
   if(!box || !bindingProteins) return;
 
   const entries = Object.entries(bindingProteins);
+ 
   const rank = {missing:0, gained:1, weakened:2, stronger:3, stable:4, unknown:5};
   entries.sort((a,b)=>{
     const ra=rank[classifyProtein(a[1]).key], rb=rank[classifyProtein(b[1]).key];
@@ -1033,6 +1095,8 @@ function focusProtein(key, ev){
   document.querySelectorAll('.prot-item').forEach(el=>el.classList.remove('active'));
   ev?.currentTarget?.classList?.add('active');
 }
+
+
 let proteinFilter='all';
 function setProteinFilter(f){ proteinFilter=f||'all'; buildProteinMarkers(); }
 
@@ -1168,7 +1232,7 @@ function buildTADList(d){
   }
 }
 
-function buildRibbonGeometry(curve, segments, width){
+function buildRibbonGeometry(curve, segments, width, hlRange, hlMult){
   const frames = curve.computeFrenetFrames(segments, false);
   const pts = curve.getPoints(Math.min(segments, 200));
   const cx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
@@ -1181,18 +1245,27 @@ function buildRibbonGeometry(curve, segments, width){
   }
   if(!(radius > 0)) radius = 1;
 
-  const halfW = width * radius * 0.022;  
-  const halfT = Math.max(halfW * 0.13, radius * 0.0008);
+  const halfW0 = width * radius * 0.022;  
+  const halfT0 = Math.max(halfW0 * 0.13, radius * 0.0008);
   const pos=[], idx=[], uvs=[];
   const P=new THREE.Vector3();
 
   for(let i=0;i<=segments;i++){
-    curve.getPointAt(i/segments, P);
+    const t = i/segments;
+    curve.getPointAt(t, P);
     const N = frames.normals[i], B = frames.binormals[i];
+    let mult = 1;
+    if(hlRange){
+      const mid=(hlRange.start+hlRange.end)/2, half=Math.max((hlRange.end-hlRange.start)/2, 0.004);
+      const dist = Math.abs(t-mid);
+      const falloff = Math.max(0, 1 - dist/(half*3.2));
+      mult = 1 + falloff*((hlMult??2.2)-1);
+    }
+    const halfW=halfW0*mult, halfT=halfT0*mult;
     const corners = [[halfW,halfT],[halfW,-halfT],[-halfW,-halfT],[-halfW,halfT]];
-    for(const [w,t] of corners){
-      pos.push(P.x + B.x*w + N.x*t, P.y + B.y*w + N.y*t, P.z + B.z*w + N.z*t);
-      uvs.push(i/segments, 0);
+    for(const [w,tt] of corners){
+      pos.push(P.x + B.x*w + N.x*tt, P.y + B.y*w + N.y*tt, P.z + B.z*w + N.z*tt);
+      uvs.push(t, 0);
     }
   }
   for(let i=0;i<segments;i++){
@@ -1215,7 +1288,8 @@ function colorRibbon(geo, segments, pts){
   for(let i=0;i<=segments;i++){
     const t=i/segments;
     const p=pts[Math.floor(t*(pts.length-1))]||pts[pts.length-1];
-    const c=getClr(t, p.density||.5, p.tad_id||0, p.deviation||0);
+    const inHighlight = highlightTRange && t>=highlightTRange.start && t<=highlightTRange.end;
+    const c = inHighlight ? highlightColor : getClr(t, p.density||.5, p.tad_id||0, p.deviation||0);
     for(let k=0;k<4;k++) cols.push(c.r,c.g,c.b);
   }
   geo.setAttribute('color', new THREE.Float32BufferAttribute(cols,3));
@@ -1234,14 +1308,13 @@ function buildScene(){
   const v3=pts.map(p=>new THREE.Vector3(p.x-cx,p.y-cy,p.z-cz));
   const curve=new THREE.CatmullRomCurve3(v3,false,'catmullrom',.5);
   const segs=Math.min(v3.length*4,1800);
-
   const geo=buildRibbonGeometry(curve,segs,tubeR);
+  curSegs = segs;
   colorRibbon(geo,segs,pts);
   meshes.tube=new THREE.Mesh(geo,new THREE.MeshPhongMaterial(
     {vertexColors:true,shininess:110,specular:new THREE.Color(0x3a3530),side:THREE.DoubleSide}));
   scene.add(meshes.tube);
 
-  // ── Glow ──
   if(effects.glow){
     const geoG=new THREE.TubeGeometry(curve,segs/2,tubeR*3.5,8,false);
     const cgCnt=geoG.getAttribute('position').count;
@@ -1297,7 +1370,7 @@ function buildScene(){
     }
   }
 
-  // ── hover ──
+  // ── نقاط hover ──
   const rCx=rawPts.reduce((s,p)=>s+p.x,0)/rawPts.length;
   const rCy=rawPts.reduce((s,p)=>s+p.y,0)/rawPts.length;
   const rCz=rawPts.reduce((s,p)=>s+p.z,0)/rawPts.length;
@@ -1524,7 +1597,7 @@ function switchMode(m){
   document.getElementById('btnSm').classList.toggle('on',m==='smooth');
   document.getElementById('btnRw').classList.toggle('on',m==='raw');
   buildScene();
-  if(controlData) buildControlOverlay();
+  if(controlData) buildControlOverlay();   
 }
 
 function setClr(m,btn){
@@ -1592,7 +1665,7 @@ function setupEvents(c){
   });
   window.addEventListener('mouseup',()=>drag=false);
   renderer.domElement.addEventListener('wheel',e=>{
-    sph.r=Math.max(2,Math.min(500,sph.r+e.deltaY*.04));
+    sph.r=Math.max(5,Math.min(500,sph.r+e.deltaY*.04));
     updateCam();e.preventDefault();
   },{passive:false});
   renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
@@ -1644,12 +1717,11 @@ function doHover(e,c){
   } else { tip.style.display='none'; }
 }
 
-// ══ Loop ══
 function loop(){
   requestAnimationFrame(loop);
   if(autoRot && (!camSync || camLeader)){ sph.theta+=rotSpd; updateCam(); }
   stepCamTween();
-  if(++lodAccum % 6 === 0) updateLOD();   // فحص المسافات مش كل إطار
+  if(++lodAccum % 6 === 0) updateLOD();  
   broadcastCam();
   renderer.render(scene,camera);
 }
@@ -1660,8 +1732,7 @@ window.addEventListener('load', ()=>{
     const params = new URLSearchParams(location.search);
     const outputId = (params.get('output_id') || params.get('output') || '').trim();
     const token = params.get('token') || '';
-    const side = params.get('side') || 'patient';   // both | patient | control — العارض المفرد افتراضياً مريض بس
-
+    const side = params.get('side') || 'patient';   
     if(params.get('embedded')==='1'){
       document.documentElement.classList.add('embedded');
     }
@@ -1685,11 +1756,11 @@ window.addEventListener('message', (ev)=>{
     camLeader = !!d.leader;
     return;
   }
-  if(d.type==='chromo-cam-yield'){       
+  if(d.type==='chromo-cam-yield'){      
     camLeader = false;
     return;
   }
-  if(d.type==='chromo-ctl'){          
+  if(d.type==='chromo-ctl'){        
     const c=d.ctl||{};
     if(c.view)              switchMode(c.view);
     if(c.reset)             resetCam();
@@ -1704,8 +1775,9 @@ window.addEventListener('message', (ev)=>{
   if(d.type==='chromo-protein-visibility'){ setProteinVisibility(d.hidden); return; }
   if(d.type==='chromo-protein-focus'){ focusProtein(d.protein||null); return; }
   if(d.type==='chromo-protein-filter'){ setProteinFilter(d.filter); return; }
-  if(d.type==='chromo-cam'){            
-    if(!camSync || camLeader) return;    
+  if(d.type==='chromo-highlight-region'){ highlightGeneRegion(d.points||[], d.color); return; }
+  if(d.type==='chromo-cam'){           
+    if(!camSync || camLeader) return;   
     applyRemoteCam(d.cam);
     return;
   }

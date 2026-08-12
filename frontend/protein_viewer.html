@@ -82,7 +82,10 @@
 
 <script>
 
-(function(){ try{ var p=new URLSearchParams(location.search); if(p.get('theme')==='light') document.documentElement.setAttribute('data-theme','light');
+(function(){ try{ var p=new URLSearchParams(location.search);
+  var storedTheme = localStorage.getItem('chromogen-theme');
+  var wantedTheme = p.get('theme') || storedTheme || 'dark';
+  if(wantedTheme==='light') document.documentElement.setAttribute('data-theme','light');
   var ACCENTS={
     green :{primary:'#8eb69b',muted:'#8eb69b',scene:'#08201c',bg:'#0b2b26',card:'rgba(13,42,37,.66)'},
     blue  :{primary:'#8fa9d4',muted:'#8fa9d4',scene:'#0d1526',bg:'#111a2e',card:'rgba(20,30,54,.66)'},
@@ -93,11 +96,21 @@
     gold  :{primary:'#d0b878',muted:'#d0b878',scene:'#221a0d',bg:'#2b2211',card:'rgba(54,44,20,.66)'},
     slate :{primary:'#9fb0ba',muted:'#9fb0ba',scene:'#12181c',bg:'#171e22',card:'rgba(23,30,34,.66)'},
   };
-  var a=p.get('accent'); if(a && ACCENTS[a] && a!=='green'){
-    var c=ACCENTS[a], r=document.documentElement.style;
-    r.setProperty('--primary',c.primary); r.setProperty('--muted',c.muted);
-    r.setProperty('--scene',c.scene); r.setProperty('--bg',c.bg); r.setProperty('--card',c.card);
+  function applyAccent(a){
+    var r=document.documentElement.style;
+    if(a && ACCENTS[a] && a!=='green'){
+      var c=ACCENTS[a];
+      r.setProperty('--primary',c.primary); r.setProperty('--muted',c.muted);
+      r.setProperty('--scene',c.scene); r.setProperty('--bg',c.bg); r.setProperty('--card',c.card);
+    } else {
+      ['--primary','--muted','--scene','--bg','--card'].forEach(k=>r.removeProperty(k));
+    }
   }
+  applyAccent(p.get('accent') || localStorage.getItem('chromogen-accent'));
+  window.addEventListener('storage', function(e){
+    if(e.key==='chromogen-theme') document.documentElement.setAttribute('data-theme', e.newValue==='light' ? 'light' : 'dark');
+    if(e.key==='chromogen-accent') applyAccent(e.newValue);
+  });
 }catch(e){} })();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -155,7 +168,6 @@ function animate(){
 function toggleRot(){ autoRot = !autoRot; document.getElementById('btnRot').classList.toggle('on', autoRot); }
 function resetView(){ camera.position.set(0,0,120); controls.target.set(0,0,0); controls.update(); }
 
-// ── تحليل PDB → ذرات (مع اسم الذرة والسلسلة والتسلسل — لازمين للشريط) ──
 function parsePDB(text){
   const atoms=[]; const lines=text.split('\n');
   for(const line of lines){
@@ -253,7 +265,6 @@ function setMode(mode){
   if(mode==='ribbon') drawRibbon(currentAtoms); else drawAtoms(currentAtoms);
 }
 
-// بروكسي 
 function proxied(url){
   return [
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -275,7 +286,6 @@ async function loadAlphaFold(uniprotId){
   msg.className=''; msg.textContent='جاري الاستعلام من AlphaFold…';
   const id=String(uniprotId).toUpperCase();
 
-  // 1) API  نحاول الحصول على الرابط الرسمي من الـ 
   let apiUrls=[];
   const apiEndpoint=`https://alphafold.ebi.ac.uk/api/prediction/${id}`;
   for(const u of [apiEndpoint, ...proxied(apiEndpoint)]){
@@ -288,7 +298,6 @@ async function loadAlphaFold(uniprotId){
     }catch(e){}
   }
 
-  // 2)  تخمين الإصدارات الأحدث أولاً 
   const guessed=['v6','v5','v4'].map(v=>`https://alphafold.ebi.ac.uk/files/AF-${id}-F1-model_${v}.pdb`);
   const urls=[...apiUrls, ...guessed, ...proxied(guessed[0])];
 
@@ -296,6 +305,22 @@ async function loadAlphaFold(uniprotId){
   return loadStructure(urls, msg, L);
 }
 
+
+function renderRawPDB(text){
+  const L=document.getElementById('loading'), msg=document.getElementById('load-msg');
+  try{
+    if(!/^ATOM\s|\nATOM\s/.test(text)) throw new Error('نص PDB غير صالح');
+    const atoms=parsePDB(text);
+    if(!atoms.length) throw new Error('الملف لا يحتوي إحداثيات ذرية');
+    currentAtoms = atoms; setMode(currentMode);
+    document.getElementById('tSub').textContent = (document.getElementById('tSub').textContent||'') +
+      ' · ' + atoms.length.toLocaleString('ar-EG') + ' ذرة';
+    L.classList.add('hidden');
+  }catch(err){
+    const spin=L.querySelector('.spin'); if(spin) spin.style.display='none';
+    msg.className='err'; msg.textContent='✕ ' + (err.message||'فشل عرض البنية');
+  }
+}
 
 async function loadStructure(urls, msg, L){
   try{
@@ -330,7 +355,6 @@ async function loadStructure(urls, msg, L){
   }
 }
 
-// ── بدء ──
 initThree();
 (function boot(){
   const p=new URLSearchParams(location.search);
@@ -360,6 +384,12 @@ window.addEventListener('message', e=>{
     document.getElementById('titleCard').style.display='block';
     document.getElementById('tTitle').textContent = e.data.name || e.data.pdb;
     loadPDB(String(e.data.pdb).toUpperCase());
+  }
+  if(e.data && e.data.type==='load-pdb-raw' && e.data.pdbText){
+    document.getElementById('titleCard').style.display='block';
+    document.getElementById('tTitle').textContent = e.data.name || 'ESMFold';
+    document.getElementById('tSub').textContent = e.data.sub || '';
+    renderRawPDB(e.data.pdbText);
   }
 });
 </script>

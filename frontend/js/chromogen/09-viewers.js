@@ -1,6 +1,5 @@
 /* ============================================================
    10. VIEWERS
-   الإطار المشترك للعارضين المصغّرين داخل لوحة الداشبورد 
    ============================================================ */
 function viewerFrame({title, desc, backRoute, backLabel, panel, canvasId}){
   return `<div class="wrap">
@@ -43,6 +42,7 @@ function renderChromatin(view){
   const test = allTests().find(g=>g.id===S.activeTest);
   const patient = S.patients.find(p=>p.genomic_inputs.some(g=>g.id===S.activeTest));
   if(!test || test.status!=='completed'){ viewerEmpty(view,'dashboard',t('go_to_patients')); return; }
+
   const pts = test.report?.analysis_points ?? null;
   const regionSize = test.report?.region_size ?? (test.end_pos - test.start_pos);
   const outputId = test.output_data_id;
@@ -83,6 +83,7 @@ function renderChromatin(view){
     wrap.innerHTML = `<iframe id="chromatinFrame" src="${src}" title="Chromatin 3D viewer"
       style="width:100%;height:clamp(380px,60vh,620px);border:0;display:block;border-radius:18px;background:var(--card)"></iframe>`;
 
+    
     const frame = view.querySelector('#chromatinFrame');
     const postCtl = (msg) => frame.contentWindow?.postMessage({type:'chromo-ctl', ctl: msg}, '*');
     const sw = view.querySelector('#autoRotate');
@@ -110,6 +111,7 @@ async function searchProteinForViewer(gene){
       S.activeProtein = { gene:data.gene, uniprot_id:data.uniprot_id, protein_name:data.protein_name, pdb_ids:data.pdb_ids, predicted:false };
       S.activePdb = data.pdb_ids[0];
     } else if(data && data.uniprot_id){
+      // ما في بنية تجريبية بـ RCSB → منستعمل تنبؤ AlphaFold (بنية متوقّعة مش مقاسة)
       S.activeProtein = { gene:data.gene, uniprot_id:data.uniprot_id, protein_name:data.protein_name, pdb_ids:[], predicted:true };
       S.activePdb = null;
       toast(t('protein_predicted_note'));
@@ -267,10 +269,10 @@ async function loadReport(reportId){
 }
 function renderReportBody(r){
   const body=document.getElementById('reportModalBody');
-  const st = r.status; 
+  const st = r.status; // draft | generating | completed | failed — قيم حقيقية من الباك
   if(st==='draft' || st==='generating'){
     body.innerHTML=`<div style="text-align:center;padding:24px 0">
-      <p class="sm-t muted">${st==='generating' ? 'التقرير عم يتولّد الآن...' : 'التقرير لسا ما بلّش توليده.'}</p>
+      <p class="sm-t muted">${st==='generating' ? 'التقرير يتولّد الآن...' : ' التقرير لم يتم توليده.'}</p>
       <button class="btn outline" style="margin-top:12px" onclick="loadReport(${r.id})">تحديث الحالة</button>
     </div>`;
     return;
@@ -322,6 +324,6 @@ async function exportReportPDF(reportId){
     a.href = blobUrl; a.download = `report_${reportId}.pdf`; a.click();
     URL.revokeObjectURL(blobUrl);
   }catch(e){
-    alert('  تأكد أن التقرير مكتمل ');
+    alert('تعذّر تصدير الـ PDF — تأكد أن التقرير مكتمل');
   }
 }

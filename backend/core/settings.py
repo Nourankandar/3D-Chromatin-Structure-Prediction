@@ -2,6 +2,9 @@
 core/settings.py
 Django settings for the 3D Chromatin Structure Prediction backend.
 """
+import mimetypes
+mimetypes.add_type("application/javascript", ".js", True)
+mimetypes.add_type("text/css", ".css", True)
 
 import os
 import sys
@@ -39,6 +42,8 @@ CORS_ALLOW_CREDENTIALS = True
 
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
 
 STATICFILES_DIRS = [
     BASE_DIR.parent / 'frontend',
