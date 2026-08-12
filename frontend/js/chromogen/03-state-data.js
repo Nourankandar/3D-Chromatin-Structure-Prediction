@@ -1,6 +1,33 @@
 /* ============================================================
-   2. أنواع الخلايا، المرضى، متابعة حالة التحاليل الجارية 
+    أنواع الخلايا، المرضى، متابعة حالة التحاليل الجارية 
    ============================================================ */
+
+/* ============================================================
+   STATUS 
+   ============================================================ */
+const STATUS_GROUP = {
+  pending:               'pending',
+  predicting_dnase:      'running',
+  generating_hic:        'running',
+  generating_hic_coords: 'running',
+  scanning_motifs:       'running',
+  cancelling:            'running',
+  cancelled:             'cancelled',
+  completed:             'completed',
+  failed:                'failed',
+};
+
+const RUNNING_SET  = Object.keys(STATUS_GROUP).filter(s => ['pending','running'].includes(STATUS_GROUP[s]));
+
+const TERMINAL_SET = ['completed','failed','cancelled'];
+
+function statusGroup(s){ return STATUS_GROUP[s] || 'pending'; }
+function statusLabel(s){ return t('status_'+s) || s; }
+
+
+
+
+
 let CELL_TYPES = [];
 
 async function fetchCellTypes(){
@@ -10,7 +37,7 @@ async function fetchCellTypes(){
     CELL_TYPES = raw.map(c=>({
       id: c.id,
       name: c.name,
-      eid: c.target_enformer_id,
+      eid: c.target_basset_track_id,
       desc: c.description || ''
     }));
   } catch(e){
@@ -84,21 +111,26 @@ async function loadPatients(){
 
 /*  استعلام دوري عن  حتى الاكتمال */
 const _pollTimers = {};
+function stopPolling(inputId){
+  if (_pollTimers[inputId]) { clearInterval(_pollTimers[inputId]); delete _pollTimers[inputId]; }
+}
 function pollTestStatus(inputId){
-  if (_pollTimers[inputId]) clearInterval(_pollTimers[inputId]);
+  stopPolling(inputId);
   _pollTimers[inputId] = setInterval(async ()=>{
     try {
       const st = await api.get(`/genomics/test-status/${inputId}/`);
-      // حدّث حالة هذا التحليل داخل S.patients إن كان محمّلاً
       S.patients.forEach(p=>p.genomic_inputs.forEach(g=>{
         if (g.id===inputId){ g.status = st.status; if (st.output_data_id) g.output_data_id = st.output_data_id; }
       }));
       if (S.route==='dashboard') renderRoute();
       if (st.status==='completed' || st.status==='failed'){
-        clearInterval(_pollTimers[inputId]); delete _pollTimers[inputId];
+        stopPolling(inputId);
         if (st.status==='completed') toast(t('toast_test_completed') || 'اكتمل التحليل بنجاح');
         else toast('فشل التحليل — راجعي السيرفر','error');
       }
-    } catch(e){ /* خطأ مؤقت — منكمّل الاستعلام */ }
+    } catch(e){
+      if (e.response && e.response.status===404){ stopPolling(inputId); return; }
+      /* خطأ مؤقت — منكمّل الاستعلام */
+    }
   }, 4000);
 }

@@ -138,6 +138,7 @@ select,.select{color:var(--foreground)}
 .badge.running{background:color-mix(in oklch,var(--accent) 15%,transparent);color:var(--accent-foreground);border-color:color-mix(in oklch,var(--accent) 40%,transparent)}
 .badge.completed{background:color-mix(in oklch,var(--primary) 15%,transparent);color:var(--primary);border-color:color-mix(in oklch,var(--primary) 30%,transparent)}
 .badge.failed{background:color-mix(in oklch,var(--destructive) 15%,transparent);color:var(--destructive);border-color:color-mix(in oklch,var(--destructive) 30%,transparent)}
+.badge.cancelled{background:var(--muted);color:var(--muted-foreground);border-color:var(--border);opacity:.75}
 .pill{display:inline-flex;align-items:center;gap:.35rem;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:.2rem .7rem;font-size:.75rem;color:var(--muted-foreground)}
 .chip{display:inline-flex;border-radius:999px;background:var(--secondary);color:var(--secondary-foreground);padding:.15rem .55rem;font-size:.75rem;font-weight:500}
 
