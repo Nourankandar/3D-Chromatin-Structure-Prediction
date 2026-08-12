@@ -50,9 +50,12 @@ function renderLanding(){
    7. PATIENTS
    ============================================================ */
 function statusBadge(s){
-  const pulse = (s==='running'||s==='queued') ? 'pulse' : '';
-  return `<span class="badge ${s}"><span class="dot ${pulse}"></span>${t('status_'+s)}</span>`;
+  const g = statusGroup(s);
+  const pulse = g==='running' ? 'pulse' : '';
+  return `<span class="badge ${g}" data-status="${s}" title="${statusLabel(s)}">
+    <span class="dot ${pulse}"></span>${statusLabel(s)}</span>`;
 }
+
 function renderPatients(view){
   let body;
   if (S.patientsLoading){

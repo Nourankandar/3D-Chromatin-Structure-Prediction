@@ -4,7 +4,7 @@
   (رفع FASTA، اختيار نوع خلية، بحث بروتين)
     وشاشة الإعدادات وأنواع الخلايا
    ============================================================ */
-const PF = {patient:'', cell:'', chrom:'', start:'', end:'', file:null, submitting:false, started:false, rejected:false};
+const PF = {patient:'', cell:'', chrom:'', start:'', end:'', file:null, submitting:false, started:false, startedId:null, stopping:false, rejected:false};
 
 
 function renderPredict(view){
@@ -27,6 +27,9 @@ function renderPredict(view){
       <div class="row" style="margin-top:1.5rem">
         <button class="btn" data-go="dashboard">${t('view_tests')}</button>
         <button class="btn outline" id="againBtn">${t('start_another')}</button>
+        ${PF.startedId ? `<button class="btn outline" id="stopStartedBtn" ${PF.stopping?'disabled':''}>
+          ${PF.stopping ? `<span class="spin"></span>` : `${ICON.x}<span>${t('stop_test')}</span>`}
+        </button>` : ''}
       </div></div>`;
   } else {
     form = `<form id="predictForm" class="card" style="padding:1.5rem;display:flex;flex-direction:column;gap:1.25rem">
@@ -131,6 +134,23 @@ function bindPredict(view){
   on('pfEnd','input',      e=>{ PF.end=e.target.value; updateDerived(view); });
   on('againBtn','click',   ()=>{ Object.assign(PF,{chrom:'',start:'',end:'',file:null,started:false,rejected:false}); renderRoute(); });
   on('rmFile','click',     ()=>{ PF.file=null; PF.rejected=false; renderRoute(); });
+  view.querySelector('#stopStartedBtn')?.addEventListener('click', async ()=>{
+    if(!await confirmDialog(t('stop_test_confirm_title'), t('stop_test_confirm_desc'))) return;
+    PF.stopping = true; renderRoute();
+    try {
+      await api.post(`/genomics/${PF.startedId}/stop/`, {});
+       stopPolling(PF.startedId);
+      toast(t('toast_test_stopped'));
+      await loadPatients();
+      PF.started=false; PF.startedId=null; PF.stopping=false;
+      PF.patient=''; PF.cell=''; PF.chrom=''; PF.start=''; PF.end=''; PF.file=null;
+      renderRoute();
+    } catch(err){
+      console.error('[test stop]', err.response ? err.response.data : err);
+      toast(err.response?.data?.error || t('toast_stop_failed'), 'error');
+      PF.stopping = false; renderRoute();
+    }
+  });
   on('pickFile','click',   ()=> view.querySelector('#fileInput').click());
   on('fileInput','change', e=> acceptFile(e.target.files[0]));
 
@@ -158,12 +178,18 @@ function bindPredict(view){
       
       const res = await api.post('/genomics/run-test/', fd);
       const inputId = res.input_data_id;
-      PF.submitting=false; PF.started=true; renderRoute();
+      PF.submitting=false; PF.started=true; PF.startedId=inputId; renderRoute();
       toast(t('prediction_started'));
       await loadPatients();            // ليظهر التحليل الجديد في لوحة المرضى
       if (inputId) pollTestStatus(inputId);   // متابعة الحالة حتى الاكتمال
     } catch(err){
       console.error('[run-test]', err.response ? err.response.data : err);
+      const serverMsg = err.response?.data?.error || '';
+      if (serverMsg.toLowerCase().includes('already') || serverMsg.includes('running')) {
+        toast(t('toast_active_test_exists'), 'error');
+      } else {
+        toast(serverMsg || t('predict_err_generic'), 'error');
+      }
       PF.submitting=false; renderRoute();
       toast('تعذّر رفع التحليل — تحقّق من الحقول والملف','error');
     }
@@ -321,7 +347,7 @@ function bindCellActions(root, refresh, onDone){
     if(!name){ toast(t('cells_err_name')); return; }
     const eid = Number(eidRaw);
     if(eidRaw==='' || Number.isNaN(eid) || eid<0 || eid>163){ toast(t('cells_err_eid')); return; }
-    const payload = { name, target_enformer_id: eid, description: desc };
+    const payload = { name, target_basset_track_id: eid, description: desc };
     try{
       if(CT_EDIT){ await updateCellType(CT_EDIT, payload); toast(t('cells_updated')); }
       else       { await createCellType(payload);          toast(t('cells_added')); }

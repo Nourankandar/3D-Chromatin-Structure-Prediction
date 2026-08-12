@@ -37,17 +37,19 @@ document.addEventListener('click', e=>{
 /* ============================================================
    5b. OVERVIEW  +  PROFILE  
    ============================================================ */
-const RUNNING_SET = ['pending','predicting_dnase','generating_hic','running'];
 
 function computeStats(){
   const patients = S.patients || [];
   const tests = patients.flatMap(p => p.genomic_inputs || []);
   const by = st => tests.filter(t => st.includes(t.status)).length;
-  const completed = by(['completed']), failed = by(['failed']), running = by(RUNNING_SET);
+  const completed = by(['completed']),
+        failed    = by(['failed']),
+        cancelled = by(['cancelled']),
+        running   = by(RUNNING_SET);
   return {
     patients: patients.length,
     tests: tests.length,
-    completed, running, failed,
+    completed, running, failed, cancelled,
     success: tests.length ? Math.round(completed / tests.length * 100) : 0,
     avg: patients.length ? (tests.length / patients.length).toFixed(1) : '0.0',
     recent: tests.slice().sort((a,b)=> new Date(b.created_at) - new Date(a.created_at)).slice(0,5)
@@ -56,8 +58,9 @@ function computeStats(){
 }
 
 function statusPill(st){
-  const cls = st==='completed' ? 'ok' : st==='failed' ? 'err' : 'run';
-  return `<span class="pill ${cls}">${t('status_'+st) || st}</span>`;
+  const g = statusGroup(st);
+  const cls = g==='completed' ? 'ok' : (g==='failed'||g==='cancelled') ? 'err' : 'run';
+  return `<span class="pill ${cls}">${statusLabel(st)}</span>`;
 }
 
 function renderOverview(view){
