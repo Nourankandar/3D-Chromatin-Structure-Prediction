@@ -210,7 +210,7 @@ class GenomicPipelineManager:
     def _step_fetch_and_complete(self, patient_fasta_path: str, coords: dict,
                                   expanded_window: dict, input_data) -> tuple[str, str]:
         from services.genomics.referenceGenome.fetcher import fetch_reference_sequence, fetch_reference_sequence_as_fasta_file
-        from services.genomics.referenceGenome.DNA_locator import _read_fasta_sequence
+        from services.genomics.referenceGenome.DNA_locator import _read_fasta_sequence, _reverse_complement
 
         self._update_status(input_data, "pending")
         logger.info("[Pipeline %s] -> جلب السليم بالنافذة الموسّعة", self.input_data_id)
@@ -232,6 +232,22 @@ class GenomicPipelineManager:
 
         # 2) المريض — التسلسل الأصلي يلي عندنا
         original_patient_seq = _read_fasta_sequence(patient_fasta_path)
+
+        # مهم جداً: DNA_locator بيجرب الاتجاهين (+ و -) ويختار الأفضل تطابقاً.
+        # لو طلع إنه أفضل تطابق كان عالـ reverse complement (strand == "-")،
+        # هاد معناه إنه ملف المريض المرفوع أصلاً معكوس الاتجاه (مثلاً جاي من
+        # NCBI efetch بصيغة complement/strand=2 بدل strand=1 المعتمدة عندنا).
+        # لازم نصحح الاتجاه هون *قبل* أي مقارنة أو قص، لأنه control_seq
+        # دايماً بيجي من fetcher.py بالخيط الموجب (plus) بشكل ثابت — فلو
+        # ما صححنا، رح تنقارن تسلسلين بمنطقين معاكسين وتطلع مئات الفروقات
+        # الوهمية بدل الطفرة الحقيقية الوحيدة.
+        if coords.get("strand") == "-":
+            logger.warning(
+                "[Pipeline %s] تسلسل المريض المرفوع كان بالاتجاه المعاكس (reverse complement) "
+                "— تم تصحيحه تلقائياً للخيط الموجب قبل المقارنة مع السليم",
+                self.input_data_id,
+            )
+            original_patient_seq = _reverse_complement(original_patient_seq)
 
         # لو النافذة الموسّعة أكبر من نافذة المريض الأصلية (جين طالع برا حدود الملف)،
         # نكمّل الجزء الناقص من المرجع نفسه (مش من المريض — لأنه مش متوفر حقيقياً)

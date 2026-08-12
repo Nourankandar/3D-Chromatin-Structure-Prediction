@@ -91,7 +91,7 @@ def build_gtf_index(gtf_gz_path: str, cache_path: str) -> Dict[str, List[GeneInf
 
             chrom, _source, feature, start1, end1, _score, strand, _frame, attr_field = fields
 
-            if feature not in ("gene", "transcript", "exon", "CDS"):
+            if feature not in ("gene", "transcript", "exon", "CDS", "stop_codon"):
                 continue
 
             attrs = _parse_attributes(attr_field)
@@ -161,6 +161,30 @@ def build_gtf_index(gtf_gz_path: str, cache_path: str) -> Dict[str, List[GeneInf
                     continue
                 # نجمع أصغر بداية وأكبر نهاية بين كل سطور CDS لنفس الـ transcript
                 # (الـ CDS ممكن يكون موزع على أكتر من إكسون، فبيجي أكتر من سطر)
+                if transcript["cds_start"] is None or start0 < transcript["cds_start"]:
+                    transcript["cds_start"] = start0
+                if transcript["cds_end"] is None or end0 > transcript["cds_end"]:
+                    transcript["cds_end"] = end0
+
+            elif feature == "stop_codon":
+                gene_id = attrs.get("gene_id")
+                transcript_id = attrs.get("transcript_id")
+                if not gene_id or not transcript_id:
+                    continue
+                gene = genes_by_chrom.get(chrom, {}).get(gene_id)
+                if gene is None:
+                    continue
+                transcript = gene["transcripts"].get(transcript_id)
+                if transcript is None:
+                    continue
+                # كودون الإيقاف (TAA/TAG/TGA) بملفات GENCODE بيجي بسطر منفصل
+                # تماماً عن الـ CDS (المعيار القياسي: الـ CDS ما بيشمله إطلاقاً).
+                # لازم نوسّع حدود cds_start/cds_end حتى يشمله splicer.py،
+                # وإلا الترجمة رح توصل دايماً لآخر الـ CDS بدون ما "تشوف"
+                # كودون إيقاف حقيقي — حتى لو عينة المريض كانت كاملة 100%.
+                # على الخيط الموجب (+): كودون الإيقاف بعد نهاية الـ CDS جينومياً.
+                # على الخيط السالب (-): كودون الإيقاف قبل بداية الـ CDS جينومياً
+                # (لأنه الاتجاه معكوس بيولوجياً، بس الإحداثيات لسا تصاعدية).
                 if transcript["cds_start"] is None or start0 < transcript["cds_start"]:
                     transcript["cds_start"] = start0
                 if transcript["cds_end"] is None or end0 > transcript["cds_end"]:

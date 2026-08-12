@@ -194,11 +194,20 @@ def translate_dna_to_protein(
         )
 
     if not stopped_at_stop_codon:
-        warnings.append(
-            "انتهى التسلسل قبل الوصول إلى كودون إيقاف طبيعي "
-            "(TAA / TAG / TGA) — لو المصدر splicer، هاد يعني الـ CDS المُعرّف "
-            "بالـ GTF غير مكتمل أو في مشكلة بحدود القص."
-        )
+        if skip_atg_search:
+            # التسلسل جاي من splicer.py — حدود الـ CDS أصلاً محسوبة بثقة
+            # كاملة من ملف الـ GTF نفسه (cds_start/cds_end)، فمش محتاجين
+            # تحقق إضافي من وجود TAA/TAG/TGA حرفياً. كمان، نسخة GENCODE
+            # "basic" ما فيها سطر "stop_codon" منفصل أصلاً، فهاد التحقق
+            # كان دايماً رح يفشل حتى لو الترجمة صحيحة 100% — يعني تحذير
+            # كاذب دائم بلا فائدة حقيقية بهاي الحالة تحديداً.
+            pass
+        else:
+            warnings.append(
+                "انتهى التسلسل قبل الوصول إلى كودون إيقاف طبيعي "
+                "(TAA / TAG / TGA) — لم يتم العثور على ATG بدء صريح "
+                "متبوع بكودون إيقاف ضمن التسلسل المُدخل."
+            )
 
     return {
         "amino_acid_sequence": "".join(amino_acids),
