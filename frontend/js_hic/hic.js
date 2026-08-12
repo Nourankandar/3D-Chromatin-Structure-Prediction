@@ -9,26 +9,6 @@ function chromoVizURL(outputId){
   return base + path;
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   محاذاة Procrustes  (Kabsch عبر رباعيات Horn)
-   ─────────────────────────────────────────────────────────────────────
-   ليش هاد ضروري:
-   الـ MDS بيحسب الإحداثيات من مصفوفة مسافات، والحل مش وحيد — أي دوران
-   أو انعكاس بيعطي نفس المسافات بالضبط. المريض والسليم انبنوا كل واحد
-   بعملية MDS مستقلة، فاتجاههم بالفضاء عشوائي وما إلو أي علاقة ببعض.
-   عرضهم فوق بعض بدون محاذاة = خيطين ملفوفين عشوائياً، والمقارنة
-   البصرية بتصير بلا أي معنى.
-
-   الطريقة: منلاقي الدوران R اللي بيقلّل Σ|R·control − patient|² عبر
-   أكبر متجه ذاتي لمصفوفة Horn الرباعية 4×4 (power iteration — كافية
-   ومستقرة لمصفوفة 4×4، وبتتجنّب الحاجة لمكتبة SVD).
-
-   بالانعكاس: منجرّب النسختين (أصلية + معكوسة) ومناخد اللي RMSD أقل،
-   لأنه الانعكاس التقني تبع MDS مش فرق بيولوجي.
-   ══════════════════════════════════════════════════════════════════════ */
-
-/* أكبر متجه ذاتي لمصفوفة متناظرة 4×4 عبر power iteration مع إزاحة قطرية
-   (الإزاحة بتضمن إن كل القيم الذاتية موجبة فبتتقارب للأكبر) */
 function largestEigenVec4(N){
   let shift = 0;
   for(let i=0;i<4;i++){
@@ -56,8 +36,6 @@ function largestEigenVec4(N){
   return v; // [w, x, y, z]
 }
 
-/* يرجّع THREE.Quaternion بيدوّر مجموعة A لتطابق مجموعة B.
-   A و B لازم يكونوا موسّطين (centered) ومتقابلين نقطة بنقطة. */
 function kabschQuaternion(A, B){
   // مصفوفة التغاير 3×3
   let Sxx=0,Sxy=0,Sxz=0, Syx=0,Syy=0,Syz=0, Szx=0,Szy=0,Szz=0;
@@ -84,10 +62,6 @@ function rmsdOf(A, B){
   return Math.sqrt(s / Math.max(A.length,1));
 }
 
-/* يقابل نقاط المريض بنقاط السليم.
-   الأفضل: المطابقة عبر `region` (لأنه عدد النقاط ممكن يختلف بين الجهتين
-   بسبب حذف الـ bins الفاضية بشكل مستقل بكل جهة).
-   الاحتياطي: المطابقة بالفهرس مع القص لأقصر الاثنين. */
 function pairPoints(pPts, cPts){
   const haveRegions = pPts[0]?.region && cPts[0]?.region;
   if(haveRegions){
@@ -109,19 +83,6 @@ let alignInfo = null;
 
 /* ══════════════════════════════════════════════════════════════════════
    تزامن الكاميرا بين شاشتي المقارنة
-   ─────────────────────────────────────────────────────────────────────
-   المشكلة: كل pane هو iframe مستقل بمشهد Three.js خاص فيه. بعد ما
-   حاذينا البنيتين رياضياً، ما بتبيّن المحاذاة إذا كل شاشة بزاوية نظر
-   مختلفة — لازم الاثنين يتحرّكوا سوا.
-
-   التصميم (قائد/تابع) — بيمنع مشكلتين:
-     1. الحلقة اللانهائية: التابع بيطبّق الكاميرا بدون ما يعيد بثّها
-        (عبر علم applyingRemoteCam).
-     2. الدوران المضاعف: لو الاثنين شغّالين autoRot، كل واحد بيزيد
-        theta لحالو + بياخد theta من التاني = سرعة مضاعفة وارتجاف.
-        الحل: التابع ما بيدوّر نفسه إطلاقاً، بس بيتبع.
-
-   القيادة بتنتقل لأي شاشة المستخدم بيلمسها (mouseenter/mousedown).
    ══════════════════════════════════════════════════════════════════════ */
 let camSync = false;            // مفعّل؟ (بتحدده الصفحة الحاضنة)
 let camLeader = false;          // هل هالعارض هو القائد حالياً؟
@@ -139,10 +100,8 @@ function claimCamLeadership(){
   camPost({type:'chromo-cam-claim'});
 }
 
-/* بثّ حالة الكاميرا — منادى من loop() بمعدّل إطار واحد كحد أقصى
-   (بدل ما ينبعت مع كل حدث mousemove) */
 function broadcastCam(){
-  if(!camSync || !camLeader || !camDirty) return;
+  if(!camSync || !camLeader || !camDirty || focusOverride) return;
   camDirty = false;
   camPost({
     type:'chromo-cam',
@@ -153,7 +112,8 @@ function broadcastCam(){
 
 function applyRemoteCam(c){
   if(!c) return;
-  camTween = null;              // كاميرا القائد أولى من أي طيران محلي
+  if(focusOverride) return;     
+  camTween = null;             
   applyingRemoteCam = true;
   sph.theta=c.theta; sph.phi=c.phi; sph.r=c.r;
   pan.x=c.px; pan.y=c.py;
@@ -164,54 +124,29 @@ function applyRemoteCam(c){
   applyingRemoteCam = false;
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   بروتينات الارتباط (binding_proteins)
-   ─────────────────────────────────────────────────────────────────────
-   بيجوا بالمستوى الأعلى من الـ payload (شقيق patient/control)، بالشكل:
-     "CTCF": {
-        protein_name, position_index, delta_score, is_missing,
-        patient: { present, binding_score, position_index } | null,
-        control: { present, binding_score, position_index } | null
-     }
-
-   طبقة الترجمة — من موقع البروتين لفهرس نقطة 3D:
-     1. لو الباك بعت `coord_index` → منستعملو مباشرة (الأدق).
-     2. وإلا منحسب الموقع الجينومي المطلق من position_index (حقل باك
-        حقيقي)، ومنطابقو مباشرة مع حقل `region` الحقيقي لكل نقطة —
-        بلا أي افتراض عن استمرارية أو حذف الـ bins. clean_matrix()
-        بالباك فعلاً بيحذف bins فاضية، فـ "bin == فهرس المصفوفة" تخمين
-        مش مضمون كان ممكن يحط البروتين بنقطة غلط بصمت. region حقل
-        حقيقي مبعوت لكل نقطة، فمطابقته بتلغي التخمين تماماً.
-     3. لو ما لقينا نقطة بتغطي هالموقع → منرجّع null صراحة: البروتين
-        بيضل ظاهر باللستة مع سبب واضح، بس بدون marker على الخيط. ما منهار،
-        وما منخترع رقم.
-   ══════════════════════════════════════════════════════════════════════ */
 let bindingProteins = null;     // القاموس الخام من الباك
 let activeSide = 'patient';     // أي جهة معروضة بهالعارض
 let proteinGroup = null;        // THREE.Group فيه كل الـ markers
 let showProteins = true;
-/* التكبير المعروض للبنى الذرية. القيمة الحقيقية بالمقياس رح تكون كسراً
-   ضئيلاً (~0.5% من امتداد المشهد) فالبنية بتصير ٣ بكسل وما بتبيّن.
-   لهيك منكبّر صراحةً ومنعرض الوسم بالواجهة — أمانة علمية مش تجميل. */
+
+
 let proteinMagnify = 60;
 function setProteinMagnify(v){ proteinMagnify=Math.max(1,+v||1); buildProteinMarkers(); }
-let sceneCenter = null;         // مركز المشهد المعروض (بينحدد ببناء المشهد)
-let alignTransform = null;      // {quat, mirror, cCenter, pCenter} من المحاذاة
+let sceneCenter = null;        
+let alignTransform = null;      
 
-/* يرجّع {index, reason} — index=null يعني ما قدرنا نحدد نقطة على الخيط */
 function resolveProteinCoordIndex(sideEntry, sideData, coords){
   if(!sideEntry) return {index:null, reason:'غير موجود بهذه الجهة'};
   if(!coords || !coords.length) return {index:null, reason:'لا توجد إحداثيات'};
 
-  // (1) الباك بعت الفهرس جاهز
+
   if(Number.isInteger(sideEntry.coord_index)){
     const i = sideEntry.coord_index;
     if(i>=0 && i<coords.length) return {index:i, reason:'coord_index'};
     return {index:null, reason:`coord_index=${i} خارج المدى (${coords.length})`};
   }
 
-  // (2) الموقع الجينومي المطلق من position_index (حقل باك حقيقي).
-  // القيم السالبة بتيجي من الخيط العكسي بـ JASPAR — منعتمد المسافة.
+ 
   const posRaw = sideEntry.position_index;
   if(posRaw==null || !isFinite(posRaw)) return {index:null, reason:'لا يوجد position_index'};
 
@@ -220,7 +155,6 @@ function resolveProteinCoordIndex(sideEntry, sideData, coords){
 
   const abs = start + Math.abs(Number(posRaw));
 
-  // (3) مطابقة مباشرة مع region الحقيقي لكل نقطة — بلا أي تخمين
   for(let i=0;i<coords.length;i++){
     const m = /^(\d+)kb-(\d+)kb$/.exec(coords[i].region || '');
     if(!m) continue;
@@ -249,12 +183,6 @@ function classifyProtein(entry){
   return {key:'unknown',    label:'غير محدد',          color:'#8a9a94'};
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   المعايرة والاتجاه — الطبقة العلمية
-   ══════════════════════════════════════════════════════════════════════ */
-
-/* أكبر متجه ذاتي لمصفوفة متناظرة 3×3 (power iteration).
-   نفس فكرة largestEigenVec4 بس بثلاثة أبعاد. */
 function largestEigenVec3(M){
   let shift=0;
   for(let i=0;i<3;i++){
@@ -276,7 +204,6 @@ function largestEigenVec3(M){
   return new THREE.Vector3(v[0],v[1],v[2]).normalize();
 }
 
-/* المحور الرئيسي لسحابة نقاط عبر PCA — أول مركّبة رئيسية */
 function principalAxis(pts){
   if(!pts || pts.length<3) return null;
   let cx=0,cy=0,cz=0;
@@ -291,13 +218,6 @@ function principalAxis(pts){
   return largestEigenVec3([[xx,xy,xz],[xy,yy,yz],[xz,yz,zz]]);
 }
 
-/* ══ محور اللولب من البلورة المشتركة ══
-   معظم بنى عوامل النسخ بالـ PDB هي بروتين + DNA مع بعض. ذرات الفوسفور
-   (P) بتقع على العمود الفقري للولب، فالمحور الرئيسي إلها = محور اللولب.
-   هاد استنتاج من قياس بلوري حقيقي، مش تخمين.
-
-   بلا DNA بالملف: منرتد للمحور الرئيسي للبروتين نفسه — تقريب أضعف
-   بكتير، ومنعلّمه بالواجهة حتى ما يتلبّس على القارئ. */
 function structureAxis(rec){
   if(rec.__axis !== undefined) return rec.__axis;   // محسوب مسبقاً
 
@@ -316,7 +236,6 @@ function structureAxis(rec){
   return rec.__axis;
 }
 
-/* مماس الخيط عند نقطة — فرق مركزي على النقطتين المجاورتين */
 function tangentAt(coords, idx){
   if(!coords || coords.length < 2) return null;
   const a = coords[Math.max(0, idx-1)];
@@ -325,18 +244,8 @@ function tangentAt(coords, idx){
   return v.lengthSq() > 1e-12 ? v.normalize() : null;
 }
 
-/* ══ المعايرة: وحدات MDS → نانومتر ══
-   إحداثيات MDS مشتقة من contacts^-alpha — أرقام مجرّدة بلا وحدة. حتى
-   نعرف الحجم الحقيقي للبروتين نسبةً للمشهد لازم معامل تحويل.
-
-   الطريقة: متوسط المسافة بين بِنين متتاليين بوحدات MDS يقابل المسافة
-   الفيزيائية المتوقعة بينهم بالنانومتر.
-
-   ⚠️ NM_PER_BIN_5KB تقدير من أدبيات تصوير الكروماتين، ومداه واسع
-   (عشرات إلى ~150 nm حسب النوع الخلوي وحالة التراص). لهيك هو ثابت
-   قابل للتعديل، والنتيجة تُعرض كتقدير لا كقياس. */
 let NM_PER_BIN_5KB = 70;
-let nmPerUnit = null;                 // نتيجة المعايرة الحالية
+let nmPerUnit = null;                
 
 function calibrateScale(pts, resolution){
   if(!pts || pts.length < 2) return null;
@@ -352,8 +261,6 @@ function calibrateScale(pts, resolution){
   return nmPerBin / meanStep;          // نانومتر لكل وحدة MDS
 }
 
-/* الحجم الحقيقي للبروتين بوحدات المشهد.
-   extentA بالأنغستروم (1 Å = 0.1 nm). */
 function trueSceneRadius(rec){
   if(!nmPerUnit || !rec?.extentA) return null;
   const nm = rec.extentA * 0.1 / 2;    // نصف القطر بالنانومتر
@@ -387,7 +294,7 @@ function initThree(){
   const c=document.getElementById('cv');
   scene=new THREE.Scene();
   const bg=sceneColor();
-  scene.background=bg;                       // خلفية من الثيم (نفس البروتين تماماً)
+  scene.background=bg;                       
   scene.fog=new THREE.FogExp2(bg.getHex(),.0016);
   camera=new THREE.PerspectiveCamera(55,c.clientWidth/c.clientHeight,.1,3000);
   updateCam();
@@ -412,11 +319,9 @@ function addLights(s){
 }
 
 function addStars(s){
-  // بدون نجوم/جسيمات محيطة — خلفية نظيفة تماماً زي عارض البروتين
 }
 
-// ══ تطبيق البيانات على المشهد (مصدر موحّد: ملف يدوي أو API) ══
-// بيستقبل object جاهز (مش نص) وبيعمل نفس منطق التحديث والرسم.
+
 function applyData(d){
   if(!d || typeof d!=='object') throw new Error('صيغة بيانات غير صالحة');
   globalData=d;
@@ -427,14 +332,12 @@ function applyData(d){
   const $=id=>document.getElementById(id);
   const set=(id,v)=>{ const el=$(id); if(el) el.textContent=v; };
 
-  // لو ما في خيط ناعم (باك مبسّط) → نعرض النقاط الخام تلقائياً بدل مشهد فاضي
   if(smoothPts.length<2){
     viewMode='raw';
     $('btnSm')?.classList.remove('on');
     $('btnRw')?.classList.add('on');
   }
 
-  // تحديث panel (مع حماية لو العنصر مش موجود بالنسخة المبسّطة)
   set('p-chrom', d.chrom||'—');
   set('p-start', d.start?(d.start/1e6).toFixed(2)+'M':'—');
   set('p-end',   d.end  ?(d.end/1e6).toFixed(2)+'M'  :'—');
@@ -444,71 +347,53 @@ function applyData(d){
   if(d.chrom && d.start!=null && d.end!=null)
     set('hdr-info', `${d.chrom} · ${(d.start/1e6).toFixed(2)}M → ${(d.end/1e6).toFixed(2)}M`);
 
-  // ── جودة إعادة البناء ──
-  // كان: pct = max(5, 100 - log10(stress)*8) — لأي stress < 1 بيطلع log سالب
-  // فالنتيجة أكبر من 100% والشريط بيفيض برا البوكس (stress=0.1984 → 105.6%).
-  // الصح: stress منخفض = جودة عالية، والقيمة محصورة بين 5 و100.
   if(d.stress!=null && $('stress-bar')){
     const pct = Math.min(100, Math.max(5, (1 - Math.min(d.stress,1)) * 100));
     $('stress-bar').style.width = pct+'%';
     set('stress-val','Stress: '+Number(d.stress).toFixed(4));
   }
-  // dscc: معامل ارتباط المسافات — كل ما قرب من 1 كانت إعادة البناء أوفى
+ 
   if(d.dscc!=null) set('p-dscc', Number(d.dscc).toFixed(4));
-  // collapse_ratio: نسبة انطواء البنية (1.0 ≈ طبيعي)
   if(d.collapse_ratio!=null) set('p-collapse', Number(d.collapse_ratio).toFixed(2));
 
   buildTADList(d);
   buildScene();
-  // بعد رسم المريض، لو في بيانات سليم منضيفها كطبقة مقارنة
+  
   if(controlData) buildControlOverlay();
-  // الماركرات آخر شي — بتحتاج sceneCenter (من buildScene) و
-  // alignTransform (من buildControlOverlay) للماركرات الشبحية
   buildProteinMarkers();
 }
 
-// ══ العرض المقارن: المريض + السليم فوق بعض ══
-// side: 'both' (فوق بعض) | 'patient' (المريض فقط) | 'control' (السليم فقط)
-// الوضع 'patient'/'control' يُستخدم في شاشتين منفصلتين (كل iframe جهة).
 function applyDualData(payload, side='both'){
   if(!payload || typeof payload!=='object') throw new Error('صيغة بيانات غير صالحة');
   const patient = payload.patient ? normalizeBackendPayload(payload.patient) : normalizeBackendPayload(payload);
   const control = payload.control ? normalizeBackendPayload(payload.control) : null;
 
-  // binding_proteins بالمستوى الأعلى — شقيق patient/control مش جوّاهم
   bindingProteins = payload.binding_proteins || null;
   activeSide = (side==='control') ? 'control' : 'patient';
 
   if(side==='control'){
     if(control){
-      // شاشة السليم لحالها — نعرضه كأساس بدون overlay
       controlData=null;
       const btnC=document.getElementById('btnControl'); if(btnC) btnC.style.display='none';
       applyData(control);
     } else {
-      // ما في بيانات "سليم" حقيقية بهالملف — ما منعرض بيانات المريض
-      // بدل هيك وكأنها سليم (هيك كان عم يصير قبل: fallback صامت لـ "both"
-      // كان يخلي هالشاشة تعرض بنية المريض نفسها موسومة "السليم" بالغلط).
       showError('لا توجد بيانات "سليم" بهذا الملف');
     }
     return;
   }
   if(side==='patient'){
-    // شاشة المريض لحالها — بدون overlay
     controlData=null;
     const btnC=document.getElementById('btnControl'); if(btnC) btnC.style.display='none';
     applyData(patient);
     return;
   }
 
-  // both: المريض أساس + السليم overlay (نفس السلوك القديم)
   controlData = control;
   const btnC=document.getElementById('btnControl');
   if(btnC) btnC.style.display = controlData ? 'inline-flex' : 'none';
   applyData(patient);
 }
 
-// يرسم خيط السليم كطبقة شفّافة (لون محايد) فوق مشهد المريض — للمقارنة البصرية
 function buildControlOverlay(){
   removeControlOverlay();
   if(!controlData || !showControl) return;
@@ -520,7 +405,6 @@ function buildControlOverlay(){
   const ppts = viewMode==='smooth' ? smoothPts : rawPts;
   if(ppts.length<2) return;
 
-  // ── 1) نقابل النقطتين ونوسّط كل مجموعة على مركزها هي ──
   const {P, C, mode} = pairPoints(ppts, cpts);
   const canAlign = P.length >= 3;
 
@@ -530,22 +414,20 @@ function buildControlOverlay(){
     return c.divideScalar(Math.max(arr.length,1));
   };
 
-  // مركز المريض المعروض — buildScene() بيوسّط على مركز كل نقاط المريض
   const pCenter = centroid(ppts);
   const cCenter = centroid(canAlign ? C : cpts);
 
-  let quat = new THREE.Quaternion();      // دوران المحاذاة
-  let mirror = false;                     // هل احتجنا انعكاس
+  let quat = new THREE.Quaternion();     
+  let mirror = false;                    
 
   if(canAlign){
     const Pc = P.map(p => new THREE.Vector3(p.x,p.y,p.z).sub(pCenter));
     const Cc = C.map(p => new THREE.Vector3(p.x,p.y,p.z).sub(cCenter));
 
-    // (أ) دوران صرف
+  
     const qDirect = kabschQuaternion(Cc, Pc);
     const rmsdDirect = rmsdOf(Cc.map(v => v.clone().applyQuaternion(qDirect)), Pc);
 
-    // (ب) نفس الشي بعد انعكاس على محور z — انعكاس MDS تقني مش بيولوجي
     const Cm = Cc.map(v => new THREE.Vector3(v.x, v.y, -v.z));
     const qMirror = kabschQuaternion(Cm, Pc);
     const rmsdMirror = rmsdOf(Cm.map(v => v.clone().applyQuaternion(qMirror)), Pc);
@@ -553,7 +435,6 @@ function buildControlOverlay(){
     if(rmsdMirror < rmsdDirect){ quat = qMirror; mirror = true; }
     else                       { quat = qDirect; }
 
-    // مقياس التشتّت تبع المريض — لتطبيع الـ RMSD لرقم قابل للقراءة
     let spread = 0;
     Pc.forEach(v => spread += v.lengthSq());
     spread = Math.sqrt(spread / Math.max(Pc.length,1)) || 1;
@@ -561,7 +442,7 @@ function buildControlOverlay(){
     const bestRmsd = Math.min(rmsdDirect, rmsdMirror);
     alignInfo = {
       rmsd: bestRmsd,
-      rmsdNorm: bestRmsd / spread,   // 0 = تطابق تام، 1 = اختلاف بحجم البنية نفسها
+      rmsdNorm: bestRmsd / spread,   
       pairs: P.length,
       mode, mirror
     };
@@ -570,13 +451,11 @@ function buildControlOverlay(){
     console.warn('[hic] نقاط متقابلة غير كافية للمحاذاة — عرض بإزاحة فقط');
   }
 
-  // ── 2) نطبّق: توسيط على مركز السليم ثم الدوران (والانعكاس لو لزم) ──
   const v3 = cpts.map(p => {
     const v = new THREE.Vector3(p.x, p.y, p.z).sub(cCenter);
     if(mirror) v.z = -v.z;
     return v.applyQuaternion(quat);
   });
-  // منخزّنها حتى الماركرات الشبحية تستعمل نفس التحويل بالضبط
   alignTransform = { quat: quat.clone(), mirror, cCenter: cCenter.clone(), pCenter: pCenter.clone() };
 
   updateAlignPanel();
@@ -585,7 +464,6 @@ function buildControlOverlay(){
   const segs=Math.min(v3.length*4,1800);
   const geo=buildRibbonGeometry(curve,segs,tubeR*.9);
 
-  // السليم بلون محايد فاتح شفّاف — يتباين مع أخضر المريض بدون ما يطغى
   controlMesh=new THREE.Mesh(geo,new THREE.MeshPhongMaterial({
     color:0xcfd8dc, transparent:true, opacity:.45, shininess:80,
     specular:new THREE.Color(0x222222), depthWrite:false
@@ -593,32 +471,17 @@ function buildControlOverlay(){
   scene.add(controlMesh);
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   طبقة البنى الذرية — تحميل كسول + مستويات تفصيل (LOD)
-   ─────────────────────────────────────────────────────────────────────
-   ليش LOD أصلاً: بروتين وسطي فيه ~2000 ذرة. سبع بروتينات = 14 ألف كرة،
-   وخمسين بروتين = 100 ألف. لو حمّلنا الكل ورسمناه دفعة وحدة بيتجمّد
-   المتصفح قبل ما نشوف إذا الاتجاه صح أصلاً.
 
-   ثلاث مستويات حسب بُعد الكاميرا:
-     0 · بعيد  → كرة ملوّنة (رخيصة، هي اللي عنا هلق)
-     1 · وسط   → شريط يمرّ بذرات CA (مئات المثلثات)
-     2 · قريب  → البنية الذرية كاملة عبر InstancedMesh (رسمة واحدة)
-
-   التحميل كسول: ما منجيب ملف PDB إلا لما البروتين يدخل مدى المستوى 1،
-   ومنخزّنه بـ cache محدود مع إزاحة الأقدم استعمالاً (LRU).
-   ══════════════════════════════════════════════════════════════════════ */
-const PDB_CACHE = new Map();          // key -> {status:'loading'|'ok'|'fail', atoms, ca, extentA}
+const PDB_CACHE = new Map();         
 const PDB_MAX_CACHED = 12;
 let lodEnabled = true;
-let lodAccum = 0;                     // مؤقّت لتقليل فحص المسافات
+let lodAccum = 0;                    
 
 const ATOM_COLORS = { DNA:0xc9a84c, C:0xaaaaaa, N:0x4488ff, O:0xff4444, S:0xffdd44,
                       P:0xff8800, FE:0xff6600, ZN:0x8888ff, DEFAULT:0xcccccc };
 const ATOM_RADII  = { DNA:1.1, C:1.0, N:0.95, O:0.9, S:1.2, P:1.15, FE:1.3, ZN:1.25, DEFAULT:0.9 };
 
-/* تحليل PDB — نفس منطق protein_viewer.html، مع الاحتفاظ بنوع البقية
-   (بروتين أم DNA) لأنه رح نحتاجه بخطوة الاتجاه لاحقاً */
+
 const _DNA_RES = new Set(['DA','DT','DG','DC','A','T','G','C','U']);
 function parsePDB(text){
   const atoms=[];
@@ -635,30 +498,14 @@ function parsePDB(text){
       element: (line.slice(76,78).trim() || line.slice(12,14).trim()).toUpperCase(),
       isDNA: _DNA_RES.has(res)
     });
-    if(atoms.length > 60000) break;   // حارس ضد البنى الضخمة جداً
+    if(atoms.length > 60000) break;   
   }
   return atoms;
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   الحلّ بالاسم — نفس سلسلة الباك بالضبط
-   ─────────────────────────────────────────────────────────────────────
-   الباك بـ ProteinStructureFetcher بيعمل:  اسم الجين → UniProt →
-   RCSB (تجريبي) → AlphaFold (تنبّؤي). منعيد نفس السلسلة هون حتى أي
-   بروتين بيجي من الباك يلاقي بنية، حتى لو ما بعت pdb_url.
 
-   ترتيب الأفضلية بالكامل:
-     pdb_url (محفوظ عند الباك — أسرع وبلا CORS)
-       → pdb_id (RCSB مباشرةً)
-         → الاسم (السلسلة الكاملة هون)
-           → كرة
+const NAME_CACHE = new Map();        
 
-   منسجّل كمان إذا البنية تجريبية ولا تنبّؤية — فرق جوهري بتطبيق طبي،
-   وبينعرض بالوسم. */
-const NAME_CACHE = new Map();          // gene → {kind,value,source} | null
-
-/* أسماء JASPAR ممكن تكون ثنائيات متل "Arnt::Ahr" أو فيها رموز.
-   منـاخد أول جزء ومننضّفه. */
 function normalizeGene(name){
   return String(name||'').split(/::|:|\//)[0]
     .replace(/[^A-Za-z0-9-]/g,'').toUpperCase();
@@ -688,7 +535,6 @@ async function resolveByGeneName(name){
 
   let out = null;
   try{
-    // ── ١) اسم الجين → معرّف UniProt (بشري، مراجَع) ──
     const uq = 'https://rest.uniprot.org/uniprotkb/search'
       + `?query=gene_exact:${encodeURIComponent(gene)}+AND+organism_id:9606+AND+reviewed:true`
       + '&fields=accession&format=json&size=1';
@@ -696,13 +542,11 @@ async function resolveByGeneName(name){
     const acc = ur.ok ? (await ur.json())?.results?.[0]?.primaryAccession : null;
 
     if(acc){
-      // ── ٢) بنية تجريبية من RCSB ──
       let pdbId = null;
       try{ pdbId = await searchRCSBByAccession(acc); }catch(e){}
       if(pdbId){
         out = {kind:'id', value:pdbId, source:'experimental', accession:acc};
       } else {
-        // ── ٣) احتياطي: بنية متنبَّأة من AlphaFold ──
         const ar = await fetch(`https://alphafold.ebi.ac.uk/api/prediction/${acc}`,
                                {signal: AbortSignal.timeout(12000)});
         if(ar.ok){
@@ -713,13 +557,12 @@ async function resolveByGeneName(name){
         }
       }
     }
-  }catch(e){ /* الشبكة أو CORS — منرجع null ومنضل على الكرة */ }
+  }catch(e){}
 
-  NAME_CACHE.set(gene, out);          // منخزّن حتى الفشل حتى ما نعيد المحاولة
+  NAME_CACHE.set(gene, out);          
   return out;
 }
 
-/* من وين نجيب البنية؟ */
 function resolveStructureSource(key, entry){
   const cand = entry.pdb_url || entry.patient?.pdb_url || entry.control?.pdb_url;
   if(cand) return {kind:'url', value:cand, source: entry.structure_source || null};
@@ -730,26 +573,22 @@ function resolveStructureSource(key, entry){
   return null;
 }
 
-/* الإزاحة من الكاش: ممنوع نشيل بنية مستعملة بالجولة الحالية.
-   بدون هالشرط، لو عدد البروتينات بالمدى أكبر من حجم الكاش، بتنشال
-   عناصر لسا معروضة فينعاد تحميلها بالجولة اللي بعدها — تحميل لا نهائي. */
 let _lodPass = 0;
 function _touchCache(key){
   const v = PDB_CACHE.get(key);
   if(!v) return;
   v.pass = _lodPass;
-  PDB_CACHE.delete(key); PDB_CACHE.set(key, v);   // إعادة إدراج = الأحدث
+  PDB_CACHE.delete(key); PDB_CACHE.set(key, v);  
 }
 function _evictCache(){
   if(PDB_CACHE.size <= PDB_MAX_CACHED) return;
   for(const [k, v] of [...PDB_CACHE]){
     if(PDB_CACHE.size <= PDB_MAX_CACHED) break;
-    if(v.pass === _lodPass) continue;             // مستعمل الآن — نتخطاه
+    if(v.pass === _lodPass) continue;             
     PDB_CACHE.delete(k);
   }
 }
 
-/* سقف الطلبات المتزامنة — حتى ما نقصف RCSB بثلاثين طلب دفعة وحدة */
 const PDB_MAX_INFLIGHT = 4;
 let _inflight = 0;
 
@@ -760,7 +599,6 @@ async function loadStructure(key, src){
   PDB_CACHE.set(key, rec); _touchCache(key);
   _inflight++;
 
-  // الاسم لازم ينحلّ أول (UniProt → RCSB/AlphaFold) قبل ما نعرف الرابط
   let eff = src;
   if(src.kind === 'name'){
     const resolved = await resolveByGeneName(src.value);
@@ -783,12 +621,11 @@ async function loadStructure(key, src){
       const res = await fetch(url, {signal: AbortSignal.timeout(15000)});
       if(!res.ok) continue;
       const text = await res.text();
-      if(!/^ATOM\s|\nATOM\s/.test(text)) continue;   // صفحة خطأ مش ملف
+      if(!/^ATOM\s|\nATOM\s/.test(text)) continue;  
       const atoms = parsePDB(text);
       if(!atoms.length) continue;
 
       const ca = atoms.filter(a=>a.name==='CA');
-      // أقصى امتداد بالأنغستروم — لازمنا لاحقاً بمعايرة المقياس الحقيقي
       let cx=0,cy=0,cz=0;
       atoms.forEach(a=>{cx+=a.x;cy+=a.y;cz+=a.z;});
       cx/=atoms.length; cy/=atoms.length; cz/=atoms.length;
@@ -798,7 +635,7 @@ async function loadStructure(key, src){
       Object.assign(rec, {status:'ok', atoms, ca, centre:{cx,cy,cz}, extentA:maxD*2});
       _inflight--;
       return rec;
-    }catch(e){ /* منجرّب الرابط التالي */ }
+    }catch(e){}
   }
   rec.status='fail';
   _inflight--;
@@ -806,7 +643,6 @@ async function loadStructure(key, src){
   return rec;
 }
 
-/* مستوى 1 — شريط يمرّ بذرات CA لكل سلسلة */
 function buildLOD1(rec, size, color){
   const g=new THREE.Group();
   if(!rec.ca?.length) return null;
@@ -824,15 +660,12 @@ function buildLOD1(rec, size, color){
   return g.children.length ? g : null;
 }
 
-/* مستوى 2 — كل الذرات برسمة واحدة (InstancedMesh لكل عنصر) */
 function buildLOD2(rec, size){
   const g=new THREE.Group();
   const {cx,cy,cz}=rec.centre;
   const s = size / (rec.extentA/2 || 1);
   const byEl={};
   rec.atoms.forEach(a=>{
-    // ذرات الحمض النووي بمجموعة لونية مستقلة — هيك بيبيّن اللولب
-    // المزدوج وبالتالي بيبيّن اتجاه المحاذاة بالعين
     const el = a.isDNA ? 'DNA'
              : (ATOM_COLORS[a.element]!==undefined ? a.element : 'DEFAULT');
     (byEl[el]||(byEl[el]=[])).push(a);
@@ -855,9 +688,6 @@ function disposeGroup(g){
   g.traverse(o=>{ o.geometry?.dispose(); o.material?.dispose(); });
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   مدير الـ LOD — بينادى من loop() بمعدّل مخنوق (مش كل إطار)
-   ══════════════════════════════════════════════════════════════════════ */
 function updateLOD(){
   if(!proteinGroup || !camera) return;
   _lodPass++;
@@ -866,24 +696,19 @@ function updateLOD(){
   proteinGroup.children.forEach(holder=>{
     const ud = holder.userData;
     if(!ud || !ud.protein || ud.isHalo) return;
-    if(!holder.visible) return;      // المعزول مخفي → لا تحميل ولا رسم
+    if(!holder.visible) return;   
 
     const dist = camera.position.distanceTo(holder.position);
     const rec  = ud.src ? PDB_CACHE.get(ud.cacheKey) : null;
 
-    /* ── قرار المستوى بالحجم الظاهري، مش بمسافة مطلقة ──
-       العتبات الثابتة كانت مربوطة بـ markerR وهو رقم ضئيل، فما كانت
-       بتتحقّق إلا لما تدخل الكاميرا جوّا البنية. الحجم الظاهري
-       (نصف القطر ÷ المسافة) مستقل عن مقياس البيانات وعن التكبير،
-       فبيشتغل صح مع أي بنية. */
     const trueR = (rec?.status === 'ok') ? trueSceneRadius(rec) : null;
     const drawR = (trueR ? trueR : ud.baseR) * ud.magnify;
     const apparent = drawR / Math.max(dist, 1e-6);
 
     let want;
-    if(reprMode === 'atoms')      want = 2;        // إجبار من الواجهة
+    if(reprMode === 'atoms')      want = 2;        
     else if(reprMode === 'ribbon') want = 1;
-    else want = ud.pinned ? 2                       // مثبّت بالضغط → ذرات دايماً
+    else want = ud.pinned ? 2                      
              : apparent > 0.030 ? 2
              : apparent > 0.010 ? 1 : 0;
 
@@ -910,7 +735,6 @@ function updateLOD(){
         ud.sphere.visible = true;
         holder.quaternion.identity();
       } else {
-        // الكرة بتنخفي لما تبان البنية — وإلا بتحجبها
         ud.sphere.visible = false;
 
         const ax = structureAxis(rec);
@@ -943,7 +767,6 @@ function updateLOD(){
       const src = PDB_CACHE.get(ud.cacheKey)?.structureSource;
       if(src==='experimental') expCount++; else if(src==='predicted') predCount++;
     }
-    // الهالة كرة كبيرة ثابتة الحجم — بتحجب البنية لما نقرّب
     const halo = proteinGroup.children.find(x=>x.userData?.isHalo && x.userData.protein===ud.protein);
     if(halo) halo.visible = (ud.lod === 0);
   });
@@ -952,12 +775,8 @@ function updateLOD(){
   _evictCache();
 }
 
-/* ══ الطيران لبروتين محدد ══
-   المسار المضمون لعرض البنية الذرية: الضغط على البروتين. الـ LOD
-   التلقائي بيشتغل أثناء التنقّل الحر، بس عند r=80 (نظرة عامة على بنية
-   قطرها 56) ما بيمكن أي بنية بروتين تبان — الحجم الظاهري ضئيل جداً.
-   لهيك الضغط بيقرّب الكاميرا وبيثبّت المستوى الذري. */
 let camTween = null;
+let focusOverride = false; 
 
 function flyToProtein(key){
   if(!proteinGroup) return;
@@ -968,9 +787,9 @@ function flyToProtein(key){
   h.userData.pinned = true;
   const d = h.userData;
   const drawR = (d.trueR || d.baseR) * d.magnify;
-  // مسافة تخلّي البنية تملا جزءاً معقولاً من الإطار
   const targetR = Math.max(drawR / 0.08, 4);
 
+  focusOverride = true;
   camTween = {
     fromPan:{x:pan.x, y:pan.y}, fromR:sph.r,
     toPan:{x:h.position.x, y:h.position.y}, toR:targetR, t:0
@@ -981,29 +800,22 @@ function flyToProtein(key){
 function clearFocus(){
   if(proteinGroup) proteinGroup.children.forEach(m=>{ if(m.userData) m.userData.pinned=false; });
   camTween = null;
+  focusOverride = false;
 }
 
-/* خطوة التنعيم — بتنادى من loop() */
 function stepCamTween(){
   if(!camTween) return;
-  // نفس منطق autoRot: التابع ما بيحرّك كاميرته لحالو، بيتبع القائد.
-  // بدون هالحارس الشاشتان بتتعاركا — وحدة بتطيّر ووحدة بتدهس عليها.
-  if(camSync && !camLeader){ camTween = null; return; }
+  if(camSync && !camLeader && !focusOverride){ camTween = null; return; }
 
   camTween.t = Math.min(1, camTween.t + 0.055);
-  const e = 1 - Math.pow(1 - camTween.t, 3);          // ease-out cubic
-  // استيفاء من نقطة البداية المحفوظة — الصيغة القديمة كانت تراكمية
-  // (نسبة من الباقي × عامل متزايد) وبتطلع حركة متشنّجة
+  const e = 1 - Math.pow(1 - camTween.t, 3);          
   pan.x = camTween.fromPan.x + (camTween.toPan.x - camTween.fromPan.x) * e;
   pan.y = camTween.fromPan.y + (camTween.toPan.y - camTween.fromPan.y) * e;
   sph.r = camTween.fromR     + (camTween.toR     - camTween.fromR)     * e;
   updateCam();
-  if(camTween.t >= 1) camTween = null;
+  if(camTween.t >= 1){ camTween = null; focusOverride = false; }
 }
 
-/* الوسم بيقول بالضبط شو معروض: التكبير، ومصدر الاتجاه لكل بنية.
-   'محور DNA' = مستنتج من بلورة مشتركة حقيقية.
-   'محور تقريبي' = ما في DNA بالملف، استعملنا محور البروتين نفسه. */
 function updateScaleBadge(anyStruct, dna, approx, exper, pred){
   const el=document.getElementById('scaleBadge');
   if(!el) return;
@@ -1026,6 +838,59 @@ function toggleLOD(){
 /* ══════════════════════════════════════════════════════════════════════
    markers البروتينات على الخيط + لستة اللوحة
    ══════════════════════════════════════════════════════════════════════ */
+let highlightTRange = null;
+let highlightColor = {r:1, g:0.878, b:0.541};
+let curSegs = 0;
+let pulseRAF = null;
+
+function rebuildTubeOnly(hlRange, hlMult){
+  const pts = viewMode==='smooth' ? smoothPts : rawPts;
+  if(!pts || pts.length<2 || !meshes.tube || !sceneCenter) return;
+  const v3 = pts.map(p=> new THREE.Vector3(p.x-sceneCenter.x, p.y-sceneCenter.y, p.z-sceneCenter.z));
+  const curve = new THREE.CatmullRomCurve3(v3,false,'catmullrom',.5);
+  const segs = curSegs || Math.min(v3.length*4,1800);
+  const newGeo = buildRibbonGeometry(curve, segs, tubeR, hlRange, hlMult);
+  colorRibbon(newGeo, segs, pts);
+  meshes.tube.geometry.dispose();
+  meshes.tube.geometry = newGeo;
+}
+
+function startHighlightPulse(){
+  if(pulseRAF){ cancelAnimationFrame(pulseRAF); pulseRAF=null; }
+  if(!highlightTRange){ rebuildTubeOnly(null, 1); return; }
+  const t0 = performance.now();
+  const DUR = 2200;
+  const step = now=>{
+    const el = now - t0;
+    if(el < DUR){
+      const osc = Math.sin(el/170)*0.5 + 0.5;
+      rebuildTubeOnly(highlightTRange, 1.4 + osc*1.4);
+      pulseRAF = requestAnimationFrame(step);
+    } else {
+      rebuildTubeOnly(highlightTRange, 1.9); 
+      pulseRAF = null;
+    }
+  };
+  pulseRAF = requestAnimationFrame(step);
+}
+
+function highlightGeneRegion(points, colorHex){
+  highlightTRange = null;
+  if(colorHex!=null){
+    const c = new THREE.Color(colorHex);
+    highlightColor = {r:c.r, g:c.g, b:c.b};
+  }
+  if(points && points.length && rawPts.length>1 && sceneCenter){
+    const wanted = new Set(points.map(p=>p.region).filter(Boolean));
+    let minI=null, maxI=null;
+    rawPts.forEach((p,i)=>{
+      if(wanted.has(p.region)){ if(minI==null) minI=i; maxI=i; }
+    });
+    if(minI!=null) highlightTRange = {start:minI/(rawPts.length-1), end:maxI/(rawPts.length-1)};
+  }
+  startHighlightPulse();
+}
+
 function removeProteinMarkers(){
   if(!proteinGroup) return;
   proteinGroup.traverse(o=>{ o.geometry?.dispose(); o.material?.dispose(); });
@@ -1041,12 +906,6 @@ function buildProteinMarkers(){
   const coords = viewMode==='smooth' && smoothPts.length>1 ? smoothPts : rawPts;
   if(!coords.length){ return; }
 
-  /* ══ فضاءان مختلفان للفهارس ══
-     coord_index (أو مطابقة region) بيرجّعوا فهرس داخل coords_raw.
-     بس الرسم بيستعمل coords_smooth اللي فيها نقاط أكتر بكتير
-     (٧٨ مقابل ٢٤٠ بالعيّنة). استعمال الفهرس مباشرةً بيضغط كل
-     البروتينات بأول جزء من الخيط.
-     الحل: نحلّ الفهرس دايماً بفضاء raw، وبعدين نحوّله نسبياً. */
   const anchor = rawPts.length ? rawPts : coords;
   const toDisplay = iRaw => {
     if(iRaw==null) return null;
@@ -1055,7 +914,6 @@ function buildProteinMarkers(){
     return Math.min(coords.length-1, Math.max(0, Math.round(u*(coords.length-1))));
   };
 
-  // حجم الـ marker نسبة لحجم البنية حتى يضل مرئي بأي تكبير
   const bbox = new THREE.Box3().setFromPoints(
     coords.map(p=>new THREE.Vector3(p.x,p.y,p.z)));
   const markerR = Math.max(bbox.getSize(new THREE.Vector3()).length()*0.012, tubeR*0.9);
@@ -1065,9 +923,7 @@ function buildProteinMarkers(){
     if(proteinFilter!=='all' && cls.key!==proteinFilter) return;
     const name = entry.protein_name || key;
 
-    // نقطة على الجهة المعروضة
     const side = activeSide==='control' ? 'control' : 'patient';
-    // الحلّ بفضاء raw (اللي الباك بيشير إله)، والتحويل للعرض بعدين
     const r = resolveProteinCoordIndex(entry[side], globalData, anchor);
 
     let pos=null, ghost=false, tangent=null;
@@ -1078,8 +934,6 @@ function buildProteinMarkers(){
       tangent = tangentAt(coords, toDisplay(r.index));
     }
     else if(side==='patient' && controlData && alignTransform){
-      // البروتين مفقود عند المريض بس موجود بالسليم → marker شبحي
-      // بموقعه من السليم، محوَّل لإطار المريض بنفس مصفوفة المحاذاة
       const cRaw    = controlData.coords_raw || [];
       const cCoords = (viewMode==='smooth' && controlData.coords_smooth?.length>1)
         ? controlData.coords_smooth : cRaw;
@@ -1091,7 +945,6 @@ function buildProteinMarkers(){
         const v = new THREE.Vector3(cp.x,cp.y,cp.z).sub(alignTransform.cCenter);
         if(alignTransform.mirror) v.z = -v.z;
         pos = v.applyQuaternion(alignTransform.quat);
-        // المماس من جهة السليم لازم يمرق بنفس تحويل المحاذاة
         const tRaw = tangentAt(cCoords, cTo(rc.index));
         if(tRaw){
           const tv = tRaw.clone();
@@ -1103,12 +956,9 @@ function buildProteinMarkers(){
     }
 
     entry.__resolved = { index:r.index, reason:r.reason, placed: !!pos, ghost };
-    if(!pos) return;   // بيضل باللستة بدون marker — ما منهار
+    if(!pos) return;  
 
     const color = new THREE.Color(cls.color);
-
-    // حاوية لكل بروتين — بتسمح نبدّل التمثيل (كرة/شريط/ذرات) بدون
-    // ما نلمس الموقع ولا نعيد بناء المجموعة كلها
     const holder = new THREE.Group();
     holder.position.copy(pos);
 
@@ -1132,7 +982,6 @@ function buildProteinMarkers(){
     };
     proteinGroup.add(holder);
 
-    // هالة خفيفة للمفقود/المكتسب حتى تلفت النظر
     if(cls.key==='missing' || cls.key==='gained'){
       const halo = new THREE.Mesh(
         new THREE.SphereGeometry(markerR*2.1, 16, 12),
@@ -1157,7 +1006,7 @@ function buildProteinList(){
   if(!box || !bindingProteins) return;
 
   const entries = Object.entries(bindingProteins);
-  // الترتيب: المفقود أولاً، بعدين الأضعف، وهكذا — الأهم سريرياً بالأول
+ 
   const rank = {missing:0, gained:1, weakened:2, stronger:3, stable:4, unknown:5};
   entries.sort((a,b)=>{
     const ra=rank[classifyProtein(a[1]).key], rb=rank[classifyProtein(b[1]).key];
@@ -1204,11 +1053,6 @@ function buildProteinList(){
   });
 }
 
-/* ══ إظهار/إخفاء البروتينات ══
-   الواجهة الجديدة بتبعت قائمة المخفيين صراحةً (صندوق اختيار لكل بروتين)
-   — أمرن من وضع العزل القديم: بتقدري تخفي مجموعة وتخلي مجموعة.
-   المخفي ما بيحمّل بنيته إطلاقاً (شوف الحارس بـ updateLOD) فهاد توفير
-   أداء حقيقي مش بس إخفاء بصري. */
 let hiddenProteins = new Set();
 let focusedProtein = null;
 
@@ -1228,17 +1072,12 @@ function setProteinVisibility(hiddenList){
   applyIsolation();
 }
 
-/* ══ تجاوز مستوى التمثيل ══
-   'auto' = القرار حسب الحجم الظاهري (السلوك التلقائي)
-   'ribbon' / 'atoms' = إجبار، بلا انتظار التقريب */
 let reprMode = 'auto';
 function setReprMode(m){
   reprMode = (m==='atoms' || m==='ribbon') ? m : 'auto';
   if(proteinGroup) proteinGroup.children.forEach(h=>{ if(h.userData) h.userData.lod = -1; });
 }
 
-/* تكبير/إبراز بروتين محدد — بتنادى محلياً أو من صفحة المقارنة عبر postMessage.
-   key=null بيرجّع كل شي لحجمه الطبيعي. */
 function focusProtein(key, ev){
   if(!proteinGroup) return;
   focusedProtein = key || null;
@@ -1257,7 +1096,7 @@ function focusProtein(key, ev){
   ev?.currentTarget?.classList?.add('active');
 }
 
-/* فلترة الماركرات حسب الحالة — مربوطة بشرائح المسار الجينومي */
+
 let proteinFilter='all';
 function setProteinFilter(f){ proteinFilter=f||'all'; buildProteinMarkers(); }
 
@@ -1271,7 +1110,6 @@ function removeControlOverlay(){
   if(controlMesh){ scene.remove(controlMesh); controlMesh.geometry?.dispose(); controlMesh=null; }
 }
 
-/* يعرض نتيجة المحاذاة بلوحة التفاصيل (لو العناصر موجودة بالصفحة) */
 function updateAlignPanel(){
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
   const sec=document.getElementById('align-sec');
@@ -1287,12 +1125,10 @@ function updateAlignPanel(){
   if(el && alignInfo.rmsdNorm!=null){
     const pct=(alignInfo.rmsdNorm*100);
     el.textContent = pct.toFixed(1)+'%';
-    // أخضر = بنيتان متقاربتان · أصفر = انحراف ملحوظ · أحمر = اختلاف كبير
     el.style.color = pct<15 ? 'var(--primary)' : pct<35 ? 'var(--warn)' : 'var(--danger)';
   }
 }
 
-// زر التبديل: إظهار/إخفاء طبقة السليم
 function toggleControl(){
   showControl=!showControl;
   document.getElementById('btnControl')?.classList.toggle('on', showControl);
@@ -1312,7 +1148,6 @@ function showError(msg){
   const L=document.getElementById('loading'); if(L) L.style.display='flex';
 }
 
-// ══ تحميل يدوي من ملف (fallback — يظل شغّال دايماً) ══
 function loadJSON(input){
   const file=input.files[0]; if(!file) return;
   showLoading('جاري التحليل ومعالجة البيانات...');
@@ -1320,7 +1155,6 @@ function loadJSON(input){
   reader.onload=e=>{
     try{
       const parsed=JSON.parse(e.target.result);
-      // لو الملف فيه patient/control → عرض مقارن، وإلا عرض مفرد
       if(parsed && (parsed.patient || parsed.control)) applyDualData(parsed);
       else applyData(parsed);
     }
@@ -1330,11 +1164,6 @@ function loadJSON(input){
   reader.readAsText(file,'utf-8');
 }
 
-// ══ تحميل تلقائي من الباك عبر ?output_id=<id> ══
-// شكل الاستجابة المتوقّع = نفس شكل chr21_features.json
-// (coords_raw, coords_smooth, tad_colors, tad_boundaries, chrom, start, end,
-//  resolution, stress, n_tads). لو الباك رجّع شكل مبسّط (coordinates+edges بس)،
-//  بنطبّعه هون لنفس الشكل عبر normalizeBackendPayload().
 async function loadFromAPI(outputId, opts){
   opts=opts||{};
   showLoading('جاري جلب بيانات التحليل من الخادم…');
@@ -1350,37 +1179,30 @@ async function loadFromAPI(outputId, opts){
       throw new Error(`HTTP ${res.status} — ${txt.slice(0,120) || 'تعذّر جلب البيانات'}`);
     }
     const payload = await res.json();
-    // لو الاستجابة فيها patient/control → عرض مقارن، وإلا عرض مفرد (توافق خلفي)
     if(payload && (payload.patient || payload.control)) applyDualData(payload, opts.side || 'both');
     else applyData(normalizeBackendPayload(payload));
     hideLoading();
     return true;
   }catch(err){
     console.error('[hic] API load failed:', err);
-    // fallback: منخلّي المستخدم يرفع ملف يدوياً بدل ما نفشل بصمت
     showError((err.message||'فشل الجلب من الخادم') + ' — تقدر تستورد ملف JSON يدوياً.');
     return false;
   }
 }
 
-// يحوّل أي شكل باك (غني أو مبسّط) لنفس شكل الراسم.
-// - لو أصلاً فيه coords_raw ككائنات {x,y,z} → منرجّعه كما هو.
-// - لو فيه coordinates كمصفوفات [x,y,z] (شكل coords_service الحالي) → منحوّلها.
 function normalizeBackendPayload(p){
   if(!p || typeof p!=='object') return p;
-  // شكل غني جاهز
   if(Array.isArray(p.coords_raw) && p.coords_raw.length && typeof p.coords_raw[0]==='object')
     return p;
 
   const out = Object.assign({}, p);
-  const arr = p.coordinates || p.coords || null; // [[x,y,z],...]
+  const arr = p.coordinates || p.coords || null; 
   if(Array.isArray(arr) && arr.length){
     out.coords_raw = arr.map((c,i)=>({
       x:+c[0], y:+c[1], z:+c[2],
       region:(p.regions && p.regions[i]) || '',
       density:0.6, deviation:0, tad_id:0, is_boundary:false
     }));
-    // ما في خيط ناعم من الباك المبسّط → منخلّي الراسم يستعمل raw
     out.coords_smooth = out.coords_smooth || [];
     out.n_tads    = out.n_tads    || 1;
     out.tad_colors= out.tad_colors|| ['#8eb69b'];
@@ -1410,18 +1232,8 @@ function buildTADList(d){
   }
 }
 
-// ══ Build Scene ══
-/* ── هندسة الشريط (Ribbon) ──
-   بدل مقطع دائري (أنبوب)، نبني مقطعاً مستطيلاً مسطّحاً: عريض ورفيع.
-   نستعمل إطارات Frenet من المنحنى نفسه حتى لا يلتوي الشريط عشوائياً.
-
-   مهم: العرض يُقاس **نسبةً إلى حجم البنية** لا بوحدات ثابتة، لأن مقاييس
-   المجسّمات تختلف كثيراً (نصف قطر 0.7 مقابل 24). العرض الثابت يجعل
-   الشريط يبتلع البنية الصغيرة ويصير كتلة صلبة. */
-function buildRibbonGeometry(curve, segments, width){
+function buildRibbonGeometry(curve, segments, width, hlRange, hlMult){
   const frames = curve.computeFrenetFrames(segments, false);
-  // نعاير العرض على نصف قطر البنية (لا على طول الشريحة) — أثبت عبر
-  // المجسّمات ذات المقاييس المختلفة جداً (نصف قطر 0.7 مقابل 24).
   const pts = curve.getPoints(Math.min(segments, 200));
   const cx = pts.reduce((s,p)=>s+p.x,0)/pts.length;
   const cy = pts.reduce((s,p)=>s+p.y,0)/pts.length;
@@ -1433,18 +1245,27 @@ function buildRibbonGeometry(curve, segments, width){
   }
   if(!(radius > 0)) radius = 1;
 
-  const halfW = width * radius * 0.022;   // ~3% من نصف القطر عند السماكة 1.4
-  const halfT = Math.max(halfW * 0.13, radius * 0.0008);
+  const halfW0 = width * radius * 0.022;  
+  const halfT0 = Math.max(halfW0 * 0.13, radius * 0.0008);
   const pos=[], idx=[], uvs=[];
   const P=new THREE.Vector3();
 
   for(let i=0;i<=segments;i++){
-    curve.getPointAt(i/segments, P);
+    const t = i/segments;
+    curve.getPointAt(t, P);
     const N = frames.normals[i], B = frames.binormals[i];
+    let mult = 1;
+    if(hlRange){
+      const mid=(hlRange.start+hlRange.end)/2, half=Math.max((hlRange.end-hlRange.start)/2, 0.004);
+      const dist = Math.abs(t-mid);
+      const falloff = Math.max(0, 1 - dist/(half*3.2));
+      mult = 1 + falloff*((hlMult??2.2)-1);
+    }
+    const halfW=halfW0*mult, halfT=halfT0*mult;
     const corners = [[halfW,halfT],[halfW,-halfT],[-halfW,-halfT],[-halfW,halfT]];
-    for(const [w,t] of corners){
-      pos.push(P.x + B.x*w + N.x*t, P.y + B.y*w + N.y*t, P.z + B.z*w + N.z*t);
-      uvs.push(i/segments, 0);
+    for(const [w,tt] of corners){
+      pos.push(P.x + B.x*w + N.x*tt, P.y + B.y*w + N.y*tt, P.z + B.z*w + N.z*tt);
+      uvs.push(t, 0);
     }
   }
   for(let i=0;i<segments;i++){
@@ -1462,13 +1283,13 @@ function buildRibbonGeometry(curve, segments, width){
   return g;
 }
 
-/* تلوين الشريط حسب الموقع على الخيط (4 رؤوس لكل مقطع) */
 function colorRibbon(geo, segments, pts){
   const cols=[];
   for(let i=0;i<=segments;i++){
     const t=i/segments;
     const p=pts[Math.floor(t*(pts.length-1))]||pts[pts.length-1];
-    const c=getClr(t, p.density||.5, p.tad_id||0, p.deviation||0);
+    const inHighlight = highlightTRange && t>=highlightTRange.start && t<=highlightTRange.end;
+    const c = inHighlight ? highlightColor : getClr(t, p.density||.5, p.tad_id||0, p.deviation||0);
     for(let k=0;k<4;k++) cols.push(c.r,c.g,c.b);
   }
   geo.setAttribute('color', new THREE.Float32BufferAttribute(cols,3));
@@ -1482,22 +1303,18 @@ function buildScene(){
   const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length;
   const cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;
   const cz=pts.reduce((s,p)=>s+p.z,0)/pts.length;
-  // markers البروتينات لازم تنرسم بنفس إطار الخيط بالضبط
   sceneCenter=new THREE.Vector3(cx,cy,cz);
-  // معايرة وحدات MDS → نانومتر (لازمة للحجم الحقيقي للبروتينات)
   nmPerUnit = calibrateScale(pts, globalData?.resolution);
   const v3=pts.map(p=>new THREE.Vector3(p.x-cx,p.y-cy,p.z-cz));
   const curve=new THREE.CatmullRomCurve3(v3,false,'catmullrom',.5);
   const segs=Math.min(v3.length*4,1800);
-
-  // ── الشريط الرئيسي (بدل الأنبوب الدائري) ──
   const geo=buildRibbonGeometry(curve,segs,tubeR);
+  curSegs = segs;
   colorRibbon(geo,segs,pts);
   meshes.tube=new THREE.Mesh(geo,new THREE.MeshPhongMaterial(
     {vertexColors:true,shininess:110,specular:new THREE.Color(0x3a3530),side:THREE.DoubleSide}));
   scene.add(meshes.tube);
 
-  // ── Glow ──
   if(effects.glow){
     const geoG=new THREE.TubeGeometry(curve,segs/2,tubeR*3.5,8,false);
     const cgCnt=geoG.getAttribute('position').count;
@@ -1515,7 +1332,7 @@ function buildScene(){
     scene.add(meshes.glow);
   }
 
-  // ── حدود TAD ──
+  // ── TAD ──
   if(effects.bounds && globalData?.tad_boundaries){
     const bGeo=new THREE.BufferGeometry();
     const bPos=[];
@@ -1567,8 +1384,6 @@ function buildScene(){
   });
   dg.setAttribute('position',new THREE.Float32BufferAttribute(dp,3));
   dg.setAttribute('color',new THREE.Float32BufferAttribute(dc,3));
-  // بوضع الخيط الناعم: النقاط شبه شفّافة (تبقى للـ hover/raycasting بس ما توسّخ المنظر).
-  // بوضع "نقاط": تظهر واضحة.
   const dotsVisible = viewMode==='raw';
   meshes.dots=new THREE.Points(dg,new THREE.PointsMaterial(
     {vertexColors:true,size:dotsVisible?3:2,transparent:true,
@@ -1591,7 +1406,6 @@ function clearMeshes(){
 function getClr(t,density,tadId,deviation){
   switch(clrMode){
     case 'emerald':{
-      // متدرّج أخضر أنيق واحد (فاتح → غامق) بروح البروتين — من داكن مخضرّ لفاتح مينت
       const a=new THREE.Color(0x2f6b57), b=new THREE.Color(0x8eb69b), c=new THREE.Color(0xdaf1de);
       return t<.5 ? new THREE.Color().lerpColors(a,b,t*2)
                   : new THREE.Color().lerpColors(b,c,(t-.5)*2);
@@ -1783,7 +1597,7 @@ function switchMode(m){
   document.getElementById('btnSm').classList.toggle('on',m==='smooth');
   document.getElementById('btnRw').classList.toggle('on',m==='raw');
   buildScene();
-  if(controlData) buildControlOverlay();   // نعيد رسم طبقة السليم بنفس الوضع
+  if(controlData) buildControlOverlay();   
 }
 
 function setClr(m,btn){
@@ -1827,17 +1641,15 @@ function updateCam(){
     r*Math.cos(phi)+pan.y,
     r*Math.sin(phi)*Math.sin(theta));
   camera.lookAt(pan.x,pan.y,0);
-  // ما منعلّم dirty لو التغيير أصلاً جاي من شاشة تانية (منع الحلقة)
   if(!applyingRemoteCam) camDirty = true;
 }
 
 // ══ Events ══
 function setupEvents(c){
-  // أي لمسة على هالشاشة بتخليها القائدة
   renderer.domElement.addEventListener('mouseenter', claimCamLeadership);
   renderer.domElement.addEventListener('mousedown',e=>{
     claimCamLeadership();
-    if(camTween) camTween=null;          // السحب بيوقف الطيران فوراً
+    if(camTween) camTween=null;         
     drag=true;rDrag=e.button===2;
     prev={x:e.clientX,y:e.clientY};
     autoRot=false;
@@ -1853,7 +1665,7 @@ function setupEvents(c){
   });
   window.addEventListener('mouseup',()=>drag=false);
   renderer.domElement.addEventListener('wheel',e=>{
-    sph.r=Math.max(2,Math.min(500,sph.r+e.deltaY*.04));
+    sph.r=Math.max(5,Math.min(500,sph.r+e.deltaY*.04));
     updateCam();e.preventDefault();
   },{passive:false});
   renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
@@ -1905,31 +1717,23 @@ function doHover(e,c){
   } else { tip.style.display='none'; }
 }
 
-// ══ Loop ══
 function loop(){
   requestAnimationFrame(loop);
-  // التابع ما بيدوّر نفسه — بيتبع theta الجاي من القائد، وإلا بيصير
-  // الدوران مضاعف ومرتجف
   if(autoRot && (!camSync || camLeader)){ sph.theta+=rotSpd; updateCam(); }
   stepCamTween();
-  if(++lodAccum % 6 === 0) updateLOD();   // فحص المسافات مش كل إطار
+  if(++lodAccum % 6 === 0) updateLOD();  
   broadcastCam();
   renderer.render(scene,camera);
 }
 
-// ══ Boot ══
-// 1) نهيّئ المحرك  2) لو في ?output_id بالرابط منجيب البيانات من الباك تلقائياً
-//    وإلا منترك واجهة الرفع اليدوي شغّالة (fallback).
 window.addEventListener('load', ()=>{
   initThree();
   try{
     const params = new URLSearchParams(location.search);
     const outputId = (params.get('output_id') || params.get('output') || '').trim();
     const token = params.get('token') || '';
-    const side = params.get('side') || 'both';   // both | patient | control
-    // وضع مدمج: لما العارض داخل صفحة المقارنة (شاشة مفردة)، نخفي التولبار
-    // وبطاقة العنوان لأن صفحة المقارنة أصلاً بتعرض تسمية المريض/السليم.
-    if(side==='patient' || side==='control'){
+    const side = params.get('side') || 'patient';   
+    if(params.get('embedded')==='1'){
       document.documentElement.classList.add('embedded');
     }
     if(outputId){
@@ -1942,23 +1746,21 @@ window.addEventListener('load', ()=>{
   }catch(e){ console.error('[hic] boot error', e); }
 });
 
-// استقبال البيانات من صفحة المقارنة (compare_viewer.html) عبر postMessage.
-// النوع 'chromo-load' يحمل {payload, side} — side: both|patient|control
 window.addEventListener('message', (ev)=>{
   const d=ev.data;
   if(!d || !d.type) return;
 
   // ── تزامن الكاميرا ──
-  if(d.type==='chromo-cam-init'){        // الصفحة الحاضنة بتفعّل التزامن
+  if(d.type==='chromo-cam-init'){       
     camSync = !!d.sync;
     camLeader = !!d.leader;
     return;
   }
-  if(d.type==='chromo-cam-yield'){       // شاشة تانية أخدت القيادة
+  if(d.type==='chromo-cam-yield'){      
     camLeader = false;
     return;
   }
-  if(d.type==='chromo-ctl'){          // تحكّم موحّد من صفحة المقارنة
+  if(d.type==='chromo-ctl'){        
     const c=d.ctl||{};
     if(c.view)              switchMode(c.view);
     if(c.reset)             resetCam();
@@ -1973,8 +1775,9 @@ window.addEventListener('message', (ev)=>{
   if(d.type==='chromo-protein-visibility'){ setProteinVisibility(d.hidden); return; }
   if(d.type==='chromo-protein-focus'){ focusProtein(d.protein||null); return; }
   if(d.type==='chromo-protein-filter'){ setProteinFilter(d.filter); return; }
-  if(d.type==='chromo-cam'){             // حالة كاميرا من القائد
-    if(!camSync || camLeader) return;    // القائد ما بيتبع حالو
+  if(d.type==='chromo-highlight-region'){ highlightGeneRegion(d.points||[], d.color); return; }
+  if(d.type==='chromo-cam'){           
+    if(!camSync || camLeader) return;   
     applyRemoteCam(d.cam);
     return;
   }

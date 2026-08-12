@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChromoGen · مقارنة البروتين</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=Cairo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b221e;
+    --scene: #081b18;
+    --fg: #dfeee2;
+    --muted: #7f9c8b;
+    --primary: #8eb69b;
+    --primary-deep: #43705d;
+    --border: rgba(223, 238, 226, 0.10);
+    --card: rgba(14, 38, 33, 0.72);
+    --card-solid: #0e2621;
+    --patient: #e5766f;
+    --control: #8eb69b;
+    --font-display: "Space Grotesk", "Cairo", sans-serif;
+    --font-sans: "Inter", "Cairo", sans-serif;
+    --font-mono: "JetBrains Mono", monospace;
+    --r: 14px;
+  }
+  :root[data-theme="light"]{
+    --bg:#f1f6f2; --scene:#0a201d; --fg:#091815; --muted:#57736a;
+    --primary:#2c6552; --primary-deep:#1f5040;
+    --border:rgba(13,37,33,.10); --card:rgba(255,255,255,.8); --card-solid:#ffffff;
+    --control:#5b6f74;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-sans); }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 600; }
+  .brand .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--primary); color: var(--card-solid); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  main { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  #status { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .pane { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; min-height: 420px; display: flex; flex-direction: column; }
+  .pane-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .badge { font-size: 11px; padding: 4px 12px; border-radius: 999px; }
+  .pane.control .badge { background: color-mix(in srgb, var(--control) 18%, transparent); color: var(--control); }
+  .pane.patient .badge { background: color-mix(in srgb, var(--patient) 18%, transparent); color: var(--patient); }
+  .pane-body { flex: 1; position: relative; }
+  .pane-body iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 13px; text-align: center; padding: 20px; }
+
+  .dark-inspector-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+  }
+
+  .dark-track-panel {
+    background: color-mix(in srgb, var(--scene) 60%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+
+  .dark-track-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    direction: ltr;
+  }
+
+  .dark-track-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    height: 64px;
+    border-right: 1px solid var(--border);
+    padding-right: 16px;
+    min-width: 45px;
+    user-select: none;
+  }
+
+  .dark-track-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-deep) transparent;
+  }
+
+  .dark-track-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+  .dark-track-scroll::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 10px;
+  }
+  .dark-track-scroll::-webkit-scrollbar-thumb {
+    background: var(--primary-deep);
+    border-radius: 10px;
+  }
+  .dark-track-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+  }
+
+  .dark-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 36px;
+    gap: 4px;
+  }
+
+  .dark-col .idx {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+  }
+
+  .dark-col .dna-code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+
+  .dark-col .mrna-code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .dark-col .aa-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent);
+    color: var(--fg);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  .dark-col.is-mutated .dna-code,
+  .dark-col.is-mutated .mrna-code {
+    color: var(--patient);
+  }
+
+  .dark-col.is-stop .aa-circle {
+    width: 38px;
+    border-radius: 12px;
+    background: var(--patient);
+    border-color: var(--patient);
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(229, 118, 111, 0.4);
+  }
+
+  .tbl-card {
+    background: color-mix(in srgb, var(--scene) 60%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 16px;
+  }
+
+  .tbl-head-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .tbl-btn {
+    background: color-mix(in srgb, var(--primary) 8%, transparent);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tbl-btn:hover {
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    border-color: var(--primary);
+  }
+
+  .genocore-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-align: right;
+  }
+
+  .genocore-table th {
+    padding: 10px 12px;
+    color: var(--muted);
+    font-size: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .genocore-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(223, 238, 226, 0.04);
+  }
+
+  .mutated-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: rgba(229, 118, 111, 0.15);
+    border: 1px solid rgba(229, 118, 111, 0.4);
+    color: var(--patient);
+    font-weight: 600;
+  }
+
+  .tbl-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .page-nums {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .page-btn {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--muted);
+  }
+
+  .page-btn.active {
+    background: color-mix(in srgb, var(--primary) 20%, transparent);
+    border-color: var(--primary);
+    color: var(--fg);
+    font-weight: 600;
+  }
+</style>
+
+</head>
+<body>
+<script>
+(function(){
+  try{
+    var stored = localStorage.getItem('chromogen-theme');
+    if(stored==='light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key!=='chromogen-theme') return;
+    document.documentElement.setAttribute('data-theme', e.newValue==='light' ? 'light' : 'dark');
+  });
+
+  var ACCENTS={
+    green :{primary:'#8eb69b',muted:'#8eb69b',scene:'#08201c',bg:'#0b2b26',card:'rgba(13,42,37,.66)'},
+    blue  :{primary:'#8fa9d4',muted:'#8fa9d4',scene:'#0d1526',bg:'#111a2e',card:'rgba(20,30,54,.66)'},
+    purple:{primary:'#b19cd0',muted:'#b19cd0',scene:'#1a1226',bg:'#20182e',card:'rgba(37,26,54,.66)'},
+    lilac :{primary:'#b3a3c4',muted:'#b3a3c4',scene:'#1c1626',bg:'#231d2e',card:'rgba(42,34,54,.66)'},
+    rose  :{primary:'#cf9d94',muted:'#cf9d94',scene:'#241413',bg:'#2e1b19',card:'rgba(54,30,28,.66)'},
+    wine  :{primary:'#c48a92',muted:'#c48a92',scene:'#210f12',bg:'#2a1418',card:'rgba(54,20,24,.66)'},
+    gold  :{primary:'#d0b878',muted:'#d0b878',scene:'#221a0d',bg:'#2b2211',card:'rgba(54,44,20,.66)'},
+    slate :{primary:'#9fb0ba',muted:'#9fb0ba',scene:'#12181c',bg:'#171e22',card:'rgba(23,30,34,.66)'},
+  };
+  function applyAccent(a){
+    var r=document.documentElement.style;
+    if(a && ACCENTS[a] && a!=='green'){
+      var c=ACCENTS[a];
+      r.setProperty('--primary',c.primary); r.setProperty('--primary-deep',c.primary);
+      r.setProperty('--muted',c.muted); r.setProperty('--scene',c.scene);
+      r.setProperty('--bg',c.bg); r.setProperty('--card',c.card);
+      r.setProperty('--card-solid',c.bg);
+    } else {
+      ['--primary','--primary-deep','--muted','--scene','--bg','--card','--card-solid'].forEach(k=>r.removeProperty(k));
+    }
+  }
+  try{ applyAccent(localStorage.getItem('chromogen-accent')); }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key==='chromogen-accent') applyAccent(e.newValue);
+  });
+})();
+</script>
+<header>
+  <div class="brand"><span class="mark">🧬</span> ChromoGen · مقارنة البروتين</div>
+  <span id="proteinLabel" style="font-size:12px; color:var(--muted); font-family:var(--font-mono)"></span>
+</header>
+<main>
+  <p id="status">جاري التحضير...</p>
+  <div id="cols" class="cols" style="display:none"></div>
+  <div id="geneExprSection" style="margin-top:14px"></div>
+</main>
+
+<script>
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function normalizeGene(name){ return String(name||'').trim().toUpperCase(); }
+const NAME_CACHE = new Map();
+
+async function searchRCSBByAccession(acc){
+  const r2 = await fetch(`https://search.rcsb.org/rcsbsearch/v2/query`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      query:{type:'terminal', service:'full_text', parameters:{value:acc}},
+      return_type:'entry'
+    }), signal: AbortSignal.timeout(15000)
+  });
+  if(!r2.ok) return null;
+  const j = await r2.json();
+  return j?.result_set?.[0]?.identifier || null;
+}
+
+async function resolveByGeneName(name){
+  const gene = normalizeGene(name);
+  if(!gene || gene.length < 2) return null;
+  if(NAME_CACHE.has(gene)) return NAME_CACHE.get(gene);
+  let out = null;
+  try{
+    const uq = 'https://rest.uniprot.org/uniprotkb/search'
+      + `?query=gene_exact:${encodeURIComponent(gene)}+AND+organism_id:9606+AND+reviewed:true`
+      + '&fields=accession&format=json&size=1';
+    const ur = await fetch(uq, {signal: AbortSignal.timeout(12000)});
+    const acc = ur.ok ? (await ur.json())?.results?.[0]?.primaryAccession : null;
+    if(acc){
+      let pdbId = null;
+      try{ pdbId = await searchRCSBByAccession(acc); }catch(e){}
+      if(pdbId) out = {kind:'pdb', value:pdbId, source:'experimental', accession:acc};
+      else out = {kind:'uniprot', value:acc, source:'predicted', accession:acc};
+    }
+  }catch(e){}
+  NAME_CACHE.set(gene, out);
+  return out;
+}
+
+function renderPane(side, label){
+  return `
+    <div class="pane ${side}">
+      <div class="pane-head">
+        <b>${label}</b>
+        <span class="badge" id="badge-${side}" style="display:none"></span>
+      </div>
+      <div class="pane-body" id="body-${side}">
+        <div class="empty-state" id="status-${side}">جاري التحضير...</div>
+      </div>
+    </div>`;
+}
+
+async function foldWithESMFold(sequence){
+  const clean = String(sequence||'').replace(/[^A-Za-z]/g,'').toUpperCase();
+  if(!clean || clean.length < 3) throw new Error('تسلسل فارغ أو قصير جداً');
+  if(clean.length > 768) throw new Error('التسلسل أطول من الحد المسموح (768 حمض أميني) لهذه الخدمة');
+  const res = await fetch('https://api.esmatlas.com/foldSequence/v1/pdb/', {
+    method:'POST', body:clean, signal:AbortSignal.timeout(30000)
+  });
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const text = await res.text();
+  if(!/^ATOM\s|\nATOM\s/.test(text)) throw new Error('رد غير صالح من الخدمة');
+  return text;
+}
+
+async function loadPaneStructure(side, label, sequence, fallbackResolved, proteinName, geneName){
+  const bodyEl = document.getElementById('body-'+side);
+  const statusEl = document.getElementById('status-'+side);
+  const badgeEl = document.getElementById('badge-'+side);
+  const frameId = 'frame-'+side;
+
+  bodyEl.innerHTML = `<iframe id="${frameId}" src="protein_viewer.html"></iframe>`;
+  const frame = document.getElementById(frameId);
+  const frameReady = new Promise(resolve => frame.addEventListener('load', resolve, {once:true}));
+
+  const showReference = async ()=>{
+    if(!fallbackResolved) return false;
+    badgeEl.style.display='inline-block';
+    badgeEl.textContent = fallbackResolved.source==='predicted' ? 'AlphaFold — بنية مرجعية معروفة' : 'RCSB — بنية تجريبية معروفة';
+    badgeEl.style.background='color-mix(in srgb, var(--control) 18%, transparent)'; badgeEl.style.color='var(--control)';
+    const common = `name=${encodeURIComponent(proteinName||'')}&gene=${encodeURIComponent(geneName||'')}`;
+    frame.src = fallbackResolved.kind==='pdb'
+      ? `protein_viewer.html?pdb=${encodeURIComponent(fallbackResolved.value)}&${common}`
+      : `protein_viewer.html?uniprot=${encodeURIComponent(fallbackResolved.value)}&${common}`;
+    return true;
+  };
+
+  const showESMFold = async ()=>{
+    if(!sequence || sequence.length < 3) return false;
+    try{
+      const pdbText = await foldWithESMFold(sequence);
+      badgeEl.style.display='inline-block'; badgeEl.textContent='ESMFold — تسلسل حقيقي';
+      badgeEl.style.background='color-mix(in srgb, var(--patient) 16%, transparent)'; badgeEl.style.color='var(--patient)';
+      await frameReady;
+      frame.contentWindow.postMessage({type:'load-pdb-raw', pdbText, name:proteinName, sub:`ESMFold · ${sequence.length} حمض أميني`}, '*');
+      return true;
+    }catch(err){
+      console.warn('[ESMFold] فشل الطي لـ', side, err.message);
+      return false;
+    }
+  };
+
+  statusEl?.remove();
+  let ok;
+  if(side==='control'){
+    ok = await showReference();
+    if(!ok) ok = await showESMFold();
+  } else {
+    ok = await showESMFold();
+    if(!ok) ok = await showReference();
+  }
+  if(!ok) bodyEl.innerHTML = `<div class="empty-state">تعذّر الحصول على بنية ثلاثية الأبعاد لهذا البروتين من أي مصدر.</div>`;
+}
+
+async function boot(){
+  const params = new URLSearchParams(location.search);
+  const outputId = params.get('output_id');
+  const geneName = params.get('gene') || '';
+  const proteinName = params.get('protein') || geneName;
+  const token = params.get('token') || localStorage.getItem('chromogen-token') || '';
+  const base = (window.CHROMO_API_BASE || 'http://127.0.0.1:8000/api').replace(/\/$/,'');
+  const status = document.getElementById('status');
+  document.getElementById('proteinLabel').textContent = proteinName;
+
+  if(!outputId || !geneName){ status.textContent = 'يلزم output_id و gene بالرابط.'; return; }
+
+  let geneData = null;
+  try{
+    const headers = {'Accept':'application/json'};
+    if(token) headers['Authorization'] = 'Bearer '+token;
+    const listRes = await fetch(`${base}/genomics/output/${outputId}/genes/`, {headers});
+    if(listRes.ok){
+      const list = await listRes.json();
+      const match = (list||[]).find(g => (g.gene_name||'').toUpperCase() === geneName.toUpperCase());
+      if(match){
+        const detRes = await fetch(`${base}/genomics/output/${outputId}/genes/${encodeURIComponent(match.gene_id)}/`, {headers});
+        if(detRes.ok) geneData = await detRes.json();
+      }
+    }
+  }catch(e){}
+
+  status.remove();
+  const cols = document.getElementById('cols');
+  cols.style.display = 'grid';
+  cols.innerHTML = renderPane('control', 'السليم') + renderPane('patient', 'المريض');
+
+  let fallbackResolved = null;
+  try{ fallbackResolved = await resolveByGeneName(proteinName); }catch(e){}
+
+  loadPaneStructure('control', 'السليم', geneData?.control_amino_acid_sequence, fallbackResolved, proteinName, geneName);
+  loadPaneStructure('patient', 'المريض', geneData?.patient_amino_acid_sequence, fallbackResolved, proteinName, geneName);
+
+  document.getElementById('geneExprSection').innerHTML = renderGeneExpression(geneData);
+  syncTrackScroll();
+}
+
+function mrnaToDna(mrna){
+  return mrna ? mrna.toUpperCase().replace(/U/g, 'T') : null;
+}
+
+function buildDarkCardTrack(dnaSeq, mrnaSeq, proteinSeq, mutatedCodons = [], isPatient = false, scrollId = '') {
+  if (!mrnaSeq) return '<p style="font-size:12px; color:var(--muted);">لا تتوفر بيانات التسلسل.</p>';
+
+  const mutMap = new Map((mutatedCodons || []).map(c => [c.codon_number, c]));
+  const totalCodons = Math.floor(mrnaSeq.length / 3);
+
+  let columnsHtml = '';
+
+  for (let i = 0; i < totalCodons; i++) {
+    const codonNum = i + 1;
+    const mrnaTriplet = mrnaSeq.substr(i * 3, 3);
+    const dnaTriplet = dnaSeq ? dnaSeq.substr(i * 3, 3) : mrnaTriplet.replace(/U/g, 'T');
+    let aa = proteinSeq ? (proteinSeq[i] || '—') : '—';
+
+    const mutData = mutMap.get(codonNum);
+    const isDiff = !!mutData;
+    const isMutated = isPatient && isDiff;
+    const isStop = isMutated && (aa === '*' || aa === 'STOP' || mutData.patient_amino_acid === '*');
+
+    if (isStop) aa = 'STOP';
+
+    columnsHtml += `
+      <div class="dark-col ${isMutated ? 'is-mutated' : ''} ${isStop ? 'is-stop' : ''}" data-codon="${codonNum}">
+        <span class="idx">${codonNum}</span>
+        <span class="dna-code">${dnaTriplet}</span>
+        <span class="mrna-code">${mrnaTriplet}</span>
+        <div class="aa-circle" title="الكودون #${codonNum}">${aa}</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="dark-track-content">
+      <div class="dark-track-labels">
+        <span>DNA</span>
+        <span>mRNA</span>
+        <span>AA</span>
+      </div>
+      <div class="dark-track-scroll" id="${scrollId}">
+        ${columnsHtml}
+      </div>
+    </div>
+  `;
+}
+
+function syncTrackScroll(){
+  const a = document.getElementById('track-scroll-control');
+  const b = document.getElementById('track-scroll-patient');
+  if(!a || !b) return;
+  let syncing = false;
+  const link = (from, to) => from.addEventListener('scroll', ()=>{
+    if(syncing) return;
+    syncing = true; to.scrollLeft = from.scrollLeft; syncing = false;
+  });
+  link(a,b); link(b,a);
+}
+
+function exportCodonsCSV(){
+  const codons = window.MUTATED_CODONS_DATA || [];
+  const geneName = window.CURRENT_GENE_NAME || 'gene';
+  if(!codons.length){ alert('لا توجد كودونات متغيّرة لتصديرها.'); return; }
+  const head = ['codon_number','reference_codon','reference_amino_acid','patient_codon','patient_amino_acid','genomic_position'];
+  const esc2 = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const csv = [head.join(',')].concat(codons.map(c => [
+    c.codon_number, c.reference_codon, c.reference_amino_acid,
+    c.patient_codon, c.patient_amino_acid, c.genomic_position
+  ].map(esc2).join(','))).join('\n');
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${geneName}_mutated_codons.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+window.CODONS_PAGE_SIZE = 8;
+window.CODONS_CURRENT_PAGE = 1;
+window.MUTATED_CODONS_DATA = [];
+
+function changeCodonPage(newPage) {
+  const totalCodons = window.MUTATED_CODONS_DATA.length;
+  const totalPages = Math.ceil(totalCodons / window.CODONS_PAGE_SIZE);
+
+  if (newPage < 1 || newPage > totalPages) return;
+
+  window.CODONS_CURRENT_PAGE = newPage;
+
+  const container = document.getElementById('genocoreTableContainer');
+  if (container) {
+    container.innerHTML = renderCodonTableBody(window.MUTATED_CODONS_DATA);
+  }
+}
+
+function renderCodonTableBody(codons) {
+  if (!codons || !codons.length) {
+    return `<p style="font-size:11px; color:rgba(255,255,255,0.4); text-align:center; padding:20px 0;">لا توجد كودونات متغيرة — التسلسل مطابق تماماً.</p>`;
+  }
+
+  const pageSize = window.CODONS_PAGE_SIZE;
+  const page = window.CODONS_CURRENT_PAGE;
+  const totalCodons = codons.length;
+  const totalPages = Math.ceil(totalCodons / pageSize);
+
+  const startIndex = (page - 1) * pageSize;
+  const pageCodons = codons.slice(startIndex, startIndex + pageSize);
+
+  const rowsHtml = pageCodons.map(c => `
+    <tr>
+      <td style="color:rgba(255,255,255,0.4); font-weight:500;">#${c.codon_number}</td>
+      <td style="color:#fff;">${esc(c.reference_codon)} <span style="color:rgba(255,255,255,0.4); font-size:10px;">(${esc(c.reference_amino_acid)})</span></td>
+      <td>
+        <span class="mutated-pill">
+          ${esc(c.patient_codon)} (${esc(c.patient_amino_acid)})
+        </span>
+      </td>
+      <td style="direction:ltr; text-align:right; color:rgba(255,255,255,0.4);">${c.genomic_position?.toLocaleString?.() ?? '—'}</td>
+    </tr>
+  `).join('');
+
+  let pageBtnsHtml = `<span class="page-btn ${page === 1 ? 'disabled' : ''}" style="opacity:${page === 1 ? 0.3 : 1}; cursor:${page === 1 ? 'default' : 'pointer'}" onclick="changeCodonPage(${page - 1})">‹</span>`;
+
+  for (let p = 1; p <= totalPages; p++) {
+    if (p === 1 || p === totalPages || (p >= page - 1 && p <= page + 1)) {
+      pageBtnsHtml += `<span class="page-btn ${p === page ? 'active' : ''}" onclick="changeCodonPage(${p})">${p}</span>`;
+    } else if (p === page - 2 || p === page + 2) {
+      pageBtnsHtml += `<span style="font-size:10px; color:rgba(255,255,255,0.3); user-select:none;">...</span>`;
+    }
+  }
+
+  pageBtnsHtml += `<span class="page-btn ${page === totalPages ? 'disabled' : ''}" style="opacity:${page === totalPages ? 0.3 : 1}; cursor:${page === totalPages ? 'default' : 'pointer'}" onclick="changeCodonPage(${page + 1})">›</span>`;
+
+  return `
+    <div style="overflow-x:auto;">
+      <table class="genocore-table">
+        <thead>
+          <tr>
+            <th style="width:15%"># الكودون</th>
+            <th style="width:30%">السليم (كودون / حمض)</th>
+            <th style="width:30%">المريض (كودون / حمض)</th>
+            <th style="width:25%; direction:ltr; text-align:right">الموقع الجينومي</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>
+
+    <div class="tbl-pagination">
+      <span>Showing ${startIndex + 1}-${Math.min(startIndex + pageSize, totalCodons)} of ${totalCodons} variations</span>
+      <div class="page-nums">
+        ${pageBtnsHtml}
+      </div>
+    </div>
+  `;
+}
+
+function renderGeneExpression(geneData) {
+  if (!geneData) {
+    return `<div class="dark-inspector-card" style="text-align:center; color:rgba(255,255,255,0.4); font-size:13px">
+      لا تتوفّر بيانات تعبير جيني حقيقية لهذا الجين ضمن هذا التحليل.</div>`;
+  }
+
+  const mut = geneData.mutation_type;
+  const codons = geneData.mutated_codons || [];
+
+  window.MUTATED_CODONS_DATA = codons;
+  window.CURRENT_GENE_NAME = geneData.gene_name || 'gene';
+  window.CODONS_CURRENT_PAGE = 1;
+
+  const controlDna = mrnaToDna(geneData.control_mrna_sequence);
+  const patientDna = mrnaToDna(geneData.patient_mrna_sequence);
+  const totalAA = geneData.control_amino_acid_sequence ? geneData.control_amino_acid_sequence.length : 0;
+
+  return `
+  <div class="dark-inspector-card">
+
+    <!-- Top Bar -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:14px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="display:flex; align-items:center; justify-content:center; width:32px; height:32px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px;"></span>
+        <div>
+          <h3 style="margin:0; font-family:var(--font-display); font-size:16px; color:#fff;">التعبير الجيني — ${esc(geneData.gene_name||'HBB')}</h3>
+          <div style="font-size:9px; color:rgba(255,255,255,0.4); font-family:var(--font-mono); margin-top:2px;">GENOMIC CENTRAL DOGMA · DNA 5'→3' · mRNA · AMINO ACID</div>
+        </div>
+      </div>
+      <span style="font-family:var(--font-mono); font-size:11px; padding:4px 12px; border-radius:20px; background:rgba(248,81,73,0.15); border:1px solid rgba(248,81,73,0.3); color:#f85149;">
+        MUTATION: ${esc(mut||'NONSENSE').toUpperCase()}
+      </span>
+    </div>
+
+    <!-- Control Track -->
+    <div class="dark-track-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:8px; height:8px; border-radius:50%; background:#56d364;"></span>
+          <b style="font-size:13px; color:#fff;">CONTROL — العينة السليمة</b>
+        </div>
+        <span style="font-size:10px; font-family:var(--font-mono); color:rgba(255,255,255,0.4);">${totalAA} CODONS</span>
+      </div>
+      ${buildDarkCardTrack(controlDna, geneData.control_mrna_sequence, geneData.control_amino_acid_sequence, codons, false, 'track-scroll-control')}
+    </div>
+
+    <!-- Patient Track -->
+    <div class="dark-track-panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="width:8px; height:8px; border-radius:50%; background:#f85149;"></span>
+          <b style="font-size:13px; color:#fff;">PATIENT — عينة المريض</b>
+        </div>
+        <span style="font-size:10px; font-family:var(--font-mono); color:#f85149;">${codons.length} MUTATIONS DETECTED</span>
+      </div>
+      ${buildDarkCardTrack(patientDna, geneData.patient_mrna_sequence, geneData.patient_amino_acid_sequence, codons, true, 'track-scroll-patient')}
+    </div>
+
+    <!-- Codon Table Container -->
+    <div class="tbl-card">
+      <div class="tbl-head-bar">
+        <div>
+          <h3 style="margin:0; font-family:var(--font-display); font-size:15px; color:#fff;">جدول التغيرات الكودونية التفصيلي</h3>
+        </div>
+        <div class="tbl-btn-group">
+          <button class="tbl-btn" onclick="exportCodonsCSV()">EXPORT</button>
+        </div>
+      </div>
+      <div id="genocoreTableContainer">
+        ${renderCodonTableBody(codons)}
+      </div>
+    </div>
+
+  </div>`;
+}
+
+boot();
+</script>
+</body>
+</html>

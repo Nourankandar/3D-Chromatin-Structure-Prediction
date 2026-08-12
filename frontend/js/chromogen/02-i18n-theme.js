@@ -3,7 +3,6 @@
    قاموس عربي/إنجليزي، الثيم (فاتح/غامق)، الألوان، تنسيق الأرقام والتواريخ والمناطق الجينومية.
    ============================================================ */
 const DICT = {
-  
   en:{
     brand:'ChromoGen', tagline:'Genomic Analysis Platform', loading:'Loading…', cancel:'Cancel', save:'Save',
     delete:'Delete', retry:'Retry', optional:'optional', back:'Back',
@@ -28,13 +27,13 @@ const DICT = {
     cells_added:'Cell type added', cells_updated:'Cell type updated', cells_deleted:'Cell type deleted',
     cells_err_name:'Name is required', cells_err_eid:'Track ID must be between 0 and 163',
     cells_confirm_del:'Delete this cell type?', cells_err_save:'Could not save. Check the values and try again.',
-    pw_title:'Change password', pw_desc:'Update the password you use to sign in',
+    pw_title:'Change password', pw_desc:'Update the password you use to log in',
     pw_old:'Current password', pw_old_ph:'Enter your current password',
     pw_new:'New password', pw_new_ph:'At least 6 characters',
     pw_confirm:'Confirm new password', pw_confirm_ph:'Re-enter the new password',
     pw_submit:'Update password', pw_saving:'Updating…',
     pw_ok:'Password changed', pw_err_required:'All fields are required',
-    pw_err_short:'New password must be at least 6 characters',
+    pw_err_short:'New password must be 8+ characters and include an uppercase letter, a lowercase letter, a number, and a symbol',
     pw_err_match:'The new passwords do not match',
     pw_err_same:'The new password must differ from the current one',
     pw_err_wrong:'Current password is incorrect', pw_err_generic:'Could not change the password. Try again.',
@@ -46,8 +45,19 @@ const DICT = {
     pr_title:'Profile', pr_subtitle:'Your account details',
     pr_username:'Username', pr_email:'Email', pr_role:'Role', pr_joined:'Joined',
     pr_superuser:'Superuser', pr_staff:'Administrator',
-    login_title:'Sign in', login_subtitle:'Access your genomic analysis workspace', username:'Username', password:'Password',
-    login_button:'Sign in', login_error:'Login failed. Please check your credentials and try again.',
+    login_title:'Login', login_subtitle:'Access your genomic analysis workspace', username:'Username', password:'Password', email:'Email',
+    login_button:'Login', login_error:'Login failed. Please check your credentials and try again.',
+    forgot_link:'Forgot password?', forgot_title:'Forgot password', forgot_subtitle:'Enter your email and we will send a 6-digit reset code',
+    forgot_button:'Send code', forgot_error:'Something went wrong. Please try again.', forgot_success:'Code sent — check your email.',
+    reset_title:'Reset password', reset_subtitle:'Enter the code sent to your email and choose a new password',
+    reset_code_label:'Verification code', reset_newpw_label:'New password', reset_confirmpw_label:'Confirm new password',
+    reset_hint:'Required: 8+ characters, including an uppercase letter, a lowercase letter, a number, and a symbol.',
+    reset_button:'Set new password', reset_error:'Something went wrong. Please try again.', reset_mismatch:'Passwords do not match.',
+    reset_tooshort:'Password must be 8+ characters and include an uppercase letter, a lowercase letter, a number, and a symbol.', reset_success:'Password reset — you can now log in.',
+    back_to_login:'Back to login',
+    signup_link:"Don't have an account? Create one", signup_title:'Create account', signup_subtitle:'Set up a new workspace account',
+    signup_email_optional:'Email (optional)', signup_button:'Create account',
+    signup_error:'Something went wrong. Please try again.', signup_success:'Account created — you can now log in.',
     logout:'Log out', login_hint:'Demo: any username and password will sign you in.',
     nav_patients:'Patients', nav_predict:'New prediction', nav_settings:'Settings', nav_chromatin:'Chromatin viewer', nav_protein:'Protein viewer',
     patients_title:'Patients', patients_subtitle:'Manage registered patients and their tests',
@@ -88,7 +98,7 @@ const DICT = {
     viewer_hint:'Drag to rotate · scroll to zoom', viewer_no_data:'No structure to display. Open a viewer from a completed result.',
     viewer_reset:'Reset view', viewer_autorotate:'Auto-rotate', viewer_points:'Analysis points',
     viewer_open_rcsb:'Open on RCSB', select_pdb:'PDB structure', summary:'Summary', region_size:'Region size',
-    viewer_compare_control:'Compare with healthy control', viewer_report:'Report',
+    viewer_compare_control:'Compare with healthy control', viewer_report:'Report', viewer_gene_expr:'Gene expression',
     toast_patient_added:'Patient added.', toast_patient_updated:'Patient updated.', toast_patient_deleted:'Patient deleted.',
     toast_test_deleted:'Test deleted.', toast_retry_started:'The test is queued again.', toast_error:'Something went wrong. Please try again.',
   },
@@ -122,7 +132,7 @@ const DICT = {
     pw_confirm:'تأكيد كلمة المرور الجديدة', pw_confirm_ph:'أعد إدخال كلمة المرور الجديدة',
     pw_submit:'تحديث كلمة المرور', pw_saving:'جاري التحديث…',
     pw_ok:'تم تغيير كلمة المرور', pw_err_required:'جميع الحقول مطلوبة',
-    pw_err_short:'كلمة المرور الجديدة يجب أن تكون ٦ أحرف على الأقل',
+    pw_err_short:'كلمة المرور الجديدة يجب أن تتكون من ٨ أحرف على الأقل، وتتضمّن حرفاً كبيراً وحرفاً صغيراً ورقماً ورمزاً خاصاً',
     pw_err_match:'كلمتا المرور الجديدتان غير متطابقتين',
     pw_err_same:'كلمة المرور الجديدة يجب أن تختلف عن الحالية',
     pw_err_wrong:'كلمة المرور الحالية غير صحيحة', pw_err_generic:'تعذّر تغيير كلمة المرور. حاول مجدداً.',
@@ -134,8 +144,19 @@ const DICT = {
     pr_title:'الملف الشخصي', pr_subtitle:'تفاصيل حسابك',
     pr_username:'اسم المستخدم', pr_email:'البريد الإلكتروني', pr_role:'الصلاحية', pr_joined:'تاريخ الانضمام',
     pr_superuser:'مشرف عام', pr_staff:'مسؤول', 
-    login_title:'تسجيل الدخول', login_subtitle:'ادخل إلى مساحة عمل التحليل الجينومي', username:'اسم المستخدم', password:'كلمة المرور',
+    login_title:'تسجيل الدخول', login_subtitle:'ادخل إلى مساحة عمل التحليل الجينومي', username:'اسم المستخدم', password:'كلمة المرور', email:'البريد الإلكتروني',
     login_button:'تسجيل الدخول', login_error:'فشل تسجيل الدخول. يرجى التحقق من بياناتك والمحاولة مرة أخرى.',
+    forgot_link:'نسيت كلمة المرور؟', forgot_title:'استعادة كلمة المرور', forgot_subtitle:'أدخل بريدك الإلكتروني وسيتم إرسال كود مكوّن من 6 أرقام',
+    forgot_button:'إرسال الكود', forgot_error:'حدث خطأ ما، يرجى المحاولة مرة أخرى.', forgot_success:'تم إرسال الكود — تحقق من بريدك الإلكتروني.',
+    reset_title:'إعادة تعيين كلمة المرور', reset_subtitle:'أدخل الكود المرسل إلى بريدك الإلكتروني واختر كلمة مرور جديدة',
+    reset_code_label:'كود التحقق', reset_newpw_label:'كلمة المرور الجديدة', reset_confirmpw_label:'تأكيد كلمة المرور الجديدة',
+    reset_hint:'المطلوب: 8 أحرف فأكثر، تتضمّن حرفاً كبيراً وحرفاً صغيراً ورقماً ورمزاً خاصاً.',
+    reset_button:'تعيين كلمة المرور الجديدة', reset_error:'حدث خطأ ما، يرجى المحاولة مرة أخرى.', reset_mismatch:'كلمتا المرور غير متطابقتين.',
+    reset_tooshort:'يجب أن تتكون كلمة المرور من 8 أحرف على الأقل، وتتضمّن حرفاً كبيراً وحرفاً صغيراً ورقماً ورمزاً خاصاً.', reset_success:'تم تغيير كلمة المرور — يمكن الآن تسجيل الدخول.',
+    back_to_login:'العودة لتسجيل الدخول',
+    signup_link:'لا يوجد حساب؟ إنشاء حساب جديد', signup_title:'إنشاء حساب', signup_subtitle:'إعداد حساب جديد لمساحة العمل',
+    signup_email_optional:'البريد الإلكتروني (اختياري)', signup_button:'إنشاء الحساب',
+    signup_error:'حدث خطأ ما، يرجى المحاولة مرة أخرى.', signup_success:'تم إنشاء الحساب — يمكن الآن تسجيل الدخول.',
     logout:'تسجيل الخروج', login_hint:'تجريبي: أي اسم مستخدم وكلمة مرور سيسجّلان الدخول.',
     nav_patients:'المرضى', nav_predict:'تنبؤ جديد', nav_settings:'الإعدادات', nav_chromatin:'عارض الكروماتين', nav_protein:'عارض البروتين',
     patients_title:'المرضى', patients_subtitle:'إدارة المرضى المسجّلين واختباراتهم',
@@ -176,12 +197,13 @@ const DICT = {
     viewer_hint:'اسحب للتدوير · مرّر للتكبير', viewer_no_data:'لا توجد بنية للعرض. افتح العارض من نتيجة مكتملة.',
     viewer_reset:'إعادة ضبط العرض', viewer_autorotate:'دوران تلقائي', viewer_points:'نقاط التحليل',
     viewer_open_rcsb:'فتح في RCSB', select_pdb:'بنية PDB', summary:'الملخص', region_size:'حجم المنطقة',
-    viewer_compare_control:'قارن مع العيّنة السليمة', viewer_report:'التقرير',
+    viewer_compare_control:'قارن', viewer_report:'التقرير', viewer_gene_expr:'التعبير الجيني',
     toast_patient_added:'تمت إضافة المريض.', toast_patient_updated:'تم تحديث المريض.', toast_patient_deleted:'تم حذف المريض.',
     toast_test_deleted:'تم حذف الاختبار.', toast_retry_started:'أُعيدت جدولة الاختبار.', toast_error:'حدث خطأ ما. يرجى المحاولة مرة أخرى.',
   }
 };
-let locale = 'en', theme = 'dark';
+let locale = 'en';
+let theme = (()=>{ try{ return localStorage.getItem('chromogen-theme') || 'dark'; }catch(e){ return 'dark'; } })();
 let accent = (()=>{ try{ return localStorage.getItem('chromogen-accent') || 'green'; }catch(e){ return 'green'; } })();
 const t = k => (DICT[locale][k] ?? DICT.en[k] ?? k);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -197,9 +219,11 @@ function applyTheme(){
   document.documentElement.classList.toggle('dark', theme==='dark');
   document.querySelectorAll('.js-theme').forEach(b => b.innerHTML = theme==='dark' ? ICON.sun : ICON.moon);
   scenes.forEach(s => s.refreshColors());
+  try{ localStorage.setItem('chromogen-theme', theme); }catch(e){}
 }
 
-/* -- نظام الثيمات اللونية  --*/
+/* -- نظام الثيمات اللونية  --
+   */
 const ACCENTS = [
   { id:'green',  label:'أخضر',   labelEn:'Green',  swatch:'#8eb69b' },   // الافتراضي
   { id:'blue',   label:'أزرق',   labelEn:'Blue',   swatch:'#7087bb' },

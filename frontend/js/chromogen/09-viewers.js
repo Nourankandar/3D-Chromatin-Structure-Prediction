@@ -1,8 +1,6 @@
 /* ============================================================
    10. VIEWERS
-   العارضات
    ============================================================ */
-   
 function viewerFrame({title, desc, backRoute, backLabel, panel, canvasId}){
   return `<div class="wrap">
     <button class="btn ghost sm" style="margin-bottom:1.25rem" data-go="${backRoute}">
@@ -50,7 +48,7 @@ function renderChromatin(view){
   const outputId = test.output_data_id;
   const authToken = localStorage.getItem('chromogen-token') || '';
   const compareHref = outputId
-    ? `hic_compare.html?output_id=${encodeURIComponent(outputId)}` + (authToken ? `&token=${encodeURIComponent(authToken)}` : '')
+    ? `hic_compare.html?output_id=${encodeURIComponent(outputId)}&input_id=${encodeURIComponent(test.id)}` + (authToken ? `&token=${encodeURIComponent(authToken)}` : '')
     : null;
 
   const panel = `
@@ -80,7 +78,7 @@ function renderChromatin(view){
 
   if (outputId && wrap) {
     const themeName = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-    const src = `hic_viewer.html?output_id=${encodeURIComponent(outputId)}&theme=${themeName}&accent=${accent}`
+    const src = `hic_viewer.html?output_id=${encodeURIComponent(outputId)}&side=patient&theme=${themeName}&accent=${accent}`
               + (authToken ? `&token=${encodeURIComponent(authToken)}` : '');
     wrap.innerHTML = `<iframe id="chromatinFrame" src="${src}" title="Chromatin 3D viewer"
       style="width:100%;height:clamp(380px,60vh,620px);border:0;display:block;border-radius:18px;background:var(--card)"></iframe>`;
@@ -113,6 +111,7 @@ async function searchProteinForViewer(gene){
       S.activeProtein = { gene:data.gene, uniprot_id:data.uniprot_id, protein_name:data.protein_name, pdb_ids:data.pdb_ids, predicted:false };
       S.activePdb = data.pdb_ids[0];
     } else if(data && data.uniprot_id){
+      // ما في بنية تجريبية بـ RCSB → منستعمل تنبؤ AlphaFold (بنية متوقّعة مش مقاسة)
       S.activeProtein = { gene:data.gene, uniprot_id:data.uniprot_id, protein_name:data.protein_name, pdb_ids:[], predicted:true };
       S.activePdb = null;
       toast(t('protein_predicted_note'));
@@ -211,7 +210,7 @@ function renderProtein(view){
   };
 }
 
-/*التقرير*/
+/* ══════════════ التقرير الطبي ══════════════ */
 let _currentReportId = null;
 
 function reportModalHTML(){
@@ -273,7 +272,7 @@ function renderReportBody(r){
   const st = r.status; // draft | generating | completed | failed — قيم حقيقية من الباك
   if(st==='draft' || st==='generating'){
     body.innerHTML=`<div style="text-align:center;padding:24px 0">
-      <p class="sm-t muted">${st==='generating' ? 'التقرير عم يتولّد الآن...' : 'التقرير لسا ما بلّش توليده.'}</p>
+      <p class="sm-t muted">${st==='generating' ? 'التقرير يتولّد الآن...' : ' التقرير لم يتم توليده.'}</p>
       <button class="btn outline" style="margin-top:12px" onclick="loadReport(${r.id})">تحديث الحالة</button>
     </div>`;
     return;
@@ -285,7 +284,7 @@ function renderReportBody(r){
     </div>`;
     return;
   }
-
+  // completed
   body.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div style="display:flex;gap:8px;align-items:center">
@@ -325,6 +324,6 @@ async function exportReportPDF(reportId){
     a.href = blobUrl; a.download = `report_${reportId}.pdf`; a.click();
     URL.revokeObjectURL(blobUrl);
   }catch(e){
-    alert('PDF تعذّر تصدير');
+    alert('تعذّر تصدير الـ PDF — تأكد أن التقرير مكتمل');
   }
 }

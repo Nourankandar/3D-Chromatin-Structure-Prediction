@@ -176,11 +176,17 @@
     repeating-linear-gradient(0deg, transparent 0 16px, color-mix(in srgb,var(--fg) 3%, transparent) 16px 17px)}
   .gb-feat .axis{position:absolute; inset-inline:0; top:50%; height:1px;
     background:color-mix(in srgb, var(--fg) 12%, transparent)}
+  .gene-bar{position:absolute; top:8px; height:calc(100% - 16px); min-width:6px; border-radius:5px;
+    cursor:pointer; transition:.12s; opacity:.85}
+  .gene-bar:hover, .gene-bar.on{opacity:1; outline:2px solid var(--fg); outline-offset:1px}
   .tick{position:absolute; width:9px; height:9px; border-radius:2px; cursor:pointer; transition:.12s;
     transform:translateX(-50%); border:1px solid color-mix(in srgb, #000 25%, transparent)}
   .tick:hover{outline:2px solid var(--primary); outline-offset:1px; z-index:3}
   .tick.on{outline:2px solid var(--fg); outline-offset:1px; z-index:4}
-  .tick.absent{background:transparent!important; border:1px dashed currentColor}
+  .tick.absent{
+    background:transparent!important;
+    border:2px dashed currentColor; box-shadow:none;
+  }
   .tick .stem{position:absolute; inset-inline-start:50%; width:1px; background:currentColor; opacity:.45}
 
   .track-legend{display:flex; gap:12px; flex-wrap:nowrap; overflow:hidden; padding:5px 10px;
@@ -243,13 +249,91 @@
   .tbl-wrap{flex:1; overflow:auto; margin-top:8px}
   .tbl-wrap::-webkit-scrollbar{width:5px;height:5px}
   .tbl-wrap::-webkit-scrollbar-thumb{background:var(--border); border-radius:3px}
-  .hint{font-size:.62rem; color:var(--muted); line-height:1.7}
+  .hint{font-size:.62rem; color:var(--muted); line-height:1.7}  .helix-btn{
+    flex:none; border:0; background:none; cursor:pointer; font-size:13px; line-height:1;
+    padding:2px 4px; border-radius:6px; opacity:.85;
+  }
+  .helix-btn:hover{background:color-mix(in srgb, var(--primary) 16%, transparent); opacity:1}
+
+  #helixOverlay{
+    display:none; position:fixed; inset:0; background:rgba(4,16,14,.78); backdrop-filter:blur(3px);
+    align-items:center; justify-content:center; z-index:300;
+  }
+  #helixCard{
+    background:linear-gradient(180deg,var(--card),var(--bg)); border-radius:18px; width:94%; max-width:760px;
+    max-height:88vh; overflow-y:auto; border:1px solid var(--border); box-shadow:0 30px 70px -20px rgba(0,0,0,.6);
+  }
+  .helix-head{display:flex; justify-content:space-between; align-items:flex-start; padding:18px 22px 14px; border-bottom:1px solid var(--border)}
+  .helix-body{padding:16px 22px 22px}
+  .helix-pair{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .helix-side{background:rgba(0,0,0,.15); border-radius:12px; padding:10px}
+  .helix-side p{text-align:center; font-size:11px; color:var(--muted); margin:0 0 4px}
+  .helix-legend{display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:12px; justify-content:center}
+  .helix-legend span{display:inline-flex; align-items:center; gap:5px}
+  .helix-sw{width:9px; height:9px; border-radius:3px; display:inline-block}
 </style>
+<div id="helixOverlay" onclick="if(event.target===this) closeHelixModal()">
+  <div id="helixCard">
+    <div class="helix-head">
+      <div>
+        <p style="font-weight:600; font-size:15px; margin:0">🧬 الحلزون الجزيئي الحقيقي</p>
+        <p class="xs muted" id="helixSubtitle" style="margin:2px 0 0"></p>
+      </div>
+      <span onclick="closeHelixModal()" style="cursor:pointer; color:var(--muted); font-size:16px">✕</span>
+    </div>
+    <div class="helix-body">
+      <div id="helixBodyContent"><p class="sm-t muted">جاري الجلب...</p></div>
+    </div>
+  </div>
+</div>
 </head>
 <body>
 
 <script>
-(function(){ try{ var p=new URLSearchParams(location.search); if(p.get('theme')==='light') document.documentElement.setAttribute('data-theme','light'); }catch(e){} })();
+(function(){
+  try{
+    var p = new URLSearchParams(location.search);
+    var stored = localStorage.getItem('chromogen-theme');
+    var wanted = p.get('theme') || stored || 'dark';
+    if(wanted==='light') document.documentElement.setAttribute('data-theme','light');
+  }catch(e){}
+  // مزامنة حيّة: لو تغيّر الثيم من تاب التطبيق الرئيسي وهاي الصفحة
+  // مفتوحة بتاب تاني، حدث 'storage' بيوصلها تلقائياً (خاصية متصفح
+  // أصلية، بلا أي كود إضافي معقّد)
+  window.addEventListener('storage', function(e){
+    if(e.key!=='chromogen-theme') return;
+    document.documentElement.setAttribute('data-theme', e.newValue==='light' ? 'light' : 'dark');
+  });
+
+  // نفس جدول الألوان (accent) الحقيقي المستخدم بـ hic_viewer.html —
+  // منسوخ حرفياً هون، مش قيم جديدة مخترعة
+  var ACCENTS={
+    green :{primary:'#8eb69b',muted:'#8eb69b',scene:'#08201c',bg:'#0b2b26',card:'rgba(13,42,37,.66)'},
+    blue  :{primary:'#8fa9d4',muted:'#8fa9d4',scene:'#0d1526',bg:'#111a2e',card:'rgba(20,30,54,.66)'},
+    purple:{primary:'#b19cd0',muted:'#b19cd0',scene:'#1a1226',bg:'#20182e',card:'rgba(37,26,54,.66)'},
+    lilac :{primary:'#b3a3c4',muted:'#b3a3c4',scene:'#1c1626',bg:'#231d2e',card:'rgba(42,34,54,.66)'},
+    rose  :{primary:'#cf9d94',muted:'#cf9d94',scene:'#241413',bg:'#2e1b19',card:'rgba(54,30,28,.66)'},
+    wine  :{primary:'#c48a92',muted:'#c48a92',scene:'#210f12',bg:'#2a1418',card:'rgba(54,20,24,.66)'},
+    gold  :{primary:'#d0b878',muted:'#d0b878',scene:'#221a0d',bg:'#2b2211',card:'rgba(54,44,20,.66)'},
+    slate :{primary:'#9fb0ba',muted:'#9fb0ba',scene:'#12181c',bg:'#171e22',card:'rgba(23,30,34,.66)'},
+  };
+  function applyAccent(a){
+    var r=document.documentElement.style;
+    if(a && ACCENTS[a] && a!=='green'){
+      var c=ACCENTS[a];
+      r.setProperty('--primary',c.primary); r.setProperty('--primary-deep',c.primary);
+      r.setProperty('--muted',c.muted); r.setProperty('--scene',c.scene);
+      r.setProperty('--bg',c.bg); r.setProperty('--card',c.card);
+      r.setProperty('--card-solid',c.bg); // الشريط الجانبي/المسار بيستخدموا هالمتغيّر الصلب تحديداً
+    } else {
+      ['--primary','--primary-deep','--muted','--scene','--bg','--card','--card-solid'].forEach(k=>r.removeProperty(k));
+    }
+  }
+  try{ applyAccent(localStorage.getItem('chromogen-accent')); }catch(e){}
+  window.addEventListener('storage', function(e){
+    if(e.key==='chromogen-accent') applyAccent(e.newValue);
+  });
+})();
 </script>
 
 <!--  الشريط العلوي  -->
@@ -365,12 +449,8 @@
 
   <!--  اللوحة الجانبية -->
   <aside class="side" id="side">
-    <div class="tabs">
-      <button class="tab on" id="tabProt"  onclick="setTab('prot')">البروتينات</button>
-      <button class="tab"    id="tabView"  onclick="setTab('view')">العرض</button>
-    </div>
+    <p class="xs muted" style="padding:10px 12px 0; margin:0; text-transform:uppercase; letter-spacing:.04em">قائمة الجينات</p>
 
-    <!-- تبويب البروتينات -->
     <div class="tabpane on" id="paneProt">
       <input class="inp" type="search" id="protSearch" placeholder="بحث عن بروتين…" oninput="renderProteinList()">
       <div class="row" style="margin-top:8px">
@@ -382,24 +462,6 @@
       <div class="row" id="protFilters" style="margin-top:8px"></div>
       <div class="plist" id="protList"></div>
       <div class="hint" style="margin-top:8px">
-      </div>
-    </div>
-
-    <!-- تبويب العرض -->
-    <div class="tabpane" id="paneView">
-      <div class="field">
-        <span class="lbl">تمثيل البروتين</span>
-        <div class="segmented">
-          <button class="seg-btn on" id="rAtoms"  onclick="setRepr('atoms','rAtoms')">⦿ ذرات</button>
-          <button class="seg-btn"    id="rRibbon" onclick="setRepr('ribbon','rRibbon')">〰 شريط</button>
-          <button class="seg-btn"    id="rAuto"   onclick="setRepr('auto','rAuto')">تلقائي</button>
-        </div>
-      </div>
-
-      <div class="field">
-        <span class="lbl">تكبير البنى <span class="mono-s" id="magBadge">×6</span></span>
-        <input type="range" id="cMag" min="1" max="30" step="1" value="6"
-               oninput="ctl({magnify:+this.value}); document.getElementById('magBadge').textContent='×'+this.value">
       </div>
     </div>
   </aside>
@@ -420,89 +482,59 @@ function ctlToggle(key, btnId){
   document.getElementById(btnId)?.classList.toggle('on', ctlState[key]);
   ctl({[key]: ctlState[key]});
 }
-function setRepr(mode, btnId){
-  ['rAtoms','rRibbon','rAuto'].forEach(id=> document.getElementById(id)?.classList.toggle('on', id===btnId));
-  ctl({repr:mode});
-}
 
 let loadedData=null, currentMode='split', camSyncOn=true;
 
 /* حالة البروتينات */
+/* نظام تصنيف جديد بالكامل — الباك صار يرجّع mutation_type نصّي بس
+   (none|silent|missense|nonsense|frameshift)، صفر لون من الباك.
+   الألوان هون قرار فرونت بحت، مرتّبة حسب خطورة التأثير البيولوجي
+   الحقيقي: frameshift ونonsense أخطر (بيقطعوا/يزيحوا البروتين كامل)،
+   missense أخف (حمض أميني واحد بس)، silent/none بلا أثر فعلي. */
 const STATUS = {
-  missing : {label:'مفقود',  color:'#e5766f', rank:0},
-  weakened: {label:'أضعف',   color:'#e0b24d', rank:1},
-  gained  : {label:'مكتسب',  color:'#7aa2f7', rank:2},
-  stronger: {label:'أقوى',   color:'#6fd3c0', rank:3},
-  stable  : {label:'مستقر',  color:'#8eb69b', rank:4}
+  frameshift: {label:'إزاحة إطار', color:'#e5766f', rank:0},
+  nonsense  : {label:'طفرة هراء',  color:'#f2905a', rank:1},
+  missense  : {label:'طفرة خاطئة', color:'#e0b24d', rank:2},
+  silent    : {label:'صامتة',      color:'#7aa2f7', rank:3},
+  none      : {label:'لا تغيير',   color:'#8eb69b', rank:4},
 };
 let protFilter='all', sortKey='status', sortDir=1, selectedProt=null;
-let DELTA_THRESHOLD = 0.15;
-function setDeltaThreshold(v){
-  DELTA_THRESHOLD = Math.max(0, +v || 0);
-  const el=document.getElementById('deltaThrVal');
-  if(el) el.textContent = '±' + DELTA_THRESHOLD.toFixed(2);
-  renderTrack(); renderTable(); renderProteinList();
-}
-/* البروتينات الملغى تفعيلها بتنبعث للعارضين */
+/* البروتينات (الجينات) الملغى تفعيلها بتنبعث للعارضين */
 const hiddenProts = new Set();
 
-function classify(e){
-  const hasP=!!(e.patient && e.patient.present!==false);
-  const hasC=!!(e.control && e.control.present!==false);
-  const d=numOrNull(e.delta_score);
-  if(e.is_missing || (!hasP && hasC)) return 'missing';
-  if(hasP && !hasC) return 'gained';
-  if(hasP && hasC && d!=null && d <= -DELTA_THRESHOLD) return 'weakened';
-  if(hasP && hasC && d!=null && d >=  DELTA_THRESHOLD) return 'stronger';
-  return 'stable';
+let _genesCache = null;
+async function loadGenes(outputId, token){
+  if(_genesCache) return _genesCache;
+  const base=(window.CHROMO_API_BASE||'/api').replace(/\/$/,'');
+  const headers={'Accept':'application/json'}; if(token) headers['Authorization']='Bearer '+token;
+  try{
+    const listRes = await fetch(`${base}/genomics/output/${outputId}/genes/`, {headers});
+    if(!listRes.ok){ _genesCache=[]; return _genesCache; }
+    const list = await listRes.json();
+    // لازم تفاصيل كل جين لحاله لأخذ gene_start/gene_end الحقيقيين (مو موجودين بالقائمة المختصرة)
+    const details = await Promise.all((list||[]).map(async g=>{
+      try{
+        const r = await fetch(`${base}/genomics/output/${outputId}/genes/${encodeURIComponent(g.gene_id)}/`, {headers});
+        return r.ok ? await r.json() : g;
+      }catch(e){ return g; }
+    }));
+    _genesCache = details;
+  }catch(e){ _genesCache = []; }
+  return _genesCache;
 }
 
-function absPos(sideEntry, sideData, fallback){
-  if(!sideEntry || sideEntry.present===false || !sideData) return null;
-  const raw = sideEntry.position_index ?? fallback;
-  if(raw==null || !isFinite(Number(raw))) return null;
-  const abs = Number(sideData.start) + Math.abs(Number(raw));
-  return (abs>=sideData.start && abs<=sideData.end) ? abs : null;
-}
-function pctOf(abs, sideData){
-  return ((abs - sideData.start) / (sideData.end - sideData.start)) * 100;
-}
-
-function findCoordByBp(abs, coords){
-  if(abs==null || !Array.isArray(coords)) return null;
-  for(const c of coords){
-    const m = /^(\d+)kb-(\d+)kb$/.exec(c.region || '');
-    if(!m) continue;
-    const startBp = Number(m[1])*1000, endBp = Number(m[2])*1000;
-    if(abs>=startBp && abs<endBp) return c;
-  }
-  return null;
-}
-function tadAt(abs, sideData){
-  const c = findCoordByBp(abs, sideData?.coords_raw);
-  return c ? (c.tad_id ?? null) : null;
-}
-function numOrNull(v){ return (v!=null && isFinite(Number(v))) ? Number(v) : null; }
-
-function protRows(){
-  const bp = loadedData?.binding_proteins;
-  if(!bp) return [];
-  const P = loadedData.patient, C = loadedData.control;
-  return Object.entries(bp).map(([key,e])=>{
-    const st = classify(e);
-    const pAbs = absPos(e.patient, P, e.position_index);
-    const cAbs = absPos(e.control, C, e.position_index);
-    const anyAbs = pAbs ?? cAbs;
-    const tad = tadAt(pAbs, P) ?? tadAt(cAbs, C) ?? tadAt(anyAbs, P) ?? tadAt(anyAbs, C);
-    return {
-      key, name:e.protein_name||key, st, entry:e,
-      pScore: numOrNull(e.patient?.binding_score),
-      cScore: numOrNull(e.control?.binding_score),
-      delta : (e.patient && e.control) ? numOrNull(e.delta_score) : null,
-      pAbs, cAbs, anyAbs, tad,
-      onTrack: pAbs!=null || cAbs!=null
-    };
-  });
+function geneRows(){
+  return (_genesCache||[]).map(g=>({
+    key: g.gene_id,
+    name: g.gene_name || g.gene_id,
+    st: STATUS[g.mutation_type] ? g.mutation_type : 'none',
+    start: g.gene_start ?? null,
+    end: g.gene_end ?? null,
+    isComplete: g.is_complete_in_patient_sample !== false,
+    error: g.error || null,
+    mutatedCodons: g.mutated_codons || [],
+    raw: g,
+  }));
 }
 
 /* الإطارات والتزامن */
@@ -549,7 +581,7 @@ function setAllVisible(on){
 }
 function visibleRows(){
   const q=(document.getElementById('protSearch')?.value||'').trim().toLowerCase();
-  return protRows()
+  return geneRows()
     .filter(r=> protFilter==='all' || r.st===protFilter)
     .filter(r=> !q || r.name.toLowerCase().includes(q) || r.key.toLowerCase().includes(q))
     .sort((a,b)=> STATUS[a.st].rank-STATUS[b.st].rank || a.name.localeCompare(b.name));
@@ -557,7 +589,7 @@ function visibleRows(){
 
 function renderProteinList(){
   const box=document.getElementById('protList');
-  const all=protRows();
+  const all=geneRows();
   const rows=visibleRows();
   document.getElementById('protCount').textContent =
     all.length ? `${all.length - hiddenProts.size}/${all.length} ظاهر` : '—';
@@ -572,7 +604,7 @@ function renderProteinList(){
 
   box.innerHTML='';
   if(!rows.length){
-    box.innerHTML='<div class="hint" style="padding:14px 4px">لا بروتينات لعرضها.</div>';
+    box.innerHTML='<div class="hint" style="padding:14px 4px">لا جينات لعرضها ضمن هذه المنطقة.</div>';
     return;
   }
   rows.forEach(r=>{
@@ -583,31 +615,43 @@ function renderProteinList(){
       `<input type="checkbox" ${on?'checked':''}>`+
       `<span class="pdot" style="background:${STATUS[r.st].color}"></span>`+
       `<span class="pname" title="${r.name}">${r.name}</span>`+
-      `<span class="ptag">${STATUS[r.st].label}</span>`;
+      `<span class="ptag">${STATUS[r.st].label}</span>`+
+      (selectedProt===r.key ? `<button class="helix-btn" title="عرض الحلزون الجزيئي الحقيقي" onclick="event.stopPropagation(); openHelixModal('${r.key}')">🧬</button>` : '');
     el.querySelector('input').onclick=e=>{ e.stopPropagation(); toggleProtVisible(r.key, e.target.checked); };
-    el.onclick=()=> selectProt(r.key);
+    el.onclick=()=> openProteinCompare(r.name);
     box.appendChild(el);
   });
 }
 
+function openProteinCompare(geneName){
+  const params = new URLSearchParams(location.search);
+  const outputId = params.get('output_id') || params.get('output') || '';
+  const token = params.get('token') || localStorage.getItem('chromogen-token') || '';
+  const url = `protein_compare.html?output_id=${encodeURIComponent(outputId)}`
+    + `&gene=${encodeURIComponent(geneName)}&protein=${encodeURIComponent(geneName)}`
+    + (token ? `&token=${encodeURIComponent(token)}` : '');
+  window.open(url, '_blank');
+}
+
 /*  المسار الجينومي */
 function renderTrack(){
-  const rows=protRows(), P=loadedData?.patient;
+  const rows=geneRows(), P=loadedData?.patient;
   if(!rows.length || !P) return;
 
   const visibleRows = rows.filter(r=>
-    (protFilter==='all' || r.st===protFilter) && !hiddenProts.has(r.key));
-  const allAbs = visibleRows.map(r=>r.anyAbs).filter(v=>v!=null);
+    (protFilter==='all' || r.st===protFilter) && !hiddenProts.has(r.key) && r.start!=null && r.end!=null);
+
+  // نكبّر لمدى الجينات الظاهرة فعلياً (بدل نقطة، هلق عندنا مدى حقيقي لكل جين)
   let zStart=P.start, zEnd=P.end;
-  if(allAbs.length){
-    const mn=Math.min(...allAbs), mx=Math.max(...allAbs);
-    const pad=Math.max((mx-mn)*0.15, (P.resolution||50)*0.5);
+  if(visibleRows.length){
+    const mn=Math.min(...visibleRows.map(r=>r.start)), mx=Math.max(...visibleRows.map(r=>r.end));
+    const pad=Math.max((mx-mn)*0.15, 200);
     zStart=Math.max(P.start, mn-pad); zEnd=Math.min(P.end, mx+pad);
     if(zEnd<=zStart){ zStart=P.start; zEnd=P.end; }
   }
   const zoomed = zStart>P.start || zEnd<P.end;
   const span = zEnd-zStart;
-  const pctZ = abs => ((abs-zStart)/span)*100;
+  const pctZ = abs => Math.max(0, Math.min(100, ((abs-zStart)/span)*100));
   const fmt  = bp => bp>=1e6 ? (bp/1e6).toFixed(zoomed?3:2)+'M' : Math.round(bp/1e3)+'kb';
 
   document.getElementById('trackCoords').textContent =
@@ -657,52 +701,114 @@ function renderTrack(){
       `<span class="chip ${protFilter===k?'on':''}" onclick="setFilter('${k}')"
         style="${protFilter===k?'':'color:'+STATUS[k].color}">${STATUS[k].label} ${present[k]}</span>`).join('');
 
-  /*  مسارات البروتينات  */
+  /*  مسارات الجينات — شرائط بعرض gene_start-gene_end، مو نقاط.
+      نفس الجين له نفس الإحداثيات بالطرفين (الجين نفسه ما "بيتحرك")،
+      الفرق الحقيقي هو التصنيف (mutation_type)، فبنرسم نفس الشريط
+      بالمسارين ملوّن بنفس اللون. */
   const lp=document.getElementById('lanePatient'), lc=document.getElementById('laneControl');
   lp.innerHTML=gridHTML+'<div class="axis"></div>';
   lc.innerHTML=gridHTML+'<div class="axis"></div>';
-  const rowsUsed={left:[], right:[]};
-  rows.forEach(r=>{
-    if(protFilter!=='all' && r.st!==protFilter) return;
-    if(hiddenProts.has(r.key)) return;
+  visibleRows.forEach(r=>{
     const col=STATUS[r.st].color;
-    const mk=(abs,lane,absent,side)=>{
-      if(abs==null) return;
-      const pct=pctZ(abs);
-      const used=rowsUsed[side];
-      let row=0;
-      while(used[row] && used[row].some(x=>Math.abs(x-pct)<2.2)) row++;
-      if(!used[row]) used[row]=[];
-      used[row].push(pct);
-      row=Math.min(row,2);
+    const s=Math.max(zStart, r.start), e=Math.min(zEnd, r.end);
+    const left=pctZ(s), width=Math.max(pctZ(e)-pctZ(s), 0.6);
+    [lp, lc].forEach(lane=>{
       const el=document.createElement('div');
-      el.className='tick'+(absent?' absent':'')+(selectedProt===r.key?' on':'');
-      el.style.insetInlineStart=pct.toFixed(2)+'%';
-      el.style.top=(3+row*10)+'px';
-      el.style.color=col; if(!absent) el.style.background=col;
-      el.innerHTML=`<i class="stem" style="top:9px; height:${Math.max(14-row*10,2)}px"></i>`;
-      el.title=`${r.name} · ${STATUS[r.st].label}\n${P.chrom}:${Math.round(abs).toLocaleString()}`;
-      el.onclick=()=>selectProt(r.key);
+      el.className='gene-bar'+(selectedProt===r.key?' on':'');
+      el.style.insetInlineStart=left.toFixed(2)+'%';
+      el.style.width=width.toFixed(2)+'%';
+      el.style.background=col;
+      el.title=`${r.name} · ${STATUS[r.st].label}\n${P.chrom}:${Math.round(r.start).toLocaleString()}-${Math.round(r.end).toLocaleString()}`+
+        (r.isComplete===false ? '\n⚠ الجين غير مغطّى بالكامل ضمن منطقة التحليل' : '');
+      el.onclick=()=>highlightGeneOnScenes(r);
       lane.appendChild(el);
-    };
-    mk(r.pAbs ?? (r.st==='missing'? r.cAbs : null), lp, r.pAbs==null, 'right');
-    mk(r.cAbs ?? (r.st==='gained' ? r.pAbs : null), lc, r.cAbs==null, 'left');
+    });
   });
 
   document.getElementById('trackLegend').innerHTML =
     Object.keys(STATUS).filter(k=>present[k]).map(k=>
-      `<span><span class="lg-sw" style="background:${STATUS[k].color}"></span>${STATUS[k].label}</span>`).join('')+
-    `<span style="opacity:.7"><span class="lg-sw" style="border:1px dashed var(--muted)"></span>غياب بهذه الجهة</span>`;
+      `<span><span class="lg-sw" style="background:${STATUS[k].color}"></span>${STATUS[k].label}</span>`).join('');
 }
 
 function setFilter(f){
   protFilter=f; renderTrack(); renderTable(); renderProteinList();
   frames().forEach(fr=> tellFrame(fr,{type:'chromo-protein-filter', filter:f}));
 }
-function selectProt(key){
+// targetSide لو معطاة ('patient'|'control') → التركيز بيروح لشاشة هالجهة بس
+// (نقرة من المسار الجينومي). لو غير معطاة (نقرة من لستة البروتينات
+// الجانبية، مش مرتبطة بجهة محدّدة) → بترسل للشاشتين متل ما كان دايماً.
+/* نقرة على شريط الجين بالمسار الجينومي (مو القائمة الجانبية — هاي
+   بتفتح مقارنة البروتين بصفحة منفصلة) → تظليل نقاط المنطقة الحقيقية
+   لهالجين بالمشهدين، من نفس بيانات الجين المخزّنة أصلاً بالكاش. */
+/* نجيب النقطة/النقاط اللي بتغطي موقع الطفرة الحقيقي تحديداً (مش الجين
+   كامل) — بمطابقة genomic_position الحقيقي لكل كودون متحوّل مع مدى
+   region كل نقطة بمصفوفة الجين (نفس مبدأ resolveProteinCoordIndex). */
+// function pointsAtMutationSites(regionPoints, mutatedCodons){
+//   if(!regionPoints?.length || !mutatedCodons?.length) return regionPoints||[];
+//   const positions = mutatedCodons.map(c=>c.genomic_position).filter(p=>p!=null);
+//   if(!positions.length) return regionPoints;
+//   const hit = regionPoints.filter(p=>{
+//     const m = /^(\d+)kb-(\d+)kb$/.exec(p.region||'');
+//     if(!m) return false;
+//     const s=Number(m[1])*1000, e=Number(m[2])*1000;
+//     return positions.some(pos => pos>=s && pos<e);
+//   });
+//   return hit.length ? hit : regionPoints; // ما لقينا تطابق دقيق → نرجع لكل مدى الجين كاحتياطي
+// }
+
+function pointsAtMutationSites(regionPoints, mutatedCodons){
+  // 1. إذا لم تتوفر نقاط المنطقة بالجين، نأخذ كافة نقاط الكروماتين المريض المجلوبة
+  const allPoints = (regionPoints && regionPoints.length) 
+                    ? regionPoints 
+                    : (loadedData?.patient?.coords_raw || []);
+                    
+  if(!allPoints.length || !mutatedCodons?.length) return allPoints;
+
+  // 2. استخراج موقع الطفرة الجينومي من الكودونات المتطفرة
+  const positions = mutatedCodons.map(c => c.genomic_position).filter(p => p != null);
+  if(!positions.length) return allPoints;
+
+  // 3. المطابقة مع مناطق الكروماتين
+  const hit = allPoints.filter(p => {
+    if(!p.region) return false;
+    const matches = p.region.match(/(\d+)(kb)?\s*-\s*(\d+)(kb)?/i);
+    if(!matches) return false;
+    
+    let start = Number(matches[1]);
+    let end = Number(matches[3]);
+    
+    if(matches[2]?.toLowerCase() === 'kb') start *= 1000;
+    if(matches[4]?.toLowerCase() === 'kb') end *= 1000;
+    
+    return positions.some(pos => pos >= start && pos < end);
+  });
+
+  return hit.length ? hit : allPoints;
+}
+
+
+function highlightGeneOnScenes(row){
+  const same = selectedProt===row.key;
+  selectedProt = same ? null : row.key;
+  renderTrack();
+  const color = STATUS[row.st]?.color;
+  const fP=document.getElementById('framePatient'), fC=document.getElementById('frameControl');
+  const pPoints = same ? [] : pointsAtMutationSites(row.raw?.patient_3d_region, row.mutatedCodons);
+  const cPoints = same ? [] : pointsAtMutationSites(row.raw?.control_3d_region, row.mutatedCodons);
+  if(fP) tellFrame(fP, {type:'chromo-highlight-region', points: pPoints, color});
+  if(fC) tellFrame(fC, {type:'chromo-highlight-region', points: cPoints, color});
+}
+
+function selectProt(key, targetSide){
   selectedProt = (selectedProt===key) ? null : key;
   renderTrack(); renderTable(); renderProteinList();
-  frames().forEach(fr=> tellFrame(fr,{type:'chromo-protein-focus', protein:selectedProt}));
+  const msg = {type:'chromo-protein-focus', protein:selectedProt};
+  if(targetSide && selectedProt){
+    const f = document.getElementById(targetSide==='patient' ? 'framePatient' : 'frameControl');
+    if(f) tellFrame(f, msg);
+  } else {
+    frames().forEach(fr=> tellFrame(fr, msg));
+  }
 }
 
 /*  الجدول */
@@ -723,7 +829,7 @@ function renderTable(){
     `<th onclick="sortBy('${c.k}')">${c.t}${sortKey===c.k?(sortDir>0?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
 
   const q=(document.getElementById('protSearch')?.value||'').trim().toLowerCase();
-  let rows=protRows()
+  let rows=geneRows()
     .filter(r=> protFilter==='all' || r.st===protFilter)
     .filter(r=> !q || r.name.toLowerCase().includes(q) || r.key.toLowerCase().includes(q));
 
@@ -753,7 +859,7 @@ function renderTable(){
 function sortBy(k){ if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=1; } renderTable(); }
 
 function exportCSV(){
-  const rows=protRows().filter(r=> protFilter==='all' || r.st===protFilter);
+  const rows=geneRows().filter(r=> protFilter==='all' || r.st===protFilter);
   const head=['protein','status','patient_score','control_score','delta','position_bp','tad'];
   const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;
   const csv=[head.join(',')].concat(rows.map(r=>[
@@ -769,10 +875,10 @@ function exportCSV(){
 
 /*  واجهة */
 function setTab(t){
-  const map={prot:['tabProt','paneProt'], view:['tabView','paneView']};
+  const map={prot:['tabProt','paneProt']};
   Object.entries(map).forEach(([k,[tab,pane]])=>{
-    document.getElementById(tab).classList.toggle('on', k===t);
-    document.getElementById(pane).classList.toggle('on', k===t);
+    document.getElementById(tab)?.classList.toggle('on', k===t);
+    document.getElementById(pane)?.classList.toggle('on', k===t);
   });
   if(t==='prot')  renderProteinList();
 }
@@ -823,11 +929,33 @@ function setMode(mode){
   pushSyncState();
 }
 
+// function reloadFrames(mode){
+//   if(!loadedData) return;
+//   const send=(frame, side, which)=>{
+//     const post=()=>{ try{
+//       frame.contentWindow.postMessage({type:'chromo-load', payload:loadedData, side}, '*');
+//       if(which) hideEmpty(which);
+//       pushVisibility();
+//     }catch(e){} };
+//     if(frame.dataset.ready==='1') post();
+//     else frame.onload=()=>{ frame.dataset.ready='1'; post(); };
+//     setTimeout(post, 300);
+//     setTimeout(pushSyncState, 350);
+//   };
+//   if(mode==='both'){
+//     send(document.getElementById('framePatient'), 'both', 'patient');
+//   } else {
+//     send(document.getElementById('framePatient'), 'patient', 'patient');
+//     send(document.getElementById('frameControl'), 'control', 'control');
+//   }
+// }
+
 function reloadFrames(mode){
   if(!loadedData) return;
-  const send=(frame, side, which)=>{
+  const send=(frame, payloadData, side, which)=>{
     const post=()=>{ try{
-      frame.contentWindow.postMessage({type:'chromo-load', payload:loadedData, side}, '*');
+      // نبعث كائن المريض لفرام المريض، وكائن السليم لفرام السليم مباشرة
+      frame.contentWindow.postMessage({type:'chromo-load', payload: payloadData, side: side}, '*');
       if(which) hideEmpty(which);
       pushVisibility();
     }catch(e){} };
@@ -836,13 +964,17 @@ function reloadFrames(mode){
     setTimeout(post, 300);
     setTimeout(pushSyncState, 350);
   };
+
   if(mode==='both'){
-    send(document.getElementById('framePatient'), 'both', 'patient');
+    send(document.getElementById('framePatient'), loadedData, 'both', 'patient');
   } else {
-    send(document.getElementById('framePatient'), 'patient', 'patient');
-    send(document.getElementById('frameControl'), 'control', 'control');
+    // إرسال كائن Patient لفرام المريض
+    send(document.getElementById('framePatient'), loadedData.patient || loadedData, 'patient', 'patient');
+    // إرسال كائن Control لفرام السليم
+    send(document.getElementById('frameControl'), loadedData.control || loadedData, 'control', 'control');
   }
 }
+
 
 function afterData(){
   renderProteinList(); renderTable();
@@ -882,7 +1014,172 @@ async function bootFromAPI(){
     afterData();
     reloadFrames('split');
     setStatus('output #'+outputId, true);
+
+    // بيانات الجينات من endpoint منفصل تماماً — نجيبها بالتوازي، وبعد
+    // ما توصل منعيد رسم القائمة والمسار عشان يبينوا فيها
+    loadGenes(outputId, token).then(()=>{ renderProteinList(); renderTrack(); });
   }catch(err){ console.error('[compare] API load failed:', err); setStatus('تعذّر الجلب — استورد ملف', false); }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   الحلزون الجزيئي الحقيقي — كل حرف من تسلسل الفاستا الحقيقي، مرسوم
+   بمعادلات فيزياء B-DNA الثابتة (مش تخمين، مش تعلّم آلي):
+     - 3.4Å ارتفاع لكل زوج قواعد
+     - 36° التفاف لكل زوج قواعد (10bp/لفة كاملة = 34Å، نفس مرجعك)
+     - إزاحة 144° بين الشريطين (مش 180 — هيك بتنتج Major/Minor groove
+       الحقيقيين، مش حلزون متماثل وهمي)
+     - تكميل واطسون-كريك الحقيقي (A↔T, C↔G) — قاعدة بيولوجية حتمية،
+       مش اختراع، فمعنا حق نشتق الشريط التكميلي من تسلسل واحد حقيقي
+   ══════════════════════════════════════════════════════════════════ */
+let _inputDetailCache = null;
+let _fastaCache = {}; // url -> نص التسلسل بعد إزالة سطر العنوان
+
+const BASE_COLOR = {A:'#6fd3c0', T:'#e5766f', C:'#7aa2f7', G:'#e0b24d'};
+function complementBase(b){ return {A:'T',T:'A',C:'G',G:'C'}[b] || b; }
+
+async function getInputDetail(){
+  if(_inputDetailCache) return _inputDetailCache;
+  const params = new URLSearchParams(location.search);
+  const inputId = params.get('input_id');
+  if(!inputId) throw new Error('لا يوجد input_id بالرابط');
+  const base=(window.CHROMO_API_BASE||'/api').replace(/\/$/,'');
+  const token=params.get('token')||localStorage.getItem('chromogen-token')||'';
+  const headers={'Accept':'application/json'}; if(token) headers['Authorization']='Bearer '+token;
+  const res = await fetch(base+`/genomics/${inputId}/`, {headers});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  _inputDetailCache = await res.json();
+  return _inputDetailCache;
+}
+
+async function fetchFastaSeq(url){
+  if(!url) return null;
+  if(_fastaCache[url]) return _fastaCache[url];
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('تعذّر جلب ملف الفاستا');
+  const raw = await res.text();
+  const seq = raw.split('\n').filter(l=>!l.startsWith('>')).join('').replace(/[^ACGTacgt]/g,'').toUpperCase();
+  _fastaCache[url] = seq;
+  return seq;
+}
+
+// يقتصّ نافذة ~34bp حوالين position_index الحقيقي (منتصف النافذة عليه)
+function windowAround(seq, positionIndex, span){
+  if(!seq) return '';
+  const half = Math.floor(span/2);
+  let start = Math.max(0, (positionIndex||0) - half);
+  let end = Math.min(seq.length, start + span);
+  start = Math.max(0, end - span);
+  return seq.slice(start, end);
+}
+
+/* ══ رسم SVG لحلزون واحد، بإسقاط بسيط للعمق (منظور بصري صادق) ══
+   كل نقطة محسوبة فعلياً بمعادلات الحلزون، مش موزّعة عشوائياً. */
+function buildHelixSVG(seq, diffMask, width=220, height=380){
+  const RISE=16, RADIUS=34, TWIST=36, PHASE=144; // بكسل بدل أنجستروم للعرض، بس بنفس النسب الحقيقية (RISE/RADIUS تقريباً 1:2 نفس نسبة 3.4:10 الحقيقية تقريباً بعد تكبير للعرض)
+  const cx = width/2, topPad = 20;
+  const n = seq.length;
+  const pts1=[], pts2=[];
+  for(let i=0;i<n;i++){
+    const a1 = (i*TWIST) * Math.PI/180;
+    const a2 = a1 + PHASE*Math.PI/180;
+    const y = topPad + i*RISE;
+    pts1.push({x:cx+RADIUS*Math.cos(a1), y, depth:Math.sin(a1), base:seq[i]});
+    pts2.push({x:cx+RADIUS*Math.cos(a2), y, depth:Math.sin(a2), base:complementBase(seq[i])});
+  }
+  // ترتيب الرسم حسب العمق (الأبعد أول) — خدعة بصرية كلاسيكية لإيهام العمق
+  const rungs = pts1.map((p,i)=>({i, depth:(p.depth+pts2[i].depth)/2}));
+  rungs.sort((a,b)=>a.depth-b.depth);
+
+  let svg = `<svg viewBox="0 0 ${width} ${height}" width="100%" style="display:block">`;
+  // العمود الفقري (backbone) — خطّان متصلان
+  const path1 = pts1.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const path2 = pts2.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  svg += `<polyline points="${path1}" fill="none" stroke="var(--muted)" stroke-width="2.5" opacity=".55"/>`;
+  svg += `<polyline points="${path2}" fill="none" stroke="var(--muted)" stroke-width="2.5" opacity=".55"/>`;
+
+  rungs.forEach(({i})=>{
+    const p1=pts1[i], p2=pts2[i];
+    const scale = 0.65 + 0.35*((p1.depth+1)/2); // أقرب للعين = أكبر وأوضح
+    const isDiff = diffMask && diffMask[i];
+    const c1 = BASE_COLOR[p1.base]||'#888', c2 = BASE_COLOR[p2.base]||'#888';
+    svg += `<line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}"
+      stroke="${isDiff?'#fff':'var(--border)'}" stroke-width="${isDiff?2.5:1.4}" opacity="${0.4+0.5*scale}"/>`;
+    [ [p1,c1], [p2,c2] ].forEach(([p,c])=>{
+      svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(4*scale).toFixed(1)}" fill="${c}"
+        ${isDiff?`stroke="#fff" stroke-width="1.5"`:''}/>`;
+    });
+    if(isDiff){
+      svg += `<circle cx="${((p1.x+p2.x)/2).toFixed(1)}" cy="${p1.y.toFixed(1)}" r="${(RADIUS+8)}" fill="none"
+        stroke="#fff" stroke-width="1" stroke-dasharray="2,3" opacity=".5"/>`;
+    }
+  });
+  svg += `</svg>`;
+  return svg;
+}
+
+function closeHelixModal(){ document.getElementById('helixOverlay').style.display='none'; }
+
+async function openHelixModal(protKey){
+  const overlay = document.getElementById('helixOverlay');
+  const body = document.getElementById('helixBodyContent');
+  const sub = document.getElementById('helixSubtitle');
+  overlay.style.display='flex';
+  body.innerHTML = `<p class="sm-t muted">جاري الجلب...</p>`;
+  sub.textContent = '';
+
+  const row = geneRows().find(r=>r.key===protKey);
+  if(!row){ body.innerHTML = `<p class="sm-t" style="color:var(--destructive,#e5766f)">تعذّر إيجاد بيانات هذا البروتين.</p>`; return; }
+
+  try{
+    const detail = await getInputDetail();
+    const patientUrl = detail.dna_sequence_file, controlUrl = detail.dna_control_file;
+    if(!patientUrl || !controlUrl){
+      body.innerHTML = `<p class="sm-t" style="color:var(--destructive,#e5766f)">لا توجد ملفات فاستا مرتبطة بهذا التحليل.</p>`;
+      return;
+    }
+    const [pSeq, cSeq] = await Promise.all([fetchFastaSeq(patientUrl), fetchFastaSeq(controlUrl)]);
+
+    // موقع الحلزون: أدق من قبل هلق — نستخدم الموقع الجينومي الحقيقي لأول
+    // كودون متحوّر فعلياً (من مقارنة الترجمة الحقيقية بالباك)، أو بداية
+    // الجين نفسه لو ما في طفرة مكتشفة (silent/none)
+    const anchorAbs = row.mutatedCodons?.[0]?.genomic_position ?? row.start;
+    const rel = (loadedData?.patient?.start!=null && anchorAbs!=null) ? (anchorAbs - loadedData.patient.start) : null;
+    if(rel==null){
+      body.innerHTML = `<p class="sm-t" style="color:var(--destructive,#e5766f)">لا يوجد موقع جينومي حقيقي لهذا الجين.</p>`;
+      return;
+    }
+
+    const SPAN = 32;
+    const pWin = windowAround(pSeq, rel, SPAN);
+    const cWin = windowAround(cSeq, rel, SPAN);
+
+    const len = Math.min(pWin.length, cWin.length);
+    const diffMask = new Array(len).fill(false);
+    let diffCount = 0;
+    for(let i=0;i<len;i++){ if(pWin[i]!==cWin[i]){ diffMask[i]=true; diffCount++; } }
+
+    sub.textContent = `${row.name} · ${len} قاعدة حول الموقع الحقيقي · ${diffCount} فرق فعلي بين الجهتين`;
+    body.innerHTML = `
+      <div class="helix-pair">
+        <div class="helix-side"><p>السليم (control)</p>${buildHelixSVG(cWin, diffMask)}</div>
+        <div class="helix-side"><p>المريض (patient)</p>${buildHelixSVG(pWin, diffMask)}</div>
+      </div>
+      <div class="helix-legend">
+        <span><span class="helix-sw" style="background:${BASE_COLOR.A}"></span>A</span>
+        <span><span class="helix-sw" style="background:${BASE_COLOR.T}"></span>T</span>
+        <span><span class="helix-sw" style="background:${BASE_COLOR.C}"></span>C</span>
+        <span><span class="helix-sw" style="background:${BASE_COLOR.G}"></span>G</span>
+        <span style="opacity:.8">○ إطار متقطّع أبيض = قاعدة مختلفة فعلياً بين الجهتين</span>
+      </div>
+      <p class="xs muted" style="text-align:center; margin-top:10px">
+        كل قاعدة هون من ملف الفاستا الحقيقي تبع هذا التحليل. الشريط التكميلي مُشتق بقاعدة
+        واطسون-كريك الحتمية (A↔T, C↔G) — الأبعاد نسبية (3.4Å لكل قاعدة، 36° التفاف)
+        وليست بمقياس حقيقي دقيق.
+      </p>`;
+  }catch(err){
+    console.error('[helix] failed:', err);
+    body.innerHTML = `<p class="sm-t" style="color:var(--destructive,#e5766f)">تعذّر بناء العرض الجزيئي: ${err.message||err}</p>`;
+  }
 }
 
 window.addEventListener('load', ()=>{

@@ -152,8 +152,14 @@
 
 <script>
 (function(){ try{ var p=new URLSearchParams(location.search);
-  if(p.get('theme')==='light') document.documentElement.setAttribute('data-theme','light');
+  var stored = localStorage.getItem('chromogen-theme');
+  var wanted = p.get('theme') || stored || 'dark';
+  if(wanted==='light') document.documentElement.setAttribute('data-theme','light');
   if(p.get('compact')==='1') document.addEventListener('DOMContentLoaded',function(){document.body.classList.add('compact');});
+  window.addEventListener('storage', function(e){
+    if(e.key!=='chromogen-theme') return;
+    document.documentElement.setAttribute('data-theme', e.newValue==='light' ? 'light' : 'dark');
+  });
 
   var ACCENTS={
     green :{primary:'#8eb69b',muted:'#8eb69b',scene:'#08201c',bg:'#0b2b26',card:'rgba(13,42,37,.66)'},
@@ -165,11 +171,21 @@
     gold  :{primary:'#d0b878',muted:'#d0b878',scene:'#221a0d',bg:'#2b2211',card:'rgba(54,44,20,.66)'},
     slate :{primary:'#9fb0ba',muted:'#9fb0ba',scene:'#12181c',bg:'#171e22',card:'rgba(23,30,34,.66)'},
   };
-  var a=p.get('accent'); if(a && ACCENTS[a] && a!=='green'){
-    var c=ACCENTS[a], r=document.documentElement.style;
-    r.setProperty('--primary',c.primary); r.setProperty('--muted',c.muted);
-    r.setProperty('--scene',c.scene); r.setProperty('--bg',c.bg); r.setProperty('--card',c.card);
+  var a=p.get('accent') || localStorage.getItem('chromogen-accent');
+  function applyAccent(a){
+    if(a && ACCENTS[a] && a!=='green'){
+      var c=ACCENTS[a], r=document.documentElement.style;
+      r.setProperty('--primary',c.primary); r.setProperty('--muted',c.muted);
+      r.setProperty('--scene',c.scene); r.setProperty('--bg',c.bg); r.setProperty('--card',c.card);
+    } else if(a==='green'){
+      var r2=document.documentElement.style;
+      ['--primary','--muted','--scene','--bg','--card'].forEach(k=>r2.removeProperty(k));
+    }
   }
+  applyAccent(a);
+  window.addEventListener('storage', function(e){
+    if(e.key==='chromogen-accent') applyAccent(e.newValue);
+  });
 }catch(e){} })();
 </script>
 
@@ -188,14 +204,6 @@
     <input type="range" id="thickRange" min="2" max="14" step="1" value="6" oninput="onThick(this.value)">
     <label>سميك</label>
     <span class="tval" id="thickVal">0.6</span>
-  </div>
-  <span class="tsep"></span>
-  <button class="tbtn on" id="btnProt" onclick="toggleProteins()">⬤ بروتينات</button>
-  <button class="tbtn on" id="btnLod" onclick="toggleLOD()" title="عرض البنية الذرية عند الاقتراب">⬢ بنى</button>
-  <div class="thick-ctrl show" id="magCtrl">
-    <label>تكبير</label>
-    <input type="range" id="magRange" min="1" max="30" step="1" value="6" oninput="onMag(this.value)">
-    <span class="tval" id="magVal">×6</span>
   </div>
   <span class="tsep"></span>
   <button class="tbtn" id="btnPanel" onclick="togglePanel()">☰ تفاصيل</button>
@@ -301,12 +309,6 @@ function toggleThick(){
   document.getElementById('btnThick')?.classList.toggle('on', c.classList.contains('show'));
 }
 
-function onMag(v){
-  document.getElementById('magVal').textContent='×'+v;
-  const b=document.getElementById('scaleBadge');
-  if(b) b.textContent = '×'+v+' — مكبّر، ليس بالمقياس';
-  if(typeof setProteinMagnify==='function') setProteinMagnify(v);
-}
 function onThick(v){
   document.getElementById('thickVal').textContent=(v/10).toFixed(1);
   if(typeof setRadius==='function') setRadius(+v);

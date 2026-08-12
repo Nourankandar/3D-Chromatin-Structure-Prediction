@@ -35,6 +35,9 @@ urlpatterns = [
     path('viewer.html', TemplateView.as_view(template_name='viewer.html')),
     path('hic_viewer.html', TemplateView.as_view(template_name='hic_viewer.html')),
     path('protein_viewer.html', TemplateView.as_view(template_name='protein_viewer.html')),
+    #############################################################################################
+    path('hic_compare.html', TemplateView.as_view(template_name='hic_compare.html')),
+    path('protein_compare.html', TemplateView.as_view(template_name='protein_compare.html')),
 
     path('api/patients/', include('apps.patients.urls')),
     path('api/genomics/', include('apps.genomics.urls')),

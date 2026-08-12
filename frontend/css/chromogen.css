@@ -171,7 +171,7 @@ dialog::backdrop{background:rgba(0,0,0,.55);backdrop-filter:blur(3px)}
 .dlg .foot{display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.25rem}
 
 /* ---------- layout ---------- */
-.wrap{max-width:1100px;margin:0 auto;padding:2rem 1rem}
+.wrap{max-width:1400px;margin:0 auto;padding:2rem 1rem}
 @media(min-width:640px){.wrap{padding:2rem 1.5rem}}
 .row{display:flex;align-items:center;gap:.5rem}
 .between{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
@@ -338,7 +338,6 @@ html[dir="rtl"] .switch[aria-checked="true"]::after{transform:translateX(-14px)}
 @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
 /* ═══════════════════════════════════════════════════════
    نظام الثيمات (Accent Themes)
-   كل ثيم بيعيد تعريف الألوان الأساسية عبر hue + chroma.
    ═══════════════════════════════════════════════════════ */
 
 /* ── أزرق ── */

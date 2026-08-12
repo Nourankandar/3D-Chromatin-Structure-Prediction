@@ -94,9 +94,110 @@
       <div id="loginError" class="alert error" style="margin-top:1.25rem" hidden><span data-icon="alert"></span><span data-t="login_error"></span></div>
       <div class="stack" style="margin-top:1.5rem;gap:1rem">
         <div class="field"><label class="label" for="username" data-t="username"></label><input id="username" class="input" autocomplete="username"></div>
-        <div class="field"><label class="label" for="password" data-t="password"></label><input id="password" type="password" class="input" autocomplete="current-password"></div>
+        <div class="field" style="position:relative"><label class="label" for="password" data-t="password"></label><input id="password" type="password" class="input" autocomplete="current-password" style="padding-inline-end:2.5rem"><button type="button" class="js-eye" data-target="password" style="position:absolute;inset-inline-end:.6rem;top:2.05rem;background:none;border:0;cursor:pointer;color:var(--muted-foreground)"></button></div>
+        <a href="#" data-go="forgot" class="sm-t" style="text-align:end;color:var(--primary);text-decoration:none" data-t="forgot_link"></a>
         <button class="btn lg" style="width:100%" id="loginBtn" type="submit"><span data-t="login_button"></span></button>
       </div>
+      <a href="#" data-go="signup" class="sm-t" style="display:block;text-align:center;margin-top:1.25rem;color:var(--primary);text-decoration:none" data-t="signup_link"></a>
+    </form>
+  </main>
+</div>
+
+<!-- ============================ SIGNUP ============================ -->
+<div id="screen-signup" hidden style="min-height:100dvh;display:flex;flex-direction:column;position:relative">
+  <div class="grid-bg" style="position:absolute;inset:0;opacity:.28;pointer-events:none;-webkit-mask-image:radial-gradient(ellipse at top,black,transparent 70%);mask-image:radial-gradient(ellipse at top,black,transparent 70%)"></div>
+  <header style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem">
+    <a class="logo" data-go="landing" href="#"><span class="mark" data-icon="dna"></span><div class="name" data-t="brand"></div></a>
+    <div class="row"><button class="btn outline sm js-lang"></button><button class="btn outline icon sm js-theme"></button></div>
+  </header>
+  <main style="position:relative;z-index:1;flex:1;display:grid;place-items:center;padding:2rem 1rem">
+    <form id="signupForm" class="card fade" style="width:min(100%,26rem);padding:2rem">
+      <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em" data-t="signup_title"></h1>
+      <p class="sm-t muted" style="margin-top:.35rem" data-t="signup_subtitle"></p>
+      <div id="signupError" class="alert error" style="margin-top:1.25rem" hidden><span data-icon="alert"></span><span id="signupErrorText"></span></div>
+      <div class="stack" style="margin-top:1.5rem;gap:1rem">
+        <div class="field"><label class="label" for="signupUsername" data-t="username"></label><input id="signupUsername" class="input" autocomplete="username"></div>
+        <div class="field"><label class="label" for="signupEmail" data-t="signup_email_optional"></label><input id="signupEmail" type="email" class="input" autocomplete="email"></div>
+        <div class="field" style="position:relative">
+          <label class="label" for="signupPassword" data-t="password"></label>
+          <input id="signupPassword" type="password" class="input" autocomplete="new-password" style="padding-inline-end:2.5rem">
+          <button type="button" class="js-eye" data-target="signupPassword" style="position:absolute;inset-inline-end:.6rem;top:2.05rem;background:none;border:0;cursor:pointer;color:var(--muted-foreground)"></button>
+          <div id="signupStrength" style="display:flex;gap:4px;margin-top:6px"><div></div><div></div><div></div></div>
+          <p class="xs muted" style="margin-top:.35rem" data-t="reset_hint"></p>
+        </div>
+        <div class="field" style="position:relative">
+          <label class="label" for="signupConfirm" data-t="reset_confirmpw_label"></label>
+          <input id="signupConfirm" type="password" class="input" autocomplete="new-password" style="padding-inline-end:2.5rem">
+          <button type="button" class="js-eye" data-target="signupConfirm" style="position:absolute;inset-inline-end:.6rem;top:2.05rem;background:none;border:0;cursor:pointer;color:var(--muted-foreground)"></button>
+        </div>
+        <button class="btn lg" style="width:100%" id="signupBtn" type="submit"><span data-t="signup_button"></span></button>
+      </div>
+      <a href="#" data-go="login" class="sm-t" style="display:block;text-align:center;margin-top:1.25rem;color:var(--primary);text-decoration:none" data-t="back_to_login"></a>
+    </form>
+  </main>
+</div>
+
+<!-- ============================ FORGOT PASSWORD ============================ -->
+<div id="screen-forgot" hidden style="min-height:100dvh;display:flex;flex-direction:column;position:relative">
+  <div class="grid-bg" style="position:absolute;inset:0;opacity:.28;pointer-events:none;-webkit-mask-image:radial-gradient(ellipse at top,black,transparent 70%);mask-image:radial-gradient(ellipse at top,black,transparent 70%)"></div>
+  <header style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem">
+    <a class="logo" data-go="landing" href="#"><span class="mark" data-icon="dna"></span><div class="name" data-t="brand"></div></a>
+    <div class="row"><button class="btn outline sm js-lang"></button><button class="btn outline icon sm js-theme"></button></div>
+  </header>
+  <main style="position:relative;z-index:1;flex:1;display:grid;place-items:center;padding:2rem 1rem">
+    <form id="forgotForm" class="card fade" style="width:min(100%,26rem);padding:2rem">
+      <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em" data-t="forgot_title"></h1>
+      <p class="sm-t muted" style="margin-top:.35rem" data-t="forgot_subtitle"></p>
+      <div id="forgotError" class="alert error" style="margin-top:1.25rem" hidden><span data-icon="alert"></span><span id="forgotErrorText"></span></div>
+      <div class="stack" style="margin-top:1.5rem;gap:1rem">
+        <div class="field"><label class="label" for="forgotEmail" data-t="email"></label><input id="forgotEmail" type="email" class="input" autocomplete="email"></div>
+        <button class="btn lg" style="width:100%" id="forgotBtn" type="submit"><span data-t="forgot_button"></span></button>
+      </div>
+      <a href="#" data-go="login" class="sm-t" style="display:block;text-align:center;margin-top:1.25rem;color:var(--primary);text-decoration:none" data-t="back_to_login"></a>
+    </form>
+  </main>
+</div>
+
+<!-- ============================ RESET PASSWORD ============================ -->
+<div id="screen-reset" hidden style="min-height:100dvh;display:flex;flex-direction:column;position:relative">
+  <div class="grid-bg" style="position:absolute;inset:0;opacity:.28;pointer-events:none;-webkit-mask-image:radial-gradient(ellipse at top,black,transparent 70%);mask-image:radial-gradient(ellipse at top,black,transparent 70%)"></div>
+  <header style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;padding:1.25rem 1.5rem">
+    <a class="logo" data-go="landing" href="#"><span class="mark" data-icon="dna"></span><div class="name" data-t="brand"></div></a>
+    <div class="row"><button class="btn outline sm js-lang"></button><button class="btn outline icon sm js-theme"></button></div>
+  </header>
+  <main style="position:relative;z-index:1;flex:1;display:grid;place-items:center;padding:2rem 1rem">
+    <form id="resetForm" class="card fade" style="width:min(100%,26rem);padding:2rem">
+      <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em" data-t="reset_title"></h1>
+      <p class="sm-t muted" style="margin-top:.35rem" data-t="reset_subtitle"></p>
+      <div id="resetError" class="alert error" style="margin-top:1.25rem" hidden><span data-icon="alert"></span><span id="resetErrorText"></span></div>
+      <div class="stack" style="margin-top:1.5rem;gap:1rem">
+        <div class="field"><label class="label" for="resetEmail" data-t="email"></label><input id="resetEmail" type="email" class="input" autocomplete="email"></div>
+        <div class="field">
+          <label class="label" data-t="reset_code_label"></label>
+          <div id="otpBoxes" dir="ltr" style="display:flex;gap:8px">
+            <input maxlength="1" inputmode="numeric" class="input otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+            <input maxlength="1" inputmode="numeric" class="input otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+            <input maxlength="1" inputmode="numeric" class="input otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+            <input maxlength="1" inputmode="numeric" class="input otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+            <input maxlength="1" inputmode="numeric" class="input otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+            <input maxlength="1" inputmode="numeric" class="input otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+          </div>
+        </div>
+        <div class="field" style="position:relative">
+          <label class="label" for="newPassword" data-t="reset_newpw_label"></label>
+          <input id="newPassword" type="password" class="input" autocomplete="new-password" style="padding-inline-end:2.5rem">
+          <button type="button" class="js-eye" data-target="newPassword" style="position:absolute;inset-inline-end:.6rem;top:2.05rem;background:none;border:0;cursor:pointer;color:var(--muted-foreground)"></button>
+          <div class="pw-strength" id="pwStrength" style="display:flex;gap:4px;margin-top:6px"><div></div><div></div><div></div></div>
+          <p class="xs muted" style="margin-top:.35rem" data-t="reset_hint"></p>
+        </div>
+        <div class="field" style="position:relative">
+          <label class="label" for="confirmPassword" data-t="reset_confirmpw_label"></label>
+          <input id="confirmPassword" type="password" class="input" autocomplete="new-password" style="padding-inline-end:2.5rem">
+          <button type="button" class="js-eye" data-target="confirmPassword" style="position:absolute;inset-inline-end:.6rem;top:2.05rem;background:none;border:0;cursor:pointer;color:var(--muted-foreground)"></button>
+        </div>
+        <button class="btn lg" style="width:100%" id="resetBtn" type="submit"><span data-t="reset_button"></span></button>
+      </div>
+      <a href="#" data-go="login" class="sm-t" style="display:block;text-align:center;margin-top:1.25rem;color:var(--primary);text-decoration:none" data-t="back_to_login"></a>
     </form>
   </main>
 </div>
@@ -150,7 +251,6 @@
     <button class="btn" id="cfOk" style="background:var(--destructive);color:var(--background)" data-t="delete"></button>
   </div>
 </div></dialog>
-
 
 <script src="js/chromogen/01-api-auth.js?v=1"></script>
 <script src="js/chromogen/02-i18n-theme.js?v=1"></script>
