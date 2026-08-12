@@ -27,14 +27,11 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # تحميل متغيرات البيئة
 # ---------------------------------------------------------------------------
-_env_path = Path('.env').resolve()
-if not _env_path.exists():
-    _env_path = Path(__file__).resolve().parents[3] / '.env'
-load_dotenv(dotenv_path=_env_path)
+from django.conf import settings
 
-HF_TOKEN = os.environ.get("HF_TOKEN")
-HF_MODEL_PRIMARY = os.environ.get("HF_MODEL_PRIMARY", "deepseek-ai/DeepSeek-V3")
-HF_MODEL_FALLBACK = os.environ.get("HF_MODEL_FALLBACK", "meta-llama/Llama-3.3-70B-Instruct")
+HF_TOKEN = settings.HF_TOKEN
+HF_MODEL_PRIMARY = settings.HF_MODEL_PRIMARY
+HF_MODEL_FALLBACK = settings.HF_MODEL_FALLBACK
 
 SYSTEM_INSTRUCTION = (
     "You are an expert clinical geneticist and computational biologist. "

@@ -21,8 +21,10 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 # Load environment variables from .env
-load_dotenv(os.path.join(BASE_DIR, '.env'))
-
+load_dotenv(os.path.join(REPO_ROOT, '.env'))
+HF_TOKEN = os.getenv('HF_TOKEN')
+HF_MODEL_PRIMARY = os.getenv('HF_MODEL_PRIMARY', 'deepseek-ai/DeepSeek-V3')
+HF_MODEL_FALLBACK = os.getenv('HF_MODEL_FALLBACK', 'meta-llama/Llama-3.3-70B-Instruct')
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-me-in-production')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
