@@ -19,7 +19,39 @@ from weasyprint import HTML
 from django.http import HttpResponse
 from backend.core.utils.atomic_utils import atomic_with_cleanup
 from django.template.loader import render_to_string
+import markdown as md_lib
+import re
 
+def _markdown_to_html(raw_text: str) -> str:
+    """
+    ينظف أي code fences و"كلام زيادة" متبقي من مخرجات الـ LLM قبل ما
+    يترحول لـ HTML ويترحقن جوا قالب التقرير.
+
+    مو بس بتشيل ```markdown من الأول و``` من الآخر (متل قبل) — كمان:
+    - لو في نص/تعليق من الموديل قبل أول فينس أو بعد آخر فينس
+      (متل "*Formatting note: ...*")، بتاخد بس المحتوى يلي جوا
+      أول كتلة كود ماركداون وبترمي الباقي.
+    - لو ما في fences أصلاً، بتستخدم النص كامل متل ما هو.
+    """
+    if not raw_text:
+        return ""
+
+    text = raw_text.strip()
+
+    # لو في كتلة ```markdown ... ``` أو ``` ... ``` وسط النص، ناخد
+    # المحتوى يلي جواها بس (بيتجاهل أي مقدمة أو تعليق ختامي من الموديل).
+    fence_match = re.search(r'```(?:markdown)?\s*\n(.*?)\n?```', text, re.DOTALL)
+    if fence_match:
+        text = fence_match.group(1)
+    else:
+        # ما في كتلة كود كاملة — بس نضل نشيل فينس مفتوح لحاله لو موجود
+        text = re.sub(r'^```(?:markdown)?\s*\n?', '', text)
+        text = re.sub(r'\n?```\s*$', '', text)
+
+    return md_lib.markdown(
+        text.strip(),
+        extensions=['tables', 'fenced_code', 'nl2br']
+    )
 class AnalysisReportViewSet(
     RetrieveModelMixin,
     UpdateModelMixin,
@@ -102,16 +134,22 @@ class AnalysisReportViewSet(
             
         output_data = report.output_data
         input_data = output_data.input_data
-        
+
+        patient_name = (
+            input_data.patient.name
+            if hasattr(input_data, 'patient') and input_data.patient
+            else "N/A"
+        )
+
         # تحضير قاموس البيانات (Context) المترجم للإنكليزية لتمريره إلى القالب
         context = {
-            "patient_name": input_data.patient.name if hasattr(input_data, 'patient') and input_data.patient else "N/A",
+            "patient_name": patient_name,
             "patient_code": f"PT-2026-{input_data.patient.id}" if hasattr(input_data, 'patient') and input_data.patient else "N/A",
             "cell_type_name": input_data.cell_type.name if hasattr(input_data, 'cell_type') and input_data.cell_type else "N/A",
             "analysis_date": report.created_at.strftime('%B %d, %Y'),
             "output_id": output_data.id,
             "detected_disease": report.detected_disease if report.detected_disease else "No significant structural variation detected.",
-            "summary_text": report.summary_text
+            "summary_text": _markdown_to_html(report.summary_text),
         }
         
         # 1. قراءة الـ HTML الخارجي من مجلد الـ templates ودمجه بالبيانات
@@ -120,8 +158,14 @@ class AnalysisReportViewSet(
         html_string = render_to_string("medical_report_pdf.html", context)
         
         # 2. إنشاء الـ HTTP Response المخصص لملفات الـ PDF وتحويله عبر WeasyPrint
+        #    اسم الملف: اسم المريض + تاريخ التحليل (مع fallback لو الاسم مش موجود)
+        safe_patient_name = re.sub(r'[^A-Za-z0-9_-]+', '_', patient_name.strip()) if patient_name and patient_name != "N/A" else f"Output_{output_data.id}"
+        safe_patient_name = safe_patient_name.strip('_') or f"Output_{output_data.id}"
+        report_date = report.created_at.strftime('%Y-%m-%d')
+        filename = f"Clinical_Report_{safe_patient_name}_{report_date}.pdf"
+
         response = HttpResponse(content_type="application/pdf")
-        response["Content-Disposition"] = f"attachment; filename=Clinical_Report_Output_{output_data.id}.pdf"
+        response["Content-Disposition"] = f"attachment; filename={filename}"
         
         HTML(string=html_string).write_pdf(response)
         return response

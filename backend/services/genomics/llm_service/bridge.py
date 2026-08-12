@@ -37,13 +37,14 @@ def _format_codon_row(codon: dict) -> str:
         or codon.get("aa_position")
         or "?"
     )
-    dna_before = codon.get("control_codon_dna") or codon.get("control_codon") or "?"
-    dna_after = codon.get("patient_codon_dna") or codon.get("patient_codon") or "?"
-    mrna_before = codon.get("control_codon_mrna") or dna_before.replace("T", "U")
-    mrna_after = codon.get("patient_codon_mrna") or dna_after.replace("T", "U")
-    aa_before = codon.get("control_amino_acid") or codon.get("control_aa") or "?"
-    aa_after = codon.get("patient_amino_acid") or codon.get("patient_aa") or "?"
-    genomic_pos = codon.get("genomic_position") or codon.get("genomic_pos") or ""
+    position = codon.get("codon_number") or "?"
+    dna_before = codon.get("reference_codon") or "?"
+    dna_after = codon.get("patient_codon") or "?"
+    mrna_before = dna_before.replace("T", "U") if dna_before != "?" else "?"
+    mrna_after = dna_after.replace("T", "U") if dna_after != "?" else "?"
+    aa_before = codon.get("reference_amino_acid") or "?"
+    aa_after = codon.get("patient_amino_acid") or "?"
+    genomic_pos = codon.get("genomic_position") or ""
 
     return (
         f"    - Codon #{position}"

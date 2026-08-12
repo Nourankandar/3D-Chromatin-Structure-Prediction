@@ -18,7 +18,8 @@ services/llm_service/report_generator.py
 import os
 import logging
 from pathlib import Path
-
+import re
+import markdown as md_lib
 from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
 
@@ -45,9 +46,14 @@ SYSTEM_INSTRUCTION = (
     "is not explicitly present in the data below.\n"
     "3. If a section of data says information is unavailable or not yet "
     "implemented, state that plainly — do not fill the gap with guesses.\n"
-    "4. Your job is presentation and clinical narrative only, not scientific inference."
+    "4. Your job is presentation and clinical narrative only, not scientific inference.\n"
+    "5. Output PURE Markdown only — do NOT wrap the response in ``` code fences "
+    "or add any text before/after the report itself.\n"
+    "6. Do NOT add any meta-commentary, notes, or explanations about your own "
+    "formatting or process (e.g. 'Formatting note: ...'). The output must "
+    "contain ONLY the clinical report itself, starting with the title and "
+    "ending with the last recommendation — nothing else."
 )
-
 
 def _build_user_prompt(patient_data, alignment_info, delta_analysis, missing_proteins) -> str:
     proteins_list_str = ", ".join(missing_proteins) if missing_proteins else "None detected"
@@ -84,6 +90,21 @@ Synthesize this data into a rigorous 5-section Markdown clinical report:
 """.strip()
 
 
+
+def _strip_markdown_fences(text: str) -> str:
+    """
+    بتشيل الفينسات وأي كلام إضافي من الموديل خارج كتلة الماركداون
+    (مقدمة قبلها أو تعليق/ملاحظة بعدها متل "*Formatting note: ...*").
+    """
+    text = text.strip()
+
+    fence_match = re.search(r'```(?:markdown)?\s*\n(.*?)\n?```', text, re.DOTALL)
+    if fence_match:
+        return fence_match.group(1).strip()
+
+    text = re.sub(r'^```(?:markdown)?\s*\n?', '', text)
+    text = re.sub(r'\n?```\s*$', '', text)
+    return text.strip()
 def _call_hf_model(model: str, user_prompt: str) -> str:
     client = InferenceClient(model=model, token=HF_TOKEN)
     response = client.chat_completion(
@@ -97,7 +118,7 @@ def _call_hf_model(model: str, user_prompt: str) -> str:
     text = response.choices[0].message.content
     if not text or not text.strip():
         raise ValueError("Empty response from model")
-    return text.strip()
+    return _strip_markdown_fences(text.strip())
 
 
 def _deterministic_fallback_report(patient_data, alignment_info, delta_analysis, missing_proteins) -> str:
