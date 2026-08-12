@@ -5,7 +5,8 @@ class CellType(models.Model):
     """A reference cell type used to pick the Enformer prediction track."""
 
     name = models.CharField(max_length=50, unique=True, verbose_name="Cell Type Name")
-    target_enformer_id = models.IntegerField(verbose_name="Enformer Target Track ID")
+    # target_enformer_id = models.IntegerField(verbose_name="Enformer Target Track ID")
+    target_basset_track_id = models.IntegerField(verbose_name="Basset Target Track ID")
     description = models.TextField(blank=True, null=True, verbose_name="Description")
     def __str__(self):
         return self.name

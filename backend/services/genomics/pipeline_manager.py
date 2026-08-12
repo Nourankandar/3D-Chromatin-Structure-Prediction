@@ -50,7 +50,7 @@ class GenomicPipelineManager:
         self._input_data = input_data
 
         patient_fasta_path: str = input_data.dna_sequence_file.path
-        enformer_id: int = input_data.cell_type.target_enformer_id
+        basset_track_id: int = input_data.cell_type.target_basset_track_id
         chromosome: str = normalize_chromosome_name(input_data.chromosome)
 
         # الخطوة 0: تحديد موقع تسلسل المريض
@@ -74,8 +74,8 @@ class GenomicPipelineManager:
         patient_fasta_for_dnase, control_fasta_for_dnase = self._write_window_fasta_files(
             patient_seq, control_seq, expanded_window, input_data
         )
-        dnase_patient_file = self._step_dnase(patient_fasta_for_dnase, enformer_id, input_data, tag="patient")
-        dnase_control_file = self._step_dnase(control_fasta_for_dnase, enformer_id, input_data, tag="control")
+        dnase_patient_file = self._step_dnase(patient_fasta_for_dnase, basset_track_id, input_data, tag="patient")
+        dnase_control_file = self._step_dnase(control_fasta_for_dnase, basset_track_id, input_data, tag="control")
 
         # الخطوة 8: DNase ديف (مقارنة المناطق المفتوحة/المغلقة)
         dnase_diff = self._step_dnase_diff(dnase_patient_file, dnase_control_file)
@@ -414,13 +414,13 @@ class GenomicPipelineManager:
     # ------------------------------------------------------------------
     # الخطوة 7: DNase
     # ------------------------------------------------------------------
-    def _step_dnase(self, fasta_path: str, enformer_id: int, input_data, tag: str) -> str:
+    def _step_dnase(self, fasta_path: str, basset_track_id: int, input_data, tag: str) -> str:
         from services.genomics.DNASE.predictor import predict_dnase_profiles
 
         self._update_status(input_data, "predicting_dnase")
         logger.info("[Pipeline %s] -> DNase (%s)", self.input_data_id, tag)
 
-        dnase_file: str = predict_dnase_profiles(fasta_path, enformer_id)
+        dnase_file: str = predict_dnase_profiles(fasta_path, basset_track_id)
 
         field = "predicted_dnase_patient" if tag == "patient" else "predicted_dnase_control"
         setattr(input_data, field, dnase_file)

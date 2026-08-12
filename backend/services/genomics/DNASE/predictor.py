@@ -16,7 +16,7 @@ def read_fasta_file(file_path: str) -> str:
     sequence = "".join(line.strip() for line in lines if not line.startswith(">"))
     return sequence
 
-def predict_dnase_profiles(fasta_absolute_path: str, enformer_id: int) -> str:
+def predict_dnase_profiles(fasta_absolute_path: str, basset_track_id: int) -> str:
     """
     الجسر المركزي الذي يستدعيه الـ Pipeline Manager:
     يقرأ الملف، يشغل موديل Basset، ويحفظ مصفوفة التنبؤ على القرص ويعيد المسار النسبي.
@@ -36,7 +36,7 @@ def predict_dnase_profiles(fasta_absolute_path: str, enformer_id: int) -> str:
   
     scores_matrix = results['scores_164']
     
-    track_index = min(max(0, enformer_id), 163) if enformer_id is not None else 0
+    track_index = min(max(0, basset_track_id), 163) if basset_track_id is not None else 0
     target_cell_scores = scores_matrix[:, track_index]
     
     base_name = os.path.basename(fasta_absolute_path).split('.')[0]
