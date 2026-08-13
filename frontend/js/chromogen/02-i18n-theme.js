@@ -88,6 +88,8 @@ const DICT = {
     stop_test:'Stop', stop_test_confirm_title:'Stop this analysis?', stop_test_confirm_desc:'The running pipeline will be terminated and cannot be resumed.', toast_test_stopped:'Analysis stopped', toast_stop_failed:'Could not stop the analysis',
     toast_active_test_exists:'There is already a running analysis — stop it first from the patient page.',
     protein_title:'Protein search', protein_subtitle:'Find a protein structure by gene name',
+    protein_search_label:'Search protein by gene', protein_search_hint_title:'Search for a gene to view its structure',
+    protein_search_hint_desc:'Type a gene name above (e.g. TP53) to fetch the protein and view its 3D structure.',
     field_gene:'Gene name', field_gene_ph:'e.g. TP53', search:'Search', searching:'Searching…',
     gene:'Gene', protein_name:'Protein name', uniprot_id:'UniProt id', pdb_ids:'PDB ids',
     open_protein_viewer:'Open in 3D protein viewer', protein_not_found:'No protein found for that gene name.',
@@ -190,6 +192,8 @@ const DICT = {
     start_another:'ابدأ تنبؤًا آخر', invalid_range:'يجب أن يكون موضع النهاية أكبر من موضع البداية.',
     predict_no_patients_title:'لا يوجد مرضى لتشغيل تنبؤ لهم', predict_no_patients_desc:'سجّل مريضًا أولًا، ثم عد لبدء التنبؤ.',
     protein_title:'بحث البروتينات', protein_subtitle:'ابحث عن بنية بروتين باسم الجين',
+    protein_search_label:'بحث عن بروتين حسب الجين', protein_search_hint_title:'ابحث عن جين لعرض بنيته',
+    protein_search_hint_desc:'اكتب اسم الجين فوق (مثل TP53) لجلب البروتين وعرض بنيته ثلاثية الأبعاد.',
     field_gene:'اسم الجين', field_gene_ph:'مثال: TP53', search:'بحث', searching:'جارٍ البحث…',
     gene:'الجين', protein_name:'اسم البروتين', uniprot_id:'معرّف UniProt', pdb_ids:'معرّفات PDB',
     open_protein_viewer:'فتح في عارض البروتين ثلاثي الأبعاد', protein_not_found:'لم يُعثر على بروتين لاسم الجين هذا.',
@@ -220,15 +224,35 @@ function applyLocale(){
   document.querySelectorAll('.js-lang').forEach(b => b.innerHTML = `${ICON.lang}<span>${locale==='en'?'ع':'EN'}</span>`);
   applyStaticText(); renderNav(); renderRoute();
 }
+function syncIframesTheme() {
+  const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  const currentAccent = accent || 'green';
+  
+  document.querySelectorAll('iframe').forEach(iframe => {
+    try {
+      if (iframe.contentDocument && iframe.contentDocument.documentElement) {
+        if (currentTheme === 'light') {
+          iframe.contentDocument.documentElement.setAttribute('data-theme', 'light');
+        } else {
+          iframe.contentDocument.documentElement.removeAttribute('data-theme');
+        }
+        iframe.contentDocument.documentElement.setAttribute('data-accent', currentAccent);
+      }
+    } catch(e) {
+    }
+  });
+}
+
 function applyTheme(){
   document.documentElement.classList.toggle('dark', theme==='dark');
   document.querySelectorAll('.js-theme').forEach(b => b.innerHTML = theme==='dark' ? ICON.sun : ICON.moon);
-  scenes.forEach(s => s.refreshColors());
+  if (typeof scenes !== 'undefined') scenes.forEach(s => s.refreshColors && s.refreshColors());
   try{ localStorage.setItem('chromogen-theme', theme); }catch(e){}
+  
+  syncIframesTheme();
 }
 
-/* -- نظام الثيمات اللونية  --
-   */
+/* -- نظام الثيمات اللونية  --*/
 const ACCENTS = [
   { id:'green',  label:'أخضر',   labelEn:'Green',  swatch:'#8eb69b' },   // الافتراضي
   { id:'blue',   label:'أزرق',   labelEn:'Blue',   swatch:'#7087bb' },
@@ -243,7 +267,9 @@ function applyAccent(){
   if(accent && accent!=='green') document.documentElement.setAttribute('data-accent', accent);
   else document.documentElement.removeAttribute('data-accent');
   try{ localStorage.setItem('chromogen-accent', accent); }catch(e){}
-  scenes.forEach(s => s.refreshColors && s.refreshColors());
+  if (typeof scenes !== 'undefined') scenes.forEach(s => s.refreshColors && s.refreshColors());
+  
+  syncIframesTheme();
 }
 
 /* ---------- تنسيق ---------- */

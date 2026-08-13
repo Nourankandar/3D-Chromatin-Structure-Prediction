@@ -18,11 +18,83 @@
     --r:14px;
   }
   :root[data-theme="light"]{
-    --bg:#f1f6f2; --scene:#0a201d; --fg:#0d2521; --muted:#57736a;
-    --primary:#2c6552; --primary-deep:#1f5040;
-    --border:rgba(13,37,33,.10); --card:rgba(255,255,255,.8); --card-solid:#ffffff;
+    --bg:#f3fcf6; --scene:#0a201d; --fg:#0c1f17; --muted:#4a645a;
+    --primary:#214c3d; --primary-deep:#163529;
+    --border:#cddcd2; --card:#f9fffb; --card-solid:#ffffff;
     --control:#5b6f74;
   }
+
+  /* ── أزرق ── */
+  :root[data-accent="blue"]{
+    --bg:#171b26; --scene:#11141d; --fg:#e7e9ee; --muted:#819ada; --primary:#819ada; --primary-deep:#2c4a96;
+    --border:rgba(63,67,78,.16); --card:rgba(23,27,38,.72); --card-solid:#262c3b;
+  }
+  :root[data-theme="light"][data-accent="blue"]{
+    --bg:#f6f7f8; --scene:#11141d; --fg:#15171e; --muted:#495c8d; --primary:#2b4482; --primary-deep:#1f325f;
+    --border:rgba(21,23,30,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+
+  /* ── بنفسجي ── */
+  :root[data-accent="purple"]{
+    --bg:#1f1a24; --scene:#17131b; --fg:#ebe8ed; --muted:#b18dce; --primary:#b18dce; --primary-deep:#653a88;
+    --border:rgba(71,66,76,.16); --card:rgba(31,26,36,.72); --card-solid:#312938;
+  }
+  :root[data-theme="light"][data-accent="purple"]{
+    --bg:#f7f7f8; --scene:#17131b; --fg:#1a161d; --muted:#6e5582; --primary:#5a3875; --primary-deep:#422955;
+    --border:rgba(26,22,29,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+
+  /* ── ليلكي ── */
+  :root[data-accent="lilac"]{
+    --bg:#201c21; --scene:#181519; --fg:#ebeaec; --muted:#b79ac1; --primary:#b79ac1; --primary-deep:#6c4a78;
+    --border:rgba(72,68,73,.16); --card:rgba(32,28,33,.72); --card-solid:#322d34;
+  }
+  :root[data-theme="light"][data-accent="lilac"]{
+    --bg:#f7f7f8; --scene:#181519; --fg:#1a181b; --muted:#706176; --primary:#5f4667; --primary-deep:#45334b;
+    --border:rgba(26,24,27,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+
+  /* ── زهري ── */
+  :root[data-accent="rose"]{
+    --bg:#24191b; --scene:#1c1214; --fg:#ede8e9; --muted:#d18996; --primary:#d18996; --primary-deep:#8b3646;
+    --border:rgba(76,65,67,.16); --card:rgba(36,25,27,.72); --card-solid:#39282b;
+  }
+  :root[data-theme="light"][data-accent="rose"]{
+    --bg:#f8f7f7; --scene:#1c1214; --fg:#1d1617; --muted:#85525b; --primary:#793541; --primary-deep:#58272f;
+    --border:rgba(29,22,23,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+
+  /* ── خمري ── */
+  :root[data-accent="wine"]{
+    --bg:#281519; --scene:#1f0f12; --fg:#efe7e8; --muted:#e2788b; --primary:#e2788b; --primary-deep:#9f2239;
+    --border:rgba(80,61,65,.16); --card:rgba(40,21,25,.72); --card-solid:#3e2328;
+  }
+  :root[data-theme="light"][data-accent="wine"]{
+    --bg:#f8f6f7; --scene:#1f0f12; --fg:#1f1416; --muted:#944251; --primary:#8b2335; --primary-deep:#651a27;
+    --border:rgba(31,20,22,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+
+  /* ── ذهبي ── */
+  :root[data-accent="gold"]{
+    --bg:#282215; --scene:#1f190f; --fg:#efece7; --muted:#e2be78; --primary:#e2be78; --primary-deep:#9f7522;
+    --border:rgba(80,74,61,.16); --card:rgba(40,34,21,.72); --card-solid:#3e3523;
+  }
+  :root[data-theme="light"][data-accent="gold"]{
+    --bg:#f8f8f6; --scene:#1f190f; --fg:#1f1b14; --muted:#947842; --primary:#8b6723; --primary-deep:#654b1a;
+    --border:rgba(31,27,20,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+
+  /* ── رمادي ── */
+  :root[data-accent="slate"]{
+    --bg:#1c2021; --scene:#151819; --fg:#eaebec; --muted:#9ab5c1; --primary:#9ab5c1; --primary-deep:#4a6a78;
+    --border:rgba(68,72,73,.16); --card:rgba(28,32,33,.72); --card-solid:#2d3234;
+  }
+  :root[data-theme="light"][data-accent="slate"]{
+    --bg:#f7f7f8; --scene:#151819; --fg:#181a1b; --muted:#616f76; --primary:#465d67; --primary-deep:#33444b;
+    --border:rgba(24,26,27,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+
+
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
   body{
@@ -36,14 +108,20 @@
     display:flex; align-items:center; gap:14px; padding:10px 16px; flex:none;
     border-bottom:1px solid var(--border); background:var(--card-solid);
   }
-  .brand{display:flex; align-items:center; gap:10px}
-  .brand .logo{
-    width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;
-    background:linear-gradient(135deg, var(--primary), var(--primary-deep));
+  .brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 600; }
+  .brand .logo {
+    width: 32px; 
+    height: 32px; 
+    border-radius: 9px; 
+    background: var(--primary); 
+    color: var(--card-solid); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
   }
-  .brand .logo svg{width:17px; height:17px}
-  .brand .name{font-family:var(--font-display); font-weight:700; font-size:.95rem}
-  .brand .name span{color:var(--primary)}
+  .brand .logo svg { width: 18px; height: 18px; }
+  .brand .name { font-family: var(--font-display); font-weight: 700; font-size: .95rem; color: var(--fg); }
+  .brand .name span { color: var(--primary); }
   .spacer{flex:1}
 
   .segmented{display:flex; background:transparent; border:1px solid var(--border); border-radius:11px; padding:3px; gap:2px}
@@ -266,7 +344,7 @@
   .helix-head{display:flex; justify-content:space-between; align-items:flex-start; padding:18px 22px 14px; border-bottom:1px solid var(--border)}
   .helix-body{padding:16px 22px 22px}
   .helix-pair{display:grid; grid-template-columns:1fr 1fr; gap:14px}
-  .helix-side{background:rgba(0,0,0,.15); border-radius:12px; padding:10px}
+  .helix-side{background:color-mix(in srgb, var(--scene) 55%, transparent); border-radius:12px; padding:10px}
   .helix-side p{text-align:center; font-size:11px; color:var(--muted); margin:0 0 4px}
   .helix-legend{display:flex; gap:10px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:12px; justify-content:center}
   .helix-legend span{display:inline-flex; align-items:center; gap:5px}
@@ -297,16 +375,11 @@
     var wanted = p.get('theme') || stored || 'dark';
     if(wanted==='light') document.documentElement.setAttribute('data-theme','light');
   }catch(e){}
-  // مزامنة حيّة: لو تغيّر الثيم من تاب التطبيق الرئيسي وهاي الصفحة
-  // مفتوحة بتاب تاني، حدث 'storage' بيوصلها تلقائياً (خاصية متصفح
-  // أصلية، بلا أي كود إضافي معقّد)
   window.addEventListener('storage', function(e){
     if(e.key!=='chromogen-theme') return;
     document.documentElement.setAttribute('data-theme', e.newValue==='light' ? 'light' : 'dark');
   });
 
-  // نفس جدول الألوان (accent) الحقيقي المستخدم بـ hic_viewer.html —
-  // منسوخ حرفياً هون، مش قيم جديدة مخترعة
   var ACCENTS={
     green :{primary:'#8eb69b',muted:'#8eb69b',scene:'#08201c',bg:'#0b2b26',card:'rgba(13,42,37,.66)'},
     blue  :{primary:'#8fa9d4',muted:'#8fa9d4',scene:'#0d1526',bg:'#111a2e',card:'rgba(20,30,54,.66)'},
@@ -324,7 +397,7 @@
       r.setProperty('--primary',c.primary); r.setProperty('--primary-deep',c.primary);
       r.setProperty('--muted',c.muted); r.setProperty('--scene',c.scene);
       r.setProperty('--bg',c.bg); r.setProperty('--card',c.card);
-      r.setProperty('--card-solid',c.bg); // الشريط الجانبي/المسار بيستخدموا هالمتغيّر الصلب تحديداً
+      r.setProperty('--card-solid',c.bg); 
     } else {
       ['--primary','--primary-deep','--muted','--scene','--bg','--card','--card-solid'].forEach(k=>r.removeProperty(k));
     }
@@ -334,14 +407,35 @@
     if(e.key==='chromogen-accent') applyAccent(e.newValue);
   });
 })();
+
+
+let theme = (()=>{ try{ return localStorage.getItem('chromogen-theme') || 'dark'; }catch(e){ return 'dark'; } })();
+function applyTheme(){
+  if(theme==='light') document.documentElement.setAttribute('data-theme','light');
+  else document.documentElement.removeAttribute('data-theme');
+  const sun = document.getElementById('themeIconSun'), moon = document.getElementById('themeIconMoon');
+  if(sun && moon){ sun.style.display = theme==='light'?'block':'none'; moon.style.display = theme==='light'?'none':'block'; }
+  try{ localStorage.setItem('chromogen-theme', theme); }catch(e){}
+  if(typeof renderProteinList === 'function') renderProteinList();
+  if(typeof renderTrack === 'function' && document.getElementById('track') && !document.getElementById('track').classList.contains('hidden')) renderTrack();
+}
+applyTheme();   
+document.addEventListener('DOMContentLoaded', function(){
+  document.getElementById('btnTheme')?.addEventListener('click', ()=>{ theme = theme==='dark'?'light':'dark'; applyTheme(); });
+  applyTheme();
+});
+window.addEventListener('storage', function(e){
+  if(e.key==='chromogen-theme'){ theme = e.newValue==='light' ? 'light' : 'dark'; applyTheme(); }
+});
 </script>
 
 <!--  الشريط العلوي  -->
 <div class="topbar">
   <div class="brand">
     <div class="logo">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#08201c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M7 4c0 4 10 4 10 8s-10 4-10 8"/><path d="M17 4c0 4-10 4-10 8s10 4 10 8"/>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 3c0 6 12 6 12 12M6 21c0-6 12-6 12-12"/>
+        <path d="M7 6h10M7 18h10M8.5 9.5h7M8.5 14.5h7" stroke-width="1.1"/>
       </svg>
     </div>
     <div class="name">Chromo<span>Gen</span></div>
@@ -369,6 +463,11 @@
     استيراد
   </button>
   <input type="file" id="fi" accept=".json" onchange="loadFile(this)">
+
+  <button class="ghost-btn" id="btnTheme" title="تبديل الثيم">
+    <svg id="themeIconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    <svg id="themeIconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+  </button>
 
   <button class="ghost-btn on" id="btnPanel" onclick="togglePanel()" title="اللوحة الجانبية">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg>
@@ -485,21 +584,20 @@ function ctlToggle(key, btnId){
 
 let loadedData=null, currentMode='split', camSyncOn=true;
 
-/* حالة البروتينات */
-/* نظام تصنيف جديد بالكامل — الباك صار يرجّع mutation_type نصّي بس
-   (none|silent|missense|nonsense|frameshift)، صفر لون من الباك.
-   الألوان هون قرار فرونت بحت، مرتّبة حسب خطورة التأثير البيولوجي
-   الحقيقي: frameshift ونonsense أخطر (بيقطعوا/يزيحوا البروتين كامل)،
-   missense أخف (حمض أميني واحد بس)، silent/none بلا أثر فعلي. */
+
 const STATUS = {
-  frameshift: {label:'إزاحة إطار', color:'#e5766f', rank:0},
-  nonsense  : {label:'طفرة هراء',  color:'#f2905a', rank:1},
-  missense  : {label:'طفرة خاطئة', color:'#e0b24d', rank:2},
-  silent    : {label:'صامتة',      color:'#7aa2f7', rank:3},
-  none      : {label:'لا تغيير',   color:'#8eb69b', rank:4},
+  frameshift: {label:'إزاحة إطار', color:'#e5766f', textLight:'#c2453c', rank:0},
+  nonsense  : {label:'طفرة هراء',  color:'#f2905a', textLight:'#b85a1f', rank:1},
+  missense  : {label:'طفرة خاطئة', color:'#e0b24d', textLight:'#93701a', rank:2},
+  silent    : {label:'صامتة',      color:'#7aa2f7', textLight:'#3454a8', rank:3},
+  none      : {label:'لا تغيير',   color:'#8eb69b', textLight:'#3d6e55', rank:4},
 };
+
+function statusTextColor(key){
+  const isLight = document.documentElement.getAttribute('data-theme')==='light';
+  return isLight ? (STATUS[key]?.textLight || STATUS[key]?.color) : STATUS[key]?.color;
+}
 let protFilter='all', sortKey='status', sortDir=1, selectedProt=null;
-/* البروتينات (الجينات) الملغى تفعيلها بتنبعث للعارضين */
 const hiddenProts = new Set();
 
 let _genesCache = null;
@@ -511,7 +609,6 @@ async function loadGenes(outputId, token){
     const listRes = await fetch(`${base}/genomics/output/${outputId}/genes/`, {headers});
     if(!listRes.ok){ _genesCache=[]; return _genesCache; }
     const list = await listRes.json();
-    // لازم تفاصيل كل جين لحاله لأخذ gene_start/gene_end الحقيقيين (مو موجودين بالقائمة المختصرة)
     const details = await Promise.all((list||[]).map(async g=>{
       try{
         const r = await fetch(`${base}/genomics/output/${outputId}/genes/${encodeURIComponent(g.gene_id)}/`, {headers});
@@ -600,7 +697,7 @@ function renderProteinList(){
     `<span class="chip ${protFilter==='all'?'on':''}" onclick="setFilter('all')">الكل ${all.length}</span>`+
     Object.keys(STATUS).filter(k=>present[k]).map(k=>
       `<span class="chip ${protFilter===k?'on':''}" onclick="setFilter('${k}')"
-        style="${protFilter===k?'':'color:'+STATUS[k].color}">${STATUS[k].label} ${present[k]}</span>`).join('');
+        style="${protFilter===k?'':'color:'+statusTextColor(k)}">${STATUS[k].label} ${present[k]}</span>`).join('');
 
   box.innerHTML='';
   if(!rows.length){
@@ -641,7 +738,6 @@ function renderTrack(){
   const visibleRows = rows.filter(r=>
     (protFilter==='all' || r.st===protFilter) && !hiddenProts.has(r.key) && r.start!=null && r.end!=null);
 
-  // نكبّر لمدى الجينات الظاهرة فعلياً (بدل نقطة، هلق عندنا مدى حقيقي لكل جين)
   let zStart=P.start, zEnd=P.end;
   if(visibleRows.length){
     const mn=Math.min(...visibleRows.map(r=>r.start)), mx=Math.max(...visibleRows.map(r=>r.end));
@@ -699,12 +795,8 @@ function renderTrack(){
   fl.innerHTML=`<span class="chip ${protFilter==='all'?'on':''}" onclick="setFilter('all')">الكل ${rows.length}</span>`+
     Object.keys(STATUS).filter(k=>present[k]).map(k=>
       `<span class="chip ${protFilter===k?'on':''}" onclick="setFilter('${k}')"
-        style="${protFilter===k?'':'color:'+STATUS[k].color}">${STATUS[k].label} ${present[k]}</span>`).join('');
+        style="${protFilter===k?'':'color:'+statusTextColor(k)}">${STATUS[k].label} ${present[k]}</span>`).join('');
 
-  /*  مسارات الجينات — شرائط بعرض gene_start-gene_end، مو نقاط.
-      نفس الجين له نفس الإحداثيات بالطرفين (الجين نفسه ما "بيتحرك")،
-      الفرق الحقيقي هو التصنيف (mutation_type)، فبنرسم نفس الشريط
-      بالمسارين ملوّن بنفس اللون. */
   const lp=document.getElementById('lanePatient'), lc=document.getElementById('laneControl');
   lp.innerHTML=gridHTML+'<div class="axis"></div>';
   lc.innerHTML=gridHTML+'<div class="axis"></div>';
@@ -734,27 +826,6 @@ function setFilter(f){
   protFilter=f; renderTrack(); renderTable(); renderProteinList();
   frames().forEach(fr=> tellFrame(fr,{type:'chromo-protein-filter', filter:f}));
 }
-// targetSide لو معطاة ('patient'|'control') → التركيز بيروح لشاشة هالجهة بس
-// (نقرة من المسار الجينومي). لو غير معطاة (نقرة من لستة البروتينات
-// الجانبية، مش مرتبطة بجهة محدّدة) → بترسل للشاشتين متل ما كان دايماً.
-/* نقرة على شريط الجين بالمسار الجينومي (مو القائمة الجانبية — هاي
-   بتفتح مقارنة البروتين بصفحة منفصلة) → تظليل نقاط المنطقة الحقيقية
-   لهالجين بالمشهدين، من نفس بيانات الجين المخزّنة أصلاً بالكاش. */
-/* نجيب النقطة/النقاط اللي بتغطي موقع الطفرة الحقيقي تحديداً (مش الجين
-   كامل) — بمطابقة genomic_position الحقيقي لكل كودون متحوّل مع مدى
-   region كل نقطة بمصفوفة الجين (نفس مبدأ resolveProteinCoordIndex). */
-// function pointsAtMutationSites(regionPoints, mutatedCodons){
-//   if(!regionPoints?.length || !mutatedCodons?.length) return regionPoints||[];
-//   const positions = mutatedCodons.map(c=>c.genomic_position).filter(p=>p!=null);
-//   if(!positions.length) return regionPoints;
-//   const hit = regionPoints.filter(p=>{
-//     const m = /^(\d+)kb-(\d+)kb$/.exec(p.region||'');
-//     if(!m) return false;
-//     const s=Number(m[1])*1000, e=Number(m[2])*1000;
-//     return positions.some(pos => pos>=s && pos<e);
-//   });
-//   return hit.length ? hit : regionPoints; // ما لقينا تطابق دقيق → نرجع لكل مدى الجين كاحتياطي
-// }
 
 function pointsAtMutationSites(regionPoints, mutatedCodons){
   // 1. إذا لم تتوفر نقاط المنطقة بالجين، نأخذ كافة نقاط الكروماتين المريض المجلوبة
@@ -929,32 +1000,10 @@ function setMode(mode){
   pushSyncState();
 }
 
-// function reloadFrames(mode){
-//   if(!loadedData) return;
-//   const send=(frame, side, which)=>{
-//     const post=()=>{ try{
-//       frame.contentWindow.postMessage({type:'chromo-load', payload:loadedData, side}, '*');
-//       if(which) hideEmpty(which);
-//       pushVisibility();
-//     }catch(e){} };
-//     if(frame.dataset.ready==='1') post();
-//     else frame.onload=()=>{ frame.dataset.ready='1'; post(); };
-//     setTimeout(post, 300);
-//     setTimeout(pushSyncState, 350);
-//   };
-//   if(mode==='both'){
-//     send(document.getElementById('framePatient'), 'both', 'patient');
-//   } else {
-//     send(document.getElementById('framePatient'), 'patient', 'patient');
-//     send(document.getElementById('frameControl'), 'control', 'control');
-//   }
-// }
-
 function reloadFrames(mode){
   if(!loadedData) return;
   const send=(frame, payloadData, side, which)=>{
     const post=()=>{ try{
-      // نبعث كائن المريض لفرام المريض، وكائن السليم لفرام السليم مباشرة
       frame.contentWindow.postMessage({type:'chromo-load', payload: payloadData, side: side}, '*');
       if(which) hideEmpty(which);
       pushVisibility();
@@ -968,9 +1017,7 @@ function reloadFrames(mode){
   if(mode==='both'){
     send(document.getElementById('framePatient'), loadedData, 'both', 'patient');
   } else {
-    // إرسال كائن Patient لفرام المريض
     send(document.getElementById('framePatient'), loadedData.patient || loadedData, 'patient', 'patient');
-    // إرسال كائن Control لفرام السليم
     send(document.getElementById('frameControl'), loadedData.control || loadedData, 'control', 'control');
   }
 }
@@ -1015,24 +1062,13 @@ async function bootFromAPI(){
     reloadFrames('split');
     setStatus('output #'+outputId, true);
 
-    // بيانات الجينات من endpoint منفصل تماماً — نجيبها بالتوازي، وبعد
-    // ما توصل منعيد رسم القائمة والمسار عشان يبينوا فيها
     loadGenes(outputId, token).then(()=>{ renderProteinList(); renderTrack(); });
   }catch(err){ console.error('[compare] API load failed:', err); setStatus('تعذّر الجلب — استورد ملف', false); }
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   الحلزون الجزيئي الحقيقي — كل حرف من تسلسل الفاستا الحقيقي، مرسوم
-   بمعادلات فيزياء B-DNA الثابتة (مش تخمين، مش تعلّم آلي):
-     - 3.4Å ارتفاع لكل زوج قواعد
-     - 36° التفاف لكل زوج قواعد (10bp/لفة كاملة = 34Å، نفس مرجعك)
-     - إزاحة 144° بين الشريطين (مش 180 — هيك بتنتج Major/Minor groove
-       الحقيقيين، مش حلزون متماثل وهمي)
-     - تكميل واطسون-كريك الحقيقي (A↔T, C↔G) — قاعدة بيولوجية حتمية،
-       مش اختراع، فمعنا حق نشتق الشريط التكميلي من تسلسل واحد حقيقي
-   ══════════════════════════════════════════════════════════════════ */
+
 let _inputDetailCache = null;
-let _fastaCache = {}; // url -> نص التسلسل بعد إزالة سطر العنوان
+let _fastaCache = {}; 
 
 const BASE_COLOR = {A:'#6fd3c0', T:'#e5766f', C:'#7aa2f7', G:'#e0b24d'};
 function complementBase(b){ return {A:'T',T:'A',C:'G',G:'C'}[b] || b; }
@@ -1062,7 +1098,6 @@ async function fetchFastaSeq(url){
   return seq;
 }
 
-// يقتصّ نافذة ~34bp حوالين position_index الحقيقي (منتصف النافذة عليه)
 function windowAround(seq, positionIndex, span){
   if(!seq) return '';
   const half = Math.floor(span/2);
@@ -1072,10 +1107,8 @@ function windowAround(seq, positionIndex, span){
   return seq.slice(start, end);
 }
 
-/* ══ رسم SVG لحلزون واحد، بإسقاط بسيط للعمق (منظور بصري صادق) ══
-   كل نقطة محسوبة فعلياً بمعادلات الحلزون، مش موزّعة عشوائياً. */
 function buildHelixSVG(seq, diffMask, width=220, height=380){
-  const RISE=16, RADIUS=34, TWIST=36, PHASE=144; // بكسل بدل أنجستروم للعرض، بس بنفس النسب الحقيقية (RISE/RADIUS تقريباً 1:2 نفس نسبة 3.4:10 الحقيقية تقريباً بعد تكبير للعرض)
+  const RISE=16, RADIUS=34, TWIST=36, PHASE=144; 
   const cx = width/2, topPad = 20;
   const n = seq.length;
   const pts1=[], pts2=[];
@@ -1086,7 +1119,6 @@ function buildHelixSVG(seq, diffMask, width=220, height=380){
     pts1.push({x:cx+RADIUS*Math.cos(a1), y, depth:Math.sin(a1), base:seq[i]});
     pts2.push({x:cx+RADIUS*Math.cos(a2), y, depth:Math.sin(a2), base:complementBase(seq[i])});
   }
-  // ترتيب الرسم حسب العمق (الأبعد أول) — خدعة بصرية كلاسيكية لإيهام العمق
   const rungs = pts1.map((p,i)=>({i, depth:(p.depth+pts2[i].depth)/2}));
   rungs.sort((a,b)=>a.depth-b.depth);
 
@@ -1099,18 +1131,18 @@ function buildHelixSVG(seq, diffMask, width=220, height=380){
 
   rungs.forEach(({i})=>{
     const p1=pts1[i], p2=pts2[i];
-    const scale = 0.65 + 0.35*((p1.depth+1)/2); // أقرب للعين = أكبر وأوضح
+    const scale = 0.65 + 0.35*((p1.depth+1)/2); 
     const isDiff = diffMask && diffMask[i];
     const c1 = BASE_COLOR[p1.base]||'#888', c2 = BASE_COLOR[p2.base]||'#888';
     svg += `<line x1="${p1.x.toFixed(1)}" y1="${p1.y.toFixed(1)}" x2="${p2.x.toFixed(1)}" y2="${p2.y.toFixed(1)}"
-      stroke="${isDiff?'#fff':'var(--border)'}" stroke-width="${isDiff?2.5:1.4}" opacity="${0.4+0.5*scale}"/>`;
+      stroke="${isDiff?'var(--fg)':'var(--border)'}" stroke-width="${isDiff?2.5:1.4}" opacity="${0.4+0.5*scale}"/>`;
     [ [p1,c1], [p2,c2] ].forEach(([p,c])=>{
       svg += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(4*scale).toFixed(1)}" fill="${c}"
-        ${isDiff?`stroke="#fff" stroke-width="1.5"`:''}/>`;
+        ${isDiff?`stroke="var(--fg)" stroke-width="1.5"`:''}/>`;
     });
     if(isDiff){
       svg += `<circle cx="${((p1.x+p2.x)/2).toFixed(1)}" cy="${p1.y.toFixed(1)}" r="${(RADIUS+8)}" fill="none"
-        stroke="#fff" stroke-width="1" stroke-dasharray="2,3" opacity=".5"/>`;
+        stroke="var(--fg)" stroke-width="1" stroke-dasharray="2,3" opacity=".5"/>`;
     }
   });
   svg += `</svg>`;
@@ -1138,10 +1170,6 @@ async function openHelixModal(protKey){
       return;
     }
     const [pSeq, cSeq] = await Promise.all([fetchFastaSeq(patientUrl), fetchFastaSeq(controlUrl)]);
-
-    // موقع الحلزون: أدق من قبل هلق — نستخدم الموقع الجينومي الحقيقي لأول
-    // كودون متحوّر فعلياً (من مقارنة الترجمة الحقيقية بالباك)، أو بداية
-    // الجين نفسه لو ما في طفرة مكتشفة (silent/none)
     const anchorAbs = row.mutatedCodons?.[0]?.genomic_position ?? row.start;
     const rel = (loadedData?.patient?.start!=null && anchorAbs!=null) ? (anchorAbs - loadedData.patient.start) : null;
     if(rel==null){
@@ -1169,7 +1197,7 @@ async function openHelixModal(protKey){
         <span><span class="helix-sw" style="background:${BASE_COLOR.T}"></span>T</span>
         <span><span class="helix-sw" style="background:${BASE_COLOR.C}"></span>C</span>
         <span><span class="helix-sw" style="background:${BASE_COLOR.G}"></span>G</span>
-        <span style="opacity:.8">○ إطار متقطّع أبيض = قاعدة مختلفة فعلياً بين الجهتين</span>
+        <span style="opacity:.8">○ إطار متقطّع = قاعدة مختلفة فعلياً بين الجهتين</span>
       </div>
       <p class="xs muted" style="text-align:center; margin-top:10px">
         كل قاعدة هون من ملف الفاستا الحقيقي تبع هذا التحليل. الشريط التكميلي مُشتق بقاعدة

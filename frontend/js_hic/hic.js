@@ -78,22 +78,21 @@ function pairPoints(pPts, cPts){
   return { P: pPts.slice(0,n), C: cPts.slice(0,n), mode:'index' };
 }
 
-/* آخر نتيجة محاذاة — بتنعرض بلوحة التفاصيل */
 let alignInfo = null;
 
 /* ══════════════════════════════════════════════════════════════════════
    تزامن الكاميرا بين شاشتي المقارنة
    ══════════════════════════════════════════════════════════════════════ */
-let camSync = false;            // مفعّل؟ (بتحدده الصفحة الحاضنة)
-let camLeader = false;          // هل هالعارض هو القائد حالياً؟
-let camDirty = false;           // تغيّرت الكاميرا من آخر بثّ؟
-let applyingRemoteCam = false;  // عم نطبّق كاميرا جاية من برّا؟
+let camSync = false;            
+let camLeader = false;       
+let camDirty = false;         
+let applyingRemoteCam = false; 
 
 function camPost(msg){
   try{ if(window.parent && window.parent!==window) window.parent.postMessage(msg,'*'); }catch(e){}
 }
 
-/* بتنادى لما المستخدم يلمس هالشاشة — بتاخد القيادة */
+
 function claimCamLeadership(){
   if(!camSync || camLeader) return;
   camLeader = true;
@@ -117,16 +116,16 @@ function applyRemoteCam(c){
   applyingRemoteCam = true;
   sph.theta=c.theta; sph.phi=c.phi; sph.r=c.r;
   pan.x=c.px; pan.y=c.py;
-  autoRot = !!c.autoRot;                 // للعرض فقط — التابع ما بيدوّر لحالو
+  autoRot = !!c.autoRot;                
   const b=document.getElementById('btnR');
   if(b){ b.textContent = autoRot?'⏸':'▶'; b.classList.toggle('on', autoRot); }
   updateCam();
   applyingRemoteCam = false;
 }
 
-let bindingProteins = null;     // القاموس الخام من الباك
-let activeSide = 'patient';     // أي جهة معروضة بهالعارض
-let proteinGroup = null;        // THREE.Group فيه كل الـ markers
+let bindingProteins = null;     
+let activeSide = 'patient';     
+let proteinGroup = null;       
 let showProteins = true;
 
 
@@ -164,7 +163,6 @@ function resolveProteinCoordIndex(sideEntry, sideData, coords){
   return {index:null, reason:`لا توجد نقطة إحداثيات تغطي الموقع ${abs.toLocaleString()}bp`};
 }
 
-/* تصنيف حالة البروتين — بيحدد اللون والوصف */
 function classifyProtein(entry){
   const hasP = !!(entry.patient && entry.patient.present !== false);
   const hasC = !!(entry.control && entry.control.present !== false);
@@ -219,7 +217,7 @@ function principalAxis(pts){
 }
 
 function structureAxis(rec){
-  if(rec.__axis !== undefined) return rec.__axis;   // محسوب مسبقاً
+  if(rec.__axis !== undefined) return rec.__axis;  
 
   const dnaP = rec.atoms.filter(a => a.isDNA && a.name === 'P');
   let axis = null, source = 'none';
@@ -288,6 +286,18 @@ function sceneColor(){
   const c = getComputedStyle(document.documentElement).getPropertyValue('--scene').trim();
   return new THREE.Color(c || '#08201c');
 }
+function refreshSceneColors(){
+  if(!scene) return;
+  const bg = sceneColor();
+  scene.background = bg;
+  if(scene.fog) scene.fog.color = bg;
+}
+window.addEventListener('storage', function(e){
+  if(e.key === 'chromogen-theme'){
+    document.documentElement.setAttribute('data-theme', e.newValue==='light' ? 'light' : 'dark');
+    refreshSceneColors();
+  }
+});
 
 // ══ Init ══
 function initThree(){
@@ -594,7 +604,7 @@ let _inflight = 0;
 
 async function loadStructure(key, src){
   if(PDB_CACHE.has(key)){ _touchCache(key); return PDB_CACHE.get(key); }
-  if(_inflight >= PDB_MAX_INFLIGHT) return null;   // منأجّل لجولة جاية
+  if(_inflight >= PDB_MAX_INFLIGHT) return null;   
   const rec = {status:'loading', pass:_lodPass};
   PDB_CACHE.set(key, rec); _touchCache(key);
   _inflight++;
