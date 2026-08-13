@@ -36,27 +36,83 @@
         }
 
         .header-container {
+            display: table;
+            width: 100%;
             border-bottom: 3px solid #1a365d;
-            padding-bottom: 15px;
-            margin-bottom: 30px;
+            padding-bottom: 14px;
+            margin-bottom: 8px;
+        }
+
+        .header-left {
+            display: table-cell;
+            vertical-align: bottom;
+            width: 70%;
+        }
+
+        .header-right {
+            display: table-cell;
+            vertical-align: bottom;
+            width: 30%;
+            text-align: right;
+        }
+
+        .emblem {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
+            color: #ffffff;
+            font-size: 15pt;
+            font-weight: bold;
+            text-align: center;
+            line-height: 40px;
+            margin-right: 12px;
+            vertical-align: middle;
+        }
+
+        .hospital-title-wrap {
+            display: inline-block;
+            vertical-align: middle;
         }
 
         .hospital-title {
-            font-size: 22pt;
+            font-size: 19pt;
             color: #1a365d;
             font-weight: bold;
-            margin: 0 0 5px 0;
+            margin: 0;
             text-align: left;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
         .report-title {
-            font-size: 13pt;
+            font-size: 10.5pt;
             color: #4a5568;
             text-align: left;
-            margin: 0;
+            margin: 2px 0 0 0;
             font-weight: 500;
+        }
+
+        .confidential-tag {
+            display: inline-block;
+            font-size: 8pt;
+            font-weight: bold;
+            letter-spacing: 0.8px;
+            color: #9b2c2c;
+            border: 1px solid #feb2b2;
+            background-color: #fff5f5;
+            padding: 3px 9px;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
+
+        .report-subtitle-bar {
+            text-align: center;
+            font-size: 8.5pt;
+            color: #a0aec0;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 26px;
         }
 
         .patient-card {
@@ -64,6 +120,7 @@
             width: 100%;
             background-color: #f7fafc;
             border: 1px solid #e2e8f0;
+            border-left: 4px solid #2b6cb0;
             border-radius: 6px;
             margin-bottom: 30px;
             padding: 15px;
@@ -141,13 +198,72 @@
             padding: 20px;
             border-radius: 4px;
             text-align: justify;
-            white-space: pre-wrap;
         }
 
+        .summary-content h1, .summary-content h2, .summary-content h3 {
+            color: #1a365d;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            page-break-after: avoid;
+        }
+
+        .summary-content h2 {
+            font-size: 13pt;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 5px;
+        }
+
+        .summary-content h3 {
+            font-size: 11.5pt;
+            color: #2b6cb0;
+        }
+
+        .summary-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 10pt;
+        }
+
+        .summary-content th {
+            background-color: #f7fafc;
+            color: #2b6cb0;
+            text-align: left;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            text-transform: uppercase;
+            font-size: 9pt;
+        }
+
+        .summary-content td {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .summary-content ul, .summary-content ol {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+
+        .summary-content li {
+            margin-bottom: 5px;
+        }
+
+        .summary-content strong {
+            color: #1a365d;
+        }
+
+        .summary-content hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 20px 0;
+        }
         .footer-signatures {
             display: table;
             width: 100%;
             margin-top: 60px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
             page-break-inside: avoid;
         }
 
@@ -167,11 +283,20 @@
 <body>
 
     <div class="header-container">
-        <div class="hospital-title">Damascus University</div>
-        <div class="report-title">Faculty of Information Engineering — AI & Bioinformatics Genomic Laboratory</div>
+        <div class="header-left">
+            <span class="emblem">DU</span>
+            <span class="hospital-title-wrap">
+                <div class="hospital-title">Damascus University</div>
+                <div class="report-title">Faculty of Information Engineering — AI &amp; Bioinformatics Genomic Laboratory</div>
+            </span>
+        </div>
+        <div class="header-right">
+            <span class="confidential-tag">Confidential — Patient Record</span>
+        </div>
     </div>
+    <div class="report-subtitle-bar">Clinical Genomic Analysis Report</div>
 
-    <div class="section-heading">Patient & Laboratory Metadata</div>
+    <div class="section-heading">Patient &amp; Laboratory Metadata</div>
     <div class="patient-card">
         <div class="card-row">
             <div class="card-cell"><span class="label">Patient Name:</span> <span class="value">{{ patient_name }}</span></div>
