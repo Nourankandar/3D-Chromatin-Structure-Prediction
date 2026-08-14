@@ -1,5 +1,9 @@
 from django.db import models
+from django.contrib.auth.models import User
 
-# This app intentionally has no custom models — authentication is built
-# directly on top of Django's built-in `django.contrib.auth.models.User`.
-# See services.py for the AuthService and views.py for the REST endpoints.
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    profile_image = models.ImageField(upload_to='profile_images/', null=True, blank=True)
+
+    def __str__(self):
+        return f"Profile for {self.user.username}"

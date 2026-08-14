@@ -44,6 +44,7 @@ const DICT = {
     ov_success:'Success rate', ov_avg:'Avg tests / patient', ov_recent:'Recent tests', ov_derived:'Derived in the browser — no extra API',
     pr_title:'Profile', pr_subtitle:'Your account details',
     pr_username:'Username', pr_email:'Email', pr_role:'Role', pr_joined:'Joined',
+    pr_photo_updated:'Profile photo updated.', pr_photo_error:'Could not update photo. Please try again.',
     pr_superuser:'Superuser', pr_staff:'Administrator',
     login_title:'Login', login_subtitle:'Access your genomic analysis workspace', username:'Username', password:'Password', email:'Email',
     login_button:'Login', login_error:'Login failed. Please check your credentials and try again.',
@@ -58,6 +59,14 @@ const DICT = {
     signup_link:"Don't have an account? Create one", signup_title:'Create account', signup_subtitle:'Set up a new workspace account',
     signup_email_optional:'Email (optional)', signup_button:'Create account',
     signup_error:'Something went wrong. Please try again.', signup_success:'Account created — you can now log in.',
+    signup_step1_title:'Create account', signup_step1_subtitle:'Enter your email to receive a verification code',
+    signup_step1_button:'Send code', signup_email_required:'Please enter a valid email.',
+    signup_step2_title:'Verify your email', signup_step2_subtitle:'Enter the 6-digit code sent to',
+    signup_step2_button:'Verify code', signup_code_error:'Please enter the full 6-digit code.',
+    signup_resend:'Resend code', signup_resend_sent:'Code resent.',
+    signup_step3_title:'Complete your profile', signup_step3_subtitle:'Choose a username and password to finish',
+    signup_photo_label:'Profile photo (optional)', signup_photo_choose:'Choose photo',
+    signup_step3_button:'Create account', signup_back:'Back',
     logout:'Log out', login_hint:'Demo: any username and password will sign you in.',
     nav_patients:'Patients', nav_predict:'New prediction', nav_settings:'Settings', nav_chromatin:'Chromatin viewer', nav_protein:'Protein viewer',
     patients_title:'Patients', patients_subtitle:'Manage registered patients and their tests',
@@ -88,6 +97,8 @@ const DICT = {
     stop_test:'Stop', stop_test_confirm_title:'Stop this analysis?', stop_test_confirm_desc:'The running pipeline will be terminated and cannot be resumed.', toast_test_stopped:'Analysis stopped', toast_stop_failed:'Could not stop the analysis',
     toast_active_test_exists:'There is already a running analysis — stop it first from the patient page.',
     protein_title:'Protein search', protein_subtitle:'Find a protein structure by gene name',
+    protein_search_label:'Search protein by gene', protein_search_hint_title:'Search for a gene to view its structure',
+    protein_search_hint_desc:'Type a gene name above (e.g. TP53) to fetch the protein and view its 3D structure.',
     field_gene:'Gene name', field_gene_ph:'e.g. TP53', search:'Search', searching:'Searching…',
     gene:'Gene', protein_name:'Protein name', uniprot_id:'UniProt id', pdb_ids:'PDB ids',
     open_protein_viewer:'Open in 3D protein viewer', protein_not_found:'No protein found for that gene name.',
@@ -145,6 +156,7 @@ const DICT = {
     ov_success:'نسبة النجاح', ov_avg:'متوسّط التحاليل لكل مريض', ov_recent:'آخر التحاليل', ov_derived:'محسوبة في المتصفّح — بدون أي API إضافي',
     pr_title:'الملف الشخصي', pr_subtitle:'تفاصيل حسابك',
     pr_username:'اسم المستخدم', pr_email:'البريد الإلكتروني', pr_role:'الصلاحية', pr_joined:'تاريخ الانضمام',
+    pr_photo_updated:'تم تحديث الصورة الشخصية.', pr_photo_error:'تعذّر تحديث الصورة، حاول مرة أخرى.',
     pr_superuser:'مشرف عام', pr_staff:'مسؤول', 
     login_title:'تسجيل الدخول', login_subtitle:'ادخل إلى مساحة عمل التحليل الجينومي', username:'اسم المستخدم', password:'كلمة المرور', email:'البريد الإلكتروني',
     login_button:'تسجيل الدخول', login_error:'فشل تسجيل الدخول. يرجى التحقق من بياناتك والمحاولة مرة أخرى.',
@@ -159,6 +171,14 @@ const DICT = {
     signup_link:'لا يوجد حساب؟ إنشاء حساب جديد', signup_title:'إنشاء حساب', signup_subtitle:'إعداد حساب جديد لمساحة العمل',
     signup_email_optional:'البريد الإلكتروني (اختياري)', signup_button:'إنشاء الحساب',
     signup_error:'حدث خطأ ما، يرجى المحاولة مرة أخرى.', signup_success:'تم إنشاء الحساب — يمكن الآن تسجيل الدخول.',
+    signup_step1_title:'إنشاء حساب', signup_step1_subtitle:'أدخل بريدك الإلكتروني لتصلك رمز التحقق',
+    signup_step1_button:'إرسال الرمز', signup_email_required:'الرجاء إدخال بريد إلكتروني صحيح.',
+    signup_step2_title:'تحقّق من بريدك', signup_step2_subtitle:'أدخل الرمز المكوّن من 6 أرقام المُرسل إلى',
+    signup_step2_button:'تحقّق من الرمز', signup_code_error:'الرجاء إدخال الرمز كاملاً (6 أرقام).',
+    signup_resend:'إعادة إرسال الرمز', signup_resend_sent:'تم إعادة إرسال الرمز.',
+    signup_step3_title:'أكملي ملفك الشخصي', signup_step3_subtitle:'اختاري اسم مستخدم وكلمة مرور لإنهاء التسجيل',
+    signup_photo_label:'صورة شخصية (اختياري)', signup_photo_choose:'اختيار صورة',
+    signup_step3_button:'إنشاء الحساب', signup_back:'رجوع',
     logout:'تسجيل الخروج', login_hint:'تجريبي: أي اسم مستخدم وكلمة مرور سيسجّلان الدخول.',
     nav_patients:'المرضى', nav_predict:'تنبؤ جديد', nav_settings:'الإعدادات', nav_chromatin:'عارض الكروماتين', nav_protein:'عارض البروتين',
     patients_title:'المرضى', patients_subtitle:'إدارة المرضى المسجّلين واختباراتهم',
@@ -190,6 +210,8 @@ const DICT = {
     start_another:'ابدأ تنبؤًا آخر', invalid_range:'يجب أن يكون موضع النهاية أكبر من موضع البداية.',
     predict_no_patients_title:'لا يوجد مرضى لتشغيل تنبؤ لهم', predict_no_patients_desc:'سجّل مريضًا أولًا، ثم عد لبدء التنبؤ.',
     protein_title:'بحث البروتينات', protein_subtitle:'ابحث عن بنية بروتين باسم الجين',
+    protein_search_label:'بحث عن بروتين حسب الجين', protein_search_hint_title:'ابحث عن جين لعرض بنيته',
+    protein_search_hint_desc:'اكتب اسم الجين فوق (مثل TP53) لجلب البروتين وعرض بنيته ثلاثية الأبعاد.',
     field_gene:'اسم الجين', field_gene_ph:'مثال: TP53', search:'بحث', searching:'جارٍ البحث…',
     gene:'الجين', protein_name:'اسم البروتين', uniprot_id:'معرّف UniProt', pdb_ids:'معرّفات PDB',
     open_protein_viewer:'فتح في عارض البروتين ثلاثي الأبعاد', protein_not_found:'لم يُعثر على بروتين لاسم الجين هذا.',
@@ -220,15 +242,35 @@ function applyLocale(){
   document.querySelectorAll('.js-lang').forEach(b => b.innerHTML = `${ICON.lang}<span>${locale==='en'?'ع':'EN'}</span>`);
   applyStaticText(); renderNav(); renderRoute();
 }
+function syncIframesTheme() {
+  const currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  const currentAccent = accent || 'green';
+  
+  document.querySelectorAll('iframe').forEach(iframe => {
+    try {
+      if (iframe.contentDocument && iframe.contentDocument.documentElement) {
+        if (currentTheme === 'light') {
+          iframe.contentDocument.documentElement.setAttribute('data-theme', 'light');
+        } else {
+          iframe.contentDocument.documentElement.removeAttribute('data-theme');
+        }
+        iframe.contentDocument.documentElement.setAttribute('data-accent', currentAccent);
+      }
+    } catch(e) {
+    }
+  });
+}
+
 function applyTheme(){
   document.documentElement.classList.toggle('dark', theme==='dark');
   document.querySelectorAll('.js-theme').forEach(b => b.innerHTML = theme==='dark' ? ICON.sun : ICON.moon);
-  scenes.forEach(s => s.refreshColors());
+  if (typeof scenes !== 'undefined') scenes.forEach(s => s.refreshColors && s.refreshColors());
   try{ localStorage.setItem('chromogen-theme', theme); }catch(e){}
+  
+  syncIframesTheme();
 }
 
-/* -- نظام الثيمات اللونية  --
-   */
+/* -- نظام الثيمات اللونية  --*/
 const ACCENTS = [
   { id:'green',  label:'أخضر',   labelEn:'Green',  swatch:'#8eb69b' },   // الافتراضي
   { id:'blue',   label:'أزرق',   labelEn:'Blue',   swatch:'#7087bb' },
@@ -243,12 +285,15 @@ function applyAccent(){
   if(accent && accent!=='green') document.documentElement.setAttribute('data-accent', accent);
   else document.documentElement.removeAttribute('data-accent');
   try{ localStorage.setItem('chromogen-accent', accent); }catch(e){}
-  scenes.forEach(s => s.refreshColors && s.refreshColors());
+  if (typeof scenes !== 'undefined') scenes.forEach(s => s.refreshColors && s.refreshColors());
+  
+  syncIframesTheme();
 }
 
 /* ---------- تنسيق ---------- */
 const nf = () => new Intl.NumberFormat(locale==='ar'?'ar-EG':'en-US');
 const fmtNum = n => nf().format(n);
 const fmtDate = iso => new Intl.DateTimeFormat(locale==='ar'?'ar-EG':'en-US',{year:'numeric',month:'short',day:'numeric'}).format(new Date(iso));
+const fmtDateTime = iso => new Intl.DateTimeFormat(locale==='ar'?'ar-EG':'en-US',{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(iso));
 const fmtRegion = bp => bp<=0 ? '—' : bp>=1e6 ? `${fmtNum(Math.round(bp/1e4)/100)} Mb` : `${fmtNum(Math.round(bp/100)/10)} kb`;
 const estPoints = (s,e) => Math.max(1, Math.round((e-s)/5000));

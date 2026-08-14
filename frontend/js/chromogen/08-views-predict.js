@@ -4,7 +4,7 @@
   (رفع FASTA، اختيار نوع خلية، بحث بروتين)
     وشاشة الإعدادات وأنواع الخلايا
    ============================================================ */
-const PF = {patient:'', cell:'', chrom:'', start:'', end:'', file:null, submitting:false, started:false, startedId:null, stopping:false, rejected:false};
+const PF = {patient:'', cell:'', chrom:'', file:null, submitting:false, started:false, startedId:null, stopping:false, rejected:false};
 
 
 function renderPredict(view){
@@ -25,7 +25,7 @@ function renderPredict(view){
       <p style="margin-top:1rem;font-weight:500">${t('prediction_running_title')}</p>
       <p class="sm-t muted" style="margin-top:.25rem;max-width:36ch">${t('prediction_running_desc')}</p>
       <div class="row" style="margin-top:1.5rem">
-        <button class="btn" data-go="dashboard">${t('view_tests')}</button>
+        <button class="btn" id="viewTestsBtn">${t('view_tests')}</button>
         <button class="btn outline" id="againBtn">${t('start_another')}</button>
         ${PF.startedId ? `<button class="btn outline" id="stopStartedBtn" ${PF.stopping?'disabled':''}>
           ${PF.stopping ? `<span class="spin"></span>` : `${ICON.x}<span>${t('stop_test')}</span>`}
@@ -47,19 +47,6 @@ function renderPredict(view){
 
       <div class="field"><label class="label" for="pfChrom">${t('field_chromosome')}</label>
         <input id="pfChrom" class="input mono" placeholder="${t('field_chromosome_ph')}" value="${esc(PF.chrom)}"></div>
-
-      <div class="cols2">
-        <div class="field"><label class="label" for="pfStart">${t('field_start')}</label>
-          <input id="pfStart" class="input mono" type="number" min="0" value="${esc(PF.start)}"></div>
-        <div class="field"><label class="label" for="pfEnd">${t('field_end')}</label>
-          <input id="pfEnd" class="input mono" type="number" min="0" value="${esc(PF.end)}"></div>
-      </div>
-
-      <p id="rangeErr" class="xs" style="color:var(--destructive);display:flex;gap:.4rem;align-items:center;margin-top:-.75rem" hidden>
-        <span data-icon="alert"></span>${t('invalid_range')}</p>
-
-      <!-- Derived from the region. Never typed by hand. -->
-      <div id="hintBox"></div>
 
       <div class="field"><span class="label">${t('field_fasta')}</span>
         ${PF.file ? `<div class="card row" style="padding:.75rem">
@@ -104,24 +91,8 @@ function renderPredict(view){
 
 
 function updateDerived(view){
-  const s = parseInt(PF.start,10), e = parseInt(PF.end,10);
-  const both = Number.isFinite(s) && Number.isFinite(e), valid = both && e > s;
-
-  const err = view.querySelector('#rangeErr');
-  if (err){ err.hidden = !(both && !valid); err.querySelector('[data-icon]').innerHTML = ICON.alert; }
-  view.querySelector('#pfEnd')?.setAttribute('aria-invalid', String(both && !valid));
-
-  const box = view.querySelector('#hintBox');
-  if (box){
-    box.innerHTML = valid ? `<div class="alert info fade" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-      <div style="grid-column:1/-1;display:flex;gap:.4rem;align-items:center;color:var(--primary);font-size:.75rem;font-weight:500">${ICON.info}${t('hint_title')}</div>
-      <div><p class="xs muted">${t('hint_points')}</p><p class="mono" style="font-size:1.15rem;margin-top:.15rem">${fmtNum(estPoints(s,e))}</p></div>
-      <div><p class="xs muted">${t('hint_region')}</p><p class="mono" style="font-size:1.15rem;margin-top:.15rem">${fmtRegion(e-s)}</p></div>
-    </div>` : '';
-  }
-
   const btn = view.querySelector('#submitBtn');
-  if (btn) btn.disabled = !(PF.patient && PF.cell && PF.chrom.trim() && valid && PF.file) || PF.submitting;
+  if (btn) btn.disabled = !(PF.patient && PF.cell && PF.chrom.trim() && PF.file) || PF.submitting;
 }
 
 function bindPredict(view){
@@ -130,9 +101,8 @@ function bindPredict(view){
   on('pfCell','change',    e=>{ PF.cell=e.target.value; updateDerived(view); });
   on('pfCellAdd','click',  ()=>{ openCellModal(()=>renderPredict(view)); });
   on('pfChrom','input',    e=>{ PF.chrom=e.target.value; updateDerived(view); });
-  on('pfStart','input',    e=>{ PF.start=e.target.value; updateDerived(view); });
-  on('pfEnd','input',      e=>{ PF.end=e.target.value; updateDerived(view); });
-  on('againBtn','click',   ()=>{ Object.assign(PF,{chrom:'',start:'',end:'',file:null,started:false,rejected:false}); renderRoute(); });
+  on('againBtn','click',   ()=>{ Object.assign(PF,{chrom:'',file:null,started:false,rejected:false}); renderRoute(); });
+  on('viewTestsBtn','click', ()=>{ if(PF.patient){ S.activePatient=+PF.patient; go('patient'); } else go('dashboard'); });
   on('rmFile','click',     ()=>{ PF.file=null; PF.rejected=false; renderRoute(); });
   view.querySelector('#stopStartedBtn')?.addEventListener('click', async ()=>{
     if(!await confirmDialog(t('stop_test_confirm_title'), t('stop_test_confirm_desc'))) return;
@@ -143,7 +113,7 @@ function bindPredict(view){
       toast(t('toast_test_stopped'));
       await loadPatients();
       PF.started=false; PF.startedId=null; PF.stopping=false;
-      PF.patient=''; PF.cell=''; PF.chrom=''; PF.start=''; PF.end=''; PF.file=null;
+      PF.patient=''; PF.cell=''; PF.chrom=''; PF.file=null;
       renderRoute();
     } catch(err){
       console.error('[test stop]', err.response ? err.response.data : err);
@@ -170,8 +140,6 @@ function bindPredict(view){
     fd.append('patient_id',   PF.patient);
     fd.append('cell_type_id', PF.cell);
     fd.append('chromosome',   PF.chrom.trim());
-    fd.append('start_pos',    PF.start);
-    fd.append('end_pos',      PF.end);
     fd.append('fasta_file',   PF.file);
 
     try {

@@ -78,22 +78,21 @@ function pairPoints(pPts, cPts){
   return { P: pPts.slice(0,n), C: cPts.slice(0,n), mode:'index' };
 }
 
-/* آخر نتيجة محاذاة — بتنعرض بلوحة التفاصيل */
 let alignInfo = null;
 
 /* ══════════════════════════════════════════════════════════════════════
    تزامن الكاميرا بين شاشتي المقارنة
    ══════════════════════════════════════════════════════════════════════ */
-let camSync = false;            // مفعّل؟ (بتحدده الصفحة الحاضنة)
-let camLeader = false;          // هل هالعارض هو القائد حالياً؟
-let camDirty = false;           // تغيّرت الكاميرا من آخر بثّ؟
-let applyingRemoteCam = false;  // عم نطبّق كاميرا جاية من برّا؟
+let camSync = false;            
+let camLeader = false;       
+let camDirty = false;         
+let applyingRemoteCam = false; 
 
 function camPost(msg){
   try{ if(window.parent && window.parent!==window) window.parent.postMessage(msg,'*'); }catch(e){}
 }
 
-/* بتنادى لما المستخدم يلمس هالشاشة — بتاخد القيادة */
+
 function claimCamLeadership(){
   if(!camSync || camLeader) return;
   camLeader = true;
@@ -117,16 +116,16 @@ function applyRemoteCam(c){
   applyingRemoteCam = true;
   sph.theta=c.theta; sph.phi=c.phi; sph.r=c.r;
   pan.x=c.px; pan.y=c.py;
-  autoRot = !!c.autoRot;                 // للعرض فقط — التابع ما بيدوّر لحالو
+  autoRot = !!c.autoRot;                
   const b=document.getElementById('btnR');
   if(b){ b.textContent = autoRot?'⏸':'▶'; b.classList.toggle('on', autoRot); }
   updateCam();
   applyingRemoteCam = false;
 }
 
-let bindingProteins = null;     // القاموس الخام من الباك
-let activeSide = 'patient';     // أي جهة معروضة بهالعارض
-let proteinGroup = null;        // THREE.Group فيه كل الـ markers
+let bindingProteins = null;     
+let activeSide = 'patient';     
+let proteinGroup = null;       
 let showProteins = true;
 
 
@@ -164,7 +163,6 @@ function resolveProteinCoordIndex(sideEntry, sideData, coords){
   return {index:null, reason:`لا توجد نقطة إحداثيات تغطي الموقع ${abs.toLocaleString()}bp`};
 }
 
-/* تصنيف حالة البروتين — بيحدد اللون والوصف */
 function classifyProtein(entry){
   const hasP = !!(entry.patient && entry.patient.present !== false);
   const hasC = !!(entry.control && entry.control.present !== false);
@@ -219,7 +217,7 @@ function principalAxis(pts){
 }
 
 function structureAxis(rec){
-  if(rec.__axis !== undefined) return rec.__axis;   // محسوب مسبقاً
+  if(rec.__axis !== undefined) return rec.__axis;  
 
   const dnaP = rec.atoms.filter(a => a.isDNA && a.name === 'P');
   let axis = null, source = 'none';
@@ -284,10 +282,38 @@ let globalData=null;
 let raycaster,mouse;
 let isoScene,isoCamera,isoRenderer,isoRunning=false;
 
+// ══ طبقة النيوكليوزوم (فتح/غلق الكروماتين) ══
+// nucleosome_track: [{unit_index, genomic_start, genomic_end, state:'open'|'wrapped', dnase_signal, x,y,z}]
+// t هو نفس معامل المنحنى (0→1) المستخدم بألوان الأنبوب، فمنحوّله لموقع جينومي
+// ومنلاقي الوحدة يلي بتغطيه (بحث خطي — العدد صغير، عادة أقل من ~500 وحدة).
+function nucStateAt(t){
+  const track = globalData?.nucleosome_track;
+  const start = globalData?.start, end = globalData?.end;
+  if(!track || !track.length || !isFinite(start) || !isFinite(end) || end<=start) return null;
+  const bp = start + t*(end-start);
+  for(let i=0;i<track.length;i++){
+    const u=track[i];
+    if(bp>=u.genomic_start && bp<u.genomic_end) return u.state;
+  }
+  return null;
+}
+
 function sceneColor(){
   const c = getComputedStyle(document.documentElement).getPropertyValue('--scene').trim();
   return new THREE.Color(c || '#08201c');
 }
+function refreshSceneColors(){
+  if(!scene) return;
+  const bg = sceneColor();
+  scene.background = bg;
+  if(scene.fog) scene.fog.color = bg;
+}
+window.addEventListener('storage', function(e){
+  if(e.key === 'chromogen-theme'){
+    document.documentElement.setAttribute('data-theme', e.newValue==='light' ? 'light' : 'dark');
+    refreshSceneColors();
+  }
+});
 
 // ══ Init ══
 function initThree(){
@@ -357,6 +383,7 @@ function applyData(d){
   if(d.collapse_ratio!=null) set('p-collapse', Number(d.collapse_ratio).toFixed(2));
 
   buildTADList(d);
+  buildNucleosomeSummary(d);
   buildScene();
   
   if(controlData) buildControlOverlay();
@@ -594,7 +621,7 @@ let _inflight = 0;
 
 async function loadStructure(key, src){
   if(PDB_CACHE.has(key)){ _touchCache(key); return PDB_CACHE.get(key); }
-  if(_inflight >= PDB_MAX_INFLIGHT) return null;   // منأجّل لجولة جاية
+  if(_inflight >= PDB_MAX_INFLIGHT) return null;   
   const rec = {status:'loading', pass:_lodPass};
   PDB_CACHE.set(key, rec); _touchCache(key);
   _inflight++;
@@ -1232,6 +1259,24 @@ function buildTADList(d){
   }
 }
 
+function buildNucleosomeSummary(d){
+  const sec=document.getElementById('nuc-sec');
+  const box=document.getElementById('nuc-summary');
+  if(!sec || !box) return;
+  const track=d.nucleosome_track;
+  if(!track || !track.length){ sec.style.display='none'; return; }
+  sec.style.display='';
+  const nOpen=track.filter(u=>u.state==='open').length;
+  const nWrapped=track.length-nOpen;
+  const pctOpen=Math.round(nOpen/track.length*100);
+  box.innerHTML=
+    `<div class="row"><span><span class="tad-sw" style="background:#f2b84b;display:inline-block"></span> مفتوح</span>`+
+      `<span class="val hi">${nOpen} (${pctOpen}%)</span></div>`+
+    `<div class="row"><span><span class="tad-sw" style="background:#3f5750;display:inline-block"></span> ملفوف</span>`+
+      `<span class="val">${nWrapped} (${100-pctOpen}%)</span></div>`+
+    `<div class="row" style="opacity:.7; font-size:.62rem">وحدة كل ~200bp (تقريب نيوكليوزوم)</div>`;
+}
+
 function buildRibbonGeometry(curve, segments, width, hlRange, hlMult){
   const frames = curve.computeFrenetFrames(segments, false);
   const pts = curve.getPoints(Math.min(segments, 200));
@@ -1410,14 +1455,6 @@ function getClr(t,density,tadId,deviation){
       return t<.5 ? new THREE.Color().lerpColors(a,b,t*2)
                   : new THREE.Color().lerpColors(b,c,(t-.5)*2);
     }
-    case 'plasma':
-      return new THREE.Color(.1+t*.9,Math.sin(t*Math.PI)*.55,Math.max(0,1-t*1.1));
-    case 'cool':
-      return new THREE.Color().setHSL(.55+t*.25,.9,.4+t*.2);
-    case 'health':{
-      const a=new THREE.Color(0x22c55e),b=new THREE.Color(0xeab308),c2=new THREE.Color(0xef4444);
-      return t<.5?new THREE.Color().lerpColors(a,b,t*2):new THREE.Color().lerpColors(b,c2,(t-.5)*2);
-    }
     case 'density':
       return new THREE.Color().setHSL(.13,.6+density*.4, .2+density*.6);
     case 'tad':{
@@ -1425,9 +1462,16 @@ function getClr(t,density,tadId,deviation){
       const hex=pal[tadId%pal.length]||'#c9a84c';
       return new THREE.Color(hex);
     }
+    case 'nucleosome':{
+      const state=nucStateAt(t);
+      if(state==='open')    return new THREE.Color(0xf2b84b);  // مفتوح — DNase قادر يوصل
+      if(state==='wrapped') return new THREE.Color(0x3f5750);  // ملفوف حول الهيستون
+      return new THREE.Color(0x6b7d76);                        // لا توجد بيانات لهالمقطع
+    }
     default: return new THREE.Color(0xc9a84c);
   }
 }
+
 
 function hexToRgb(hex){
   const r=parseInt(hex.slice(1,3),16)/255;
@@ -1603,7 +1647,7 @@ function switchMode(m){
 function setClr(m,btn){
   clrMode=m;
   document.querySelectorAll('.clr').forEach(b=>b.style.borderColor='transparent');
-  btn.style.borderColor='#fff';
+  if(btn) btn.style.borderColor='#fff';
   buildScene();
 }
 
@@ -1770,6 +1814,7 @@ window.addEventListener('message', (ev)=>{
     if(c.lod!=null)         lodEnabled=!!c.lod;
     if(c.repr)              setReprMode(c.repr);
     if(c.magnify!=null)     setProteinMagnify(c.magnify);
+    if(c.clr)                setClr(c.clr);
     return;
   }
   if(d.type==='chromo-protein-visibility'){ setProteinVisibility(d.hidden); return; }

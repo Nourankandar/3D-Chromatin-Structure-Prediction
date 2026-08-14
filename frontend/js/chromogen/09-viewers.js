@@ -48,7 +48,7 @@ function renderChromatin(view){
   const outputId = test.output_data_id;
   const authToken = localStorage.getItem('chromogen-token') || '';
   const compareHref = outputId
-    ? `hic_compare.html?output_id=${encodeURIComponent(outputId)}&input_id=${encodeURIComponent(test.id)}` + (authToken ? `&token=${encodeURIComponent(authToken)}` : '')
+    ? `compare_shell.html?output_id=${encodeURIComponent(outputId)}&input_id=${encodeURIComponent(test.id)}` + (authToken ? `&token=${encodeURIComponent(authToken)}` : '')
     : null;
 
   const panel = `
@@ -60,14 +60,14 @@ function renderChromatin(view){
       ${row(t('region_size'), fmtRegion(regionSize))}
       ${row(t('cell_type'), esc(test.cell_type))}
       ${pts!=null ? row(t('viewer_points'), fmtNum(pts)) : ''}
-      ${row(t('created_at'), fmtDate(test.created_at))}
+      ${row(t('created_at'), fmtDateTime(test.created_at))}
     </div>
     ${test.report?.summary ? `<div class="card" style="padding:1.25rem">
       <p class="xs muted">${t('summary')}</p><p class="sm-t" style="margin-top:.5rem">${esc(test.report.summary)}</p></div>`:''}
     ${compareHref ? `<div style="display:flex; gap:8px">
-      <a class="btn outline" style="flex:1" target="_blank" rel="noreferrer" href="${compareHref}">${ICON.external}<span>${t('viewer_compare_control')}</span></a>
-      <button class="btn outline" style="flex:1" onclick="openReportModal(${test.id})">${ICON.file}<span>${t('viewer_report')}</span></button>
-    </div>` : ''}`;
+    <a class="btn outline" style="width: 65%; height: 2.3rem; font-size: 0.83rem; padding: 0 8px;" target="_blank" rel="noreferrer" href="${compareHref}">${ICON.external}<span>${t('viewer_compare_control')}</span></a>
+    <button class="btn outline" style="width: 35%; height: 2.3rem; font-size: 0.83rem; padding: 0 8px;" onclick="openReportModal(${test.id})">${ICON.file}<span>${t('viewer_report')}</span></button>
+  </div>` : ''}`;
 
   view.innerHTML = viewerFrame({
     title:t('chromatin_viewer_title'), desc:t('chromatin_viewer_desc'),
@@ -111,7 +111,6 @@ async function searchProteinForViewer(gene){
       S.activeProtein = { gene:data.gene, uniprot_id:data.uniprot_id, protein_name:data.protein_name, pdb_ids:data.pdb_ids, predicted:false };
       S.activePdb = data.pdb_ids[0];
     } else if(data && data.uniprot_id){
-      // ما في بنية تجريبية بـ RCSB → منستعمل تنبؤ AlphaFold (بنية متوقّعة مش مقاسة)
       S.activeProtein = { gene:data.gene, uniprot_id:data.uniprot_id, protein_name:data.protein_name, pdb_ids:[], predicted:true };
       S.activePdb = null;
       toast(t('protein_predicted_note'));
@@ -198,8 +197,12 @@ function renderProtein(view){
       : `${base}&pdb=${encodeURIComponent(S.activePdb)}`;
   };
   const wrap = view.querySelector('.canvas-wrap');
-  if (wrap) wrap.innerHTML = `<iframe id="proteinFrame" src="${proteinSrc()}" title="Protein 3D viewer"
-    style="width:100%;height:clamp(380px,60vh,620px);border:0;display:block;border-radius:18px;background:var(--card)"></iframe>`;
+  if (wrap) {
+    wrap.style.display = 'flex';
+    wrap.style.flexDirection = 'column';
+    wrap.innerHTML = `<iframe id="proteinFrame" src="${proteinSrc()}" title="Protein 3D viewer"
+      style="width:100%;height:clamp(450px, 68vh, 680px);border:0;display:block;border-radius:18px;background:var(--card)"></iframe>`;
+  }
 
   wireProteinSearch(view);
   const sel = view.querySelector('#pdbSelect');
@@ -290,7 +293,7 @@ function renderReportBody(r){
       <div style="display:flex;gap:8px;align-items:center">
         <span style="background:color-mix(in srgb, var(--primary) 16%, transparent);color:var(--primary);
           font-size:11px;padding:4px 12px;border-radius:999px">مكتمل</span>
-        <span class="mono-s muted" style="font-size:11px">${fmtDate(r.created_at)}</span>
+        <span class="mono-s muted" style="font-size:11px">${fmtDateTime(r.created_at)}</span>
       </div>
       <button title="إعادة توليد" onclick="regenerateReport(${r.id})"
         style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer">↻</button>

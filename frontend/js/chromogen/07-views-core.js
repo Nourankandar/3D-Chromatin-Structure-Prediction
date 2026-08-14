@@ -174,7 +174,7 @@ function testRow(g){
     <div>
       <div class="row"><span class="mono sm-t">${esc(g.chromosome||'—')}</span>
         ${g.start_pos!=null?`<span class="xs muted">${fmtNum(g.start_pos)} – ${fmtNum(g.end_pos)}</span>`:''}</div>
-      <div class="xs muted" style="margin-top:.2rem">${fmtDate(g.created_at)} · ${esc(g.cell_type||'—')}</div>
+      <div class="xs muted" style="margin-top:.2rem">${fmtDateTime(g.created_at)} · ${esc(g.cell_type||'—')}</div>
     </div>
     <div class="row">
       ${statusBadge(g.status)}

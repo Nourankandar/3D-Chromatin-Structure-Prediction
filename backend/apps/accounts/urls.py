@@ -1,26 +1,31 @@
 from django.urls import path
+from django.conf import settings
+from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import *
 
 urlpatterns = [
-    path("signup/", SignupAPIView.as_view(), name="api_signup"),
+    # --- 3-STEP SIGNUP URLS ---
+    path("signup/initiate/", InitiateSignupAPIView.as_view(), name="signup_initiate"),
+    path("signup/complete/", CompleteSignupAPIView.as_view(), name="signup_complete"),
+    # أضف هذا السطر مع روابط التسجيل (3-STEP SIGNUP URLS)
+    path("resend-signup-otp/", ResendSignupOTPAPIView.as_view(), name="resend_signup_otp"),
+    # --- PROFILE URLS ---
+    path("profile/update-image/", UpdateProfileImageAPIView.as_view(), name="update_profile_image"),
+
+    # --- EXISTING URLS ---
     path("login/", LoginAPIView.as_view(), name="api_login"),
     path("logout/", LogoutAPIView.as_view(), name="api_logout"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("MyAccountAPIView/", MyAccountAPIView.as_view(), name="api_me"),
     path("change-password/", ChangePasswordAPIView.as_view(), name="change_password"),
     
-    
-    # --- NEW URLS ---
     path("forgot-password/", ForgotPasswordAPIView.as_view(), name="forgot_password"),
     path("reset-password/", ResetPasswordAPIView.as_view(), name="reset_password"),
     path("verify-signup/", VerifySignupOTPAPIView.as_view(), name="verify_signup_otp"),
-    path("resend-signup-otp/", ResendSignupOTPAPIView.as_view(), name="resend_signup_otp"),     
 ]
 
-# GET  /api/auth/MyAccountAPIView/             -> returns the currently authenticated user
-# POST /api/auth/signup/         -> register a new staff user
-# POST /api/auth/login/          -> authenticate, returns access/refresh JWT pair
-# POST /api/auth/logout/         -> blacklists the supplied refresh token
-# POST /api/auth/token/refresh/  -> exchange a refresh token for a new access token
+# السماح لـ Django بعرض ملفات الـ Media في بيئة التطوير (Development)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
