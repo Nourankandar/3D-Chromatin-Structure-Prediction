@@ -31,6 +31,28 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-change-me-in-production')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
+
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Static & media files
+# ─────────────────────────────────────────────────────────────────────────────
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+
+
+
+
+
+
+
+
+
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Hosts & CORS
 # ─────────────────────────────────────────────────────────────────────────────
