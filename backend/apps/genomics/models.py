@@ -31,9 +31,12 @@ class InputData(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='genomic_inputs')
     cell_type = models.ForeignKey(CellType, on_delete=models.PROTECT, related_name='inputs')
     chromosome = models.CharField(max_length=10, verbose_name="Chromosome (e.g., chr21)")
-    start_pos = models.PositiveIntegerField(verbose_name="Start Position (bp)")
-    end_pos = models.PositiveIntegerField(verbose_name="End Position (bp)")
-
+    start_pos = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="Start Position (bp)"
+    )
+    end_pos = models.PositiveIntegerField(
+        null=True, blank=True, verbose_name="End Position (bp)"
+    )
     dna_sequence_file = models.FileField(
         upload_to='genomics/raw_inputs/fasta/', max_length=255, verbose_name="DNA Sequence File (Patient)"
     )

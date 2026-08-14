@@ -179,12 +179,10 @@ class RunGenomicTestAPIView(APIView):
         patient_id = request.data.get("patient_id") or request.data.get("patient")
         cell_type_id = request.data.get("cell_type_id") or request.data.get("cell_type")
         chromosome = request.data.get("chromosome")
-        start_pos = request.data.get("start_pos")
-        end_pos = request.data.get("end_pos")
 
-        if not all([patient_id, cell_type_id, chromosome, start_pos, end_pos]):
+        if not all([patient_id, cell_type_id, chromosome]):
             return Response(
-                {"error": "patient_id, cell_type_id, chromosome, start_pos, and end_pos are required"},
+                {"error": "patient_id, cell_type_id, and chromosome are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -212,14 +210,12 @@ class RunGenomicTestAPIView(APIView):
         try:
             with atomic_with_cleanup(cleanup_fn=cleanup_file, log_prefix="RunGenomicTest"):
                 input_data = InputData.objects.create(
-                    patient_id=patient_id,
-                    cell_type_id=cell_type_id,
-                    chromosome=chromosome,
-                    start_pos=start_pos,
-                    end_pos=end_pos,
-                    dna_sequence_file=relative_fasta_path,
-                    status="pending",
-                )
+                patient_id=patient_id,
+                cell_type_id=cell_type_id,
+                chromosome=chromosome,
+                dna_sequence_file=relative_fasta_path,
+                status="pending",
+            )
                 transaction.on_commit(lambda: _launch_pipeline_task(input_data.id))
         except Exception as exc:
             return Response(

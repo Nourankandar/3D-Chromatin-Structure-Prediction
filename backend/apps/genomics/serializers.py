@@ -27,6 +27,7 @@ class InputDataSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'status', 'created_at',
             'predicted_dnase_patient', 'predicted_dnase_control',
+            'start_pos', 'end_pos',
         ]
 
     def get_output_data_id(self, obj):
@@ -42,7 +43,8 @@ class InputDataCreateSerializer(serializers.ModelSerializer):
             'id', 'patient', 'cell_type', 'chromosome', 'start_pos', 'end_pos',
             'dna_sequence_file','dna_control_file', 'status', 'created_at',
         ]
-        read_only_fields = ['id', 'status', 'created_at']
+        
+        read_only_fields = ['id', 'status', 'created_at', 'start_pos', 'end_pos']
 
 
 class OutputDataSerializer(serializers.ModelSerializer):

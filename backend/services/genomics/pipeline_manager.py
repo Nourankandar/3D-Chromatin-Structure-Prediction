@@ -135,9 +135,6 @@ class GenomicPipelineManager:
     def _step_locate(self, patient_fasta_path: str, chromosome: str, input_data) -> dict:
         from services.genomics.referenceGenome.DNA_locator import locate_patient_sequence
 
-        self._update_status(input_data, "pending")
-        logger.info("[Pipeline %s] -> تحديد موقع تسلسل المريض على %s", self.input_data_id, chromosome)
-
         coords: dict = locate_patient_sequence(patient_fasta_path, chromosome_hint=chromosome)
 
         logger.info(
@@ -145,6 +142,13 @@ class GenomicPipelineManager:
             self.input_data_id, coords["chromosome"], coords["start"], coords["end"],
             coords["strand"], coords["identity"],
         )
+
+        # المستخدم ما عاد يدخل start_pos/end_pos يدوياً — بنحفظ القيم المحسوبة
+        # هون فور تحديدها، حتى تضل موجودة بالموديل (للعرض بالفرونت أو أي استعلام لاحق)
+        input_data.start_pos = coords["start"]
+        input_data.end_pos = coords["end"]
+        input_data.save(update_fields=["start_pos", "end_pos"])
+
         return coords
 
     # ------------------------------------------------------------------

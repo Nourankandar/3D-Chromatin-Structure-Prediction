@@ -39,6 +39,8 @@ from pathlib import Path
 from django.conf import settings
 from pyfaidx import Fasta
 
+from services.genomics.referenceGenome.kmer_index import get_or_build_kmer_index
+
 logger = logging.getLogger(__name__)
 
 # إعدادات الخوارزمية (قابلة للتعديل حسب طول التسلسلات المتوقعة)
@@ -51,6 +53,13 @@ MIN_IDENTITY = 0.80       # أقل نسبة تطابق مقبولة بعد ال�
 # (زي مناطق التيلومير/السنترومير المتكررة)، ما بنقدر نثق بموقع واحد محدد
 AMBIGUITY_IDENTITY_MARGIN = 0.02   # الفرق الأدنى المطلوب بين أفضل مرشح والثاني
 MAX_RAW_SEED_HITS_BEFORE_WARNING = 50  # عدد مواقع seed matches اللي لو تعداه، فالمنطقة غالباً متكررة (low-complexity)
+
+# سقف أداء: لو seed واحد تكرر أكتر من هيك عدد مرات بالكروموسوم، منوقف البحث
+# عنه فوراً (بدل ما نكمل .find() آلاف/ملايين المرات لنفس الـ seed) — هيدا
+# seed من منطقة متكررة أصلاً (زي Alu repeats) وما بيفيد بتحديد الموقع بدقة،
+# فلا داعي نضيّع وقت حساب عليه. القيمة معقولة: أعلى بكتير من التكرار
+# الطبيعي بمناطق فريدة، بس واطية كفاية توقف الانفجار بالمناطق المتكررة.
+MAX_HITS_PER_SEED = 100
 
 _COMPLEMENT = str.maketrans("ACGTNacgtn", "TGCANtgcan")
 
@@ -78,8 +87,16 @@ def _reverse_complement(sequence: str) -> str:
     return sequence.translate(_COMPLEMENT)[::-1]
 
 
-def _load_chromosome_sequence(chromosome: str) -> str:
-    """يجيب تسلسل كروموسوم واحد بس (مش الجينوم كامل) عبر pyfaidx."""
+def _load_chromosome_sequence(chromosome: str) -> tuple[str, str]:
+    """
+    يجيب تسلسل كروموسوم واحد بس (مش الجينوم كامل) عبر pyfaidx.
+
+    Returns
+    -------
+    (sequence, genome_fa_path): التسلسل + مسار ملف genome.fa الأصلي —
+    المسار لازم نرجعه كمان حتى نقدر نبني/نتحقق من فهرس الـ k-mer
+    (get_or_build_kmer_index بيحتاجه لمقارنة mtime).
+    """
     fasta_path = Path(settings.GENOME_REFERENCE_ROOT) / "genome.fa"
     if not fasta_path.exists():
         raise SequenceLocationError(f"Reference genome not found at {fasta_path}")
@@ -99,13 +116,16 @@ def _load_chromosome_sequence(chromosome: str) -> str:
 
     sequence = str(genome[chrom_key][:]).upper()
     genome.close()
-    return sequence
+    return sequence, str(fasta_path)
 
 
-def _seed_and_extend(patient_seq: str, chrom_seq: str) -> dict | None:
+def _seed_and_extend(patient_seq: str, chrom_seq: str, kmer_index: dict) -> dict | None:
     """
     يرجع dict فيه: start, identity, is_ambiguous, second_best_identity,
     raw_seed_hit_count — أو None لو ما لقى تطابق كافي إطلاقاً.
+
+    kmer_index: فهرس k-mer مبني مسبقاً لنفس chrom_seq (من kmer_index.py)
+    — بيستخدم فقط لحالة الـ seeds العادية (طول SEED_LENGTH بالضبط).
     """
     patient_len = len(patient_seq)
     chrom_len = len(chrom_seq)
@@ -141,26 +161,44 @@ def _seed_and_extend(patient_seq: str, chrom_seq: str) -> dict | None:
 
     # 2) نجمع مواقع البداية المرشحة من كل seed
     candidate_votes: Counter = Counter()
+    raw_seed_hit_count = 0        # مجموع كل الـ hits المقبولة (المستخدمة فعلياً بالتصويت)
+    skipped_repetitive_seeds = 0  # عدد الـ seeds يلي رفضناها لأنها ضربت السقف (تشخيصي بس)
 
     for offset in seed_offsets:
         seed = patient_seq[offset: offset + SEED_LENGTH]
         if "N" in seed:
             continue  # seed فيه قواعد غير معروفة — نتخطاه لأنه غير موثوق
 
-        search_from = 0
-        while True:
-            match_pos = chrom_seq.find(seed, search_from)
-            if match_pos == -1:
-                break
+        # بدل chrom_seq.find() المتكرر (O(chrom_len) لكل seed)، الفهرس
+        # بيرجع كل المواقع دفعة وحدة تقريباً O(1) — نفس النتيجة بالضبط،
+        # بس محسوبة مسبقاً مرة وحدة لكل الكروموسوم بدل إعادة حسابها
+        # لكل seed ولكل مريض جديد.
+        seed_positions = kmer_index.get(seed)
+        if not seed_positions:
+            continue  # ما في أي تطابق تام لهاد الـ seed بالكروموسوم إطلاقاً
+
+        if len(seed_positions) > MAX_HITS_PER_SEED:
+            # نفس المنطق القديم بالضبط: seed بمنطقة متكررة جداً (زي Alu) —
+            # نرفض كل أصوات هالـ seed حتى ما نلوّث التصويت بانحياز جزئي.
+            skipped_repetitive_seeds += 1
+            continue
+
+        for match_pos in seed_positions:
             candidate_start = match_pos - offset
             if 0 <= candidate_start < chrom_len:
                 candidate_votes[candidate_start] += 1
-            search_from = match_pos + 1
+                raw_seed_hit_count += 1
+
+    if skipped_repetitive_seeds:
+        logger.warning(
+            "[Locator] تجاهلنا %d seed من أصل تسلسل المريض لأنها بمناطق "
+            "متكررة جداً (تعدّت %d تكرار) — اعتمدنا فقط على الـ seeds الفريدة "
+            "لتحديد الموقع.",
+            skipped_repetitive_seeds, MAX_HITS_PER_SEED,
+        )
 
     if not candidate_votes:
         return None
-
-    raw_seed_hit_count = sum(candidate_votes.values())
 
     # 2) نتحقق (verify) من كل المرشحين المحتملين — مش أفضل واحد بس —
     #    حتى نقدر نقارن أفضل نتيجة بالثانية ونكشف الـ ambiguity
@@ -234,14 +272,26 @@ def locate_patient_sequence(
 
     chromosome = str(chromosome_hint)
     logger.info("[Locator] Loading chromosome '%s' reference sequence...", chromosome)
-    chrom_seq = _load_chromosome_sequence(chromosome)
+    chrom_seq, genome_fa_path = _load_chromosome_sequence(chromosome)
+
+    # فهرس الـ k-mer: يُبنى مرة وحدة فقط لكل كروموسوم (ويُخزّن على القرص)،
+    # وبعدين نفس الفهرس مستخدم للبحث بالاتجاهين (forward + reverse
+    # complement) — لأنه الفهرس مبني على chrom_seq (الخيط الموجب) فقط،
+    # والاتجاه المعاكس بنعالجه بعمل reverse complement لتسلسل المريض
+    # نفسه، مش بإعادة فهرسة الكروموسوم.
+    kmer_index = get_or_build_kmer_index(
+        chromosome=chromosome,
+        chrom_seq=chrom_seq,
+        genome_fa_path=genome_fa_path,
+        cache_dir=settings.GENOME_KMER_INDEX_CACHE_ROOT,
+    )
 
     logger.info("[Locator] Searching forward strand (%d bp patient seq)...", len(patient_seq))
-    forward_result = _seed_and_extend(patient_seq, chrom_seq)
+    forward_result = _seed_and_extend(patient_seq, chrom_seq, kmer_index)
 
     logger.info("[Locator] Searching reverse-complement strand...")
     reverse_seq = _reverse_complement(patient_seq)
-    reverse_result = _seed_and_extend(reverse_seq, chrom_seq)
+    reverse_result = _seed_and_extend(reverse_seq, chrom_seq, kmer_index)
 
     # نختار الاتجاه صاحب أعلى identity
     best_strand, best_result = "+", forward_result

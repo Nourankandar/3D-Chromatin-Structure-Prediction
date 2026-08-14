@@ -57,7 +57,7 @@ GENOME_REFERENCE_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'genome_ref
 # ─────────────────────────────────────────────────────────────────────────────
 GTF_ANNOTATION_PATH = os.path.join(GENOME_REFERENCE_ROOT, "gencode.v50.basic.annotation.gtf.gz")
 GTF_INDEX_CACHE_PATH = os.path.join(GENOME_REFERENCE_ROOT, "gtf_index_cache.pkl")
-
+GENOME_KMER_INDEX_CACHE_ROOT = os.path.join(BASE_DIR, "genome_cache", "kmer_index")
 # ─────────────────────────────────────────────────────────────────────────────
 # Installed apps
 # ─────────────────────────────────────────────────────────────────────────────
