@@ -111,7 +111,7 @@ class VerifySignupOTPAPIView(APIView):
 
 
 class ResendSignupOTPAPIView(APIView):
-    """POST /api/auth/resend-signup-otp/ — resend verification code."""
+    """POST /api/auth/resend-signup-otp/ - resend verification code."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -122,6 +122,8 @@ class ResendSignupOTPAPIView(APIView):
         if result["status"] == "success":
             return Response(result, status=status.HTTP_200_OK)
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
