@@ -35,9 +35,10 @@ async function doLogin(e){
     USER.email        = usr.email || '';
     USER.is_superuser = !!usr.is_superuser;
     USER.date_joined  = usr.date_joined || new Date().toISOString();
+    USER.profile_image = usr.profile_image || null;
 
     if (btn){ btn.disabled = false; btn.innerHTML = `<span>${t('login_button')}</span>`; }
-    await fetchCellTypes();     // تعبئة أنواع الخلايا الحقيقية لشاشة التحليل
+    await fetchCellTypes();     
     go('overview');
     loadPatients();
   } catch (ex) {
@@ -172,7 +173,6 @@ document.getElementById('signupPassword')?.addEventListener('input', e=>{
   });
 });
 
-/* ══════════════ تسجيل حساب جديد — 3 خطوات (initiate → verify → complete) ══════════════ */
 const SU = {email:'', photo:null};
 
 function signupShowStep(n){
@@ -181,7 +181,7 @@ function signupShowStep(n){
   document.getElementById('signupStep3Form').hidden = n!==3;
 }
 
-// أرقام كود التحقق — نفس سلوك otpBoxes بشاشة استعادة كلمة المرور، بحاوية مستقلة
+
 document.querySelectorAll('#signupOtpBoxes .signup-otp-box').forEach((box,i,all)=>{
   box.addEventListener('input', ()=>{
     box.value = box.value.replace(/[^0-9]/g,'').slice(0,1);
@@ -328,6 +328,7 @@ injectDnaField(document.getElementById('loginDnaField'), 14);
     USER.email        = me.email || '';
     USER.is_superuser = !!me.is_superuser;
     USER.date_joined  = me.date_joined || USER.date_joined;
+    USER.profile_image = me.profile_image || null;
     await fetchCellTypes();
     go('overview');
     loadPatients();

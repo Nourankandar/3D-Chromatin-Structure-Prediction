@@ -165,8 +165,13 @@ function renderProfile(view){
     try{
       const fd = new FormData();
       fd.append('profile_image', file);
-      const res = await api.post('/auth/profile/update-image/', fd);
-      USER.profile_image = res?.profile_image || URL.createObjectURL(file);
+      await api.post('/auth/profile/update-image/', fd);
+      try{
+        const me = await api.get('/auth/MyAccountAPIView/');
+        USER.profile_image = me.profile_image || null;
+      }catch(_){
+        USER.profile_image = URL.createObjectURL(file); // fallback لو تعذّر إعادة الجلب
+      }
       toast(t('pr_photo_updated'));
       renderRoute();
     }catch(ex){
@@ -241,7 +246,7 @@ function openPasswordModal(){
       d.style.background = i<score ? colors[score-1] : 'var(--muted)';
     });
   });
-  // إغلاق بمفتاح Escape
+ 
   const onEsc = e => { if(e.key==='Escape'){ closePasswordModal(); document.removeEventListener('keydown', onEsc); } };
   document.addEventListener('keydown', onEsc);
   setTimeout(()=>{ const f=el.querySelector('#pwOld'); if(f) f.focus(); }, 50);
