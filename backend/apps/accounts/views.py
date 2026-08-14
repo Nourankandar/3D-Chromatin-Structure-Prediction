@@ -1,47 +1,85 @@
-"""
-apps/accounts/views.py
-REST endpoints for authentication: signup, login, logout, "who am I".
-
-Token refresh is handled by SimpleJWT's built-in TokenRefreshView, wired
-directly in urls.py, so it doesn't need a custom view here.
-"""
-
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser # جديد
 
 from .serializers import *
 from .services import AuthService
 
+# --- SIGNUP VIEWS ---
 
-class SignupAPIView(APIView):
+class InitiateSignupAPIView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = SignupSerializer(data=request.data)
+        serializer = InitiateSignupSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            user = AuthService.register_user(
-                username=serializer.validated_data["username"],
-                password=serializer.validated_data["password"],
-                email=serializer.validated_data.get("email", ""),
-                is_staff=True,
-            )
-        except ValueError as exc:
-            return Response({"status": "error", "message": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        result = AuthService.initiate_signup(email=serializer.validated_data["email"])
+        if result["status"] == "success":
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
-        otp_result = AuthService.send_signup_otp(user)
 
-        return Response(
-            {
-                "status": "success",
-                "message": "Account created. Please check your email for the verification code.",
-                "email_status": otp_result["status"],
-            },
-            status=status.HTTP_201_CREATED,
+class VerifySignupOTPAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = VerifySignupOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = AuthService.verify_signup_otp(
+            email=serializer.validated_data["email"],
+            code=serializer.validated_data["code"],
         )
+        if result["status"] == "success":
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CompleteSignupAPIView(APIView):
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser] # ضروري لاستقبال الصور
+
+    def post(self, request):
+        serializer = CompleteSignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = AuthService.complete_signup(
+            email=serializer.validated_data["email"],
+            username=serializer.validated_data["username"],
+            password=serializer.validated_data["password"],
+            profile_image=serializer.validated_data.get("profile_image"), # تمرير الصورة
+            is_staff=True,
+        )
+
+        if result["status"] == "success":
+            return Response(result, status=status.HTTP_201_CREATED)
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+# --- PROFILE VIEWS ---
+
+class UpdateProfileImageAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        serializer = UpdateProfileImageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = AuthService.update_profile_image(
+            user=request.user,
+            new_image=serializer.validated_data["profile_image"]
+        )
+
+        if result["status"] == "success":
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+# --- EXISTING VIEWS ---
+# (باقي الـ Views الخاصة بـ LoginAPIView, LogoutAPIView, MyAccountAPIView, إلخ، تبقى كما هي)
+# ...
 
 
 class VerifySignupOTPAPIView(APIView):
@@ -75,8 +113,6 @@ class ResendSignupOTPAPIView(APIView):
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginAPIView(APIView):
-    """POST /api/auth/login/ — authenticate and receive JWT tokens."""
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -101,13 +137,10 @@ class LoginAPIView(APIView):
             )
         if result["status"] == "forbidden":
             return Response({"status": "error", "message": result["message"]}, status=status.HTTP_403_FORBIDDEN)
-
         return Response({"status": "error", "message": result["message"]}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class LogoutAPIView(APIView):
-    """POST /api/auth/logout/ — blacklist the refresh token."""
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -117,20 +150,12 @@ class LogoutAPIView(APIView):
         try:
             AuthService.logout_user(serializer.validated_data["refresh"])
         except Exception as exc:
-            return Response(
-                {"status": "error", "message": f"Logout failed: {exc}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            return Response({"status": "error", "message": f"Logout failed: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(
-            {"status": "success", "message": "Logged out successfully, token revoked."},
-            status=status.HTTP_200_OK,
-        )
+        return Response({"status": "success", "message": "Logged out successfully, token revoked."}, status=status.HTTP_200_OK)
 
 
 class MyAccountAPIView(APIView):
-    """GET /api/auth/MyAccountAPIView/ — return the currently authenticated user."""
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -138,8 +163,6 @@ class MyAccountAPIView(APIView):
 
 
 class ChangePasswordAPIView(APIView):
-    """POST /api/auth/change-password/ — change password using the old one."""
-
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -155,22 +178,16 @@ class ChangePasswordAPIView(APIView):
         if result["status"] == "success":
             return Response(result, status=status.HTTP_200_OK)
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
-    
-    
-    
-    
+
+
 class ForgotPasswordAPIView(APIView):
-    """POST /api/auth/forgot-password/ — request a password reset code via email."""
-    
     permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = ForgotPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        result = AuthService.send_forgot_password_email(
-            email=serializer.validated_data["email"]
-        )
+        result = AuthService.send_forgot_password_email(email=serializer.validated_data["email"])
 
         if result["status"] == "success":
             return Response(result, status=status.HTTP_200_OK)
@@ -178,8 +195,6 @@ class ForgotPasswordAPIView(APIView):
 
 
 class ResetPasswordAPIView(APIView):
-    """POST /api/auth/reset-password/ — reset password using the emailed code."""
-    
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -195,4 +210,3 @@ class ResetPasswordAPIView(APIView):
         if result["status"] == "success":
             return Response(result, status=status.HTTP_200_OK)
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
-    
