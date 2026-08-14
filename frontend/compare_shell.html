@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChromoGen · المقارنة</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=Cairo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b221e; --scene:#081b18; --fg:#dfeee2; --muted:#7f9c8b;
+    --primary:#8eb69b; --primary-deep:#43705d;
+    --border:rgba(223,238,226,.10);
+    --card:rgba(14,38,33,.72); --card-solid:#0e2621;
+    --font-display:"Space Grotesk","Cairo",sans-serif;
+    --font-sans:"Inter","Cairo",sans-serif;
+    --font-mono:"JetBrains Mono",monospace;
+  }
+  :root[data-theme="light"]{
+    --bg:#f3fcf6; --scene:#0a201d; --fg:#0c1f17; --muted:#4a645a;
+    --primary:#214c3d; --primary-deep:#163529;
+    --border:#cddcd2; --card:#f9fffb; --card-solid:#ffffff;
+  }
+  :root[data-accent="blue"]{
+    --bg:#171b26; --scene:#11141d; --fg:#e7e9ee; --muted:#819ada; --primary:#819ada; --primary-deep:#2c4a96;
+    --border:rgba(63,67,78,.16); --card:rgba(23,27,38,.72); --card-solid:#262c3b;
+  }
+  :root[data-theme="light"][data-accent="blue"]{
+    --bg:#f6f7f8; --scene:#11141d; --fg:#15171e; --muted:#495c8d; --primary:#2b4482; --primary-deep:#1f325f;
+    --border:rgba(21,23,30,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+  :root[data-accent="purple"]{
+    --bg:#1f1a24; --scene:#17131b; --fg:#ebe8ed; --muted:#b18dce; --primary:#b18dce; --primary-deep:#653a88;
+    --border:rgba(71,66,76,.16); --card:rgba(31,26,36,.72); --card-solid:#312938;
+  }
+  :root[data-theme="light"][data-accent="purple"]{
+    --bg:#f7f7f8; --scene:#17131b; --fg:#1a161d; --muted:#6e5582; --primary:#5a3875; --primary-deep:#422955;
+    --border:rgba(26,22,29,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+  :root[data-accent="lilac"]{
+    --bg:#201c21; --scene:#181519; --fg:#ebeaec; --muted:#b79ac1; --primary:#b79ac1; --primary-deep:#6c4a78;
+    --border:rgba(72,68,73,.16); --card:rgba(32,28,33,.72); --card-solid:#322d34;
+  }
+  :root[data-theme="light"][data-accent="lilac"]{
+    --bg:#f7f7f8; --scene:#181519; --fg:#1a181b; --muted:#706176; --primary:#5f4667; --primary-deep:#45334b;
+    --border:rgba(26,24,27,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+  :root[data-accent="rose"]{
+    --bg:#24191b; --scene:#1c1214; --fg:#ede8e9; --muted:#d18996; --primary:#d18996; --primary-deep:#8b3646;
+    --border:rgba(76,65,67,.16); --card:rgba(36,25,27,.72); --card-solid:#39282b;
+  }
+  :root[data-theme="light"][data-accent="rose"]{
+    --bg:#f8f7f7; --scene:#1c1214; --fg:#1d1617; --muted:#85525b; --primary:#793541; --primary-deep:#58272f;
+    --border:rgba(29,22,23,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+  :root[data-accent="wine"]{
+    --bg:#281519; --scene:#1f0f12; --fg:#efe7e8; --muted:#e2788b; --primary:#e2788b; --primary-deep:#9f2239;
+    --border:rgba(80,61,65,.16); --card:rgba(40,21,25,.72); --card-solid:#3e2328;
+  }
+  :root[data-theme="light"][data-accent="wine"]{
+    --bg:#f8f6f7; --scene:#1f0f12; --fg:#1f1416; --muted:#944251; --primary:#8b2335; --primary-deep:#651a27;
+    --border:rgba(31,20,22,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+  :root[data-accent="gold"]{
+    --bg:#282215; --scene:#1f190f; --fg:#efece7; --muted:#e2be78; --primary:#e2be78; --primary-deep:#9f7522;
+    --border:rgba(80,74,61,.16); --card:rgba(40,34,21,.72); --card-solid:#3e3523;
+  }
+  :root[data-theme="light"][data-accent="gold"]{
+    --bg:#f8f8f6; --scene:#1f190f; --fg:#1f1b14; --muted:#947842; --primary:#8b6723; --primary-deep:#654b1a;
+    --border:rgba(31,27,20,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+  :root[data-accent="slate"]{
+    --bg:#1c2021; --scene:#151819; --fg:#eaebec; --muted:#9ab5c1; --primary:#9ab5c1; --primary-deep:#4a6a78;
+    --border:rgba(68,72,73,.16); --card:rgba(28,32,33,.72); --card-solid:#2d3234;
+  }
+  :root[data-theme="light"][data-accent="slate"]{
+    --bg:#f7f7f8; --scene:#151819; --fg:#181a1b; --muted:#616f76; --primary:#465d67; --primary-deep:#33444b;
+    --border:rgba(24,26,27,.12); --card:rgba(255,255,255,.82); --card-solid:#ffffff;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--fg);font-family:var(--font-sans);overflow:hidden;
+    display:flex;flex-direction:column}
+
+  .tabbar{flex:none;display:flex;align-items:center;gap:6px;padding:10px 14px;
+    background:var(--card-solid);border-bottom:1px solid var(--border)}
+  .tabbar .brand{display:flex;align-items:center;gap:8px;font-family:var(--font-display);
+    font-weight:700;font-size:15px;color:var(--fg);margin-inline-end:14px}
+  .tabbar .brand svg{width:20px;height:20px;color:var(--primary)}
+  .tabbtn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 16px;
+    border-radius:10px;border:1px solid transparent;background:transparent;color:var(--muted);
+    font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .tabbtn svg{width:16px;height:16px}
+  .tabbtn:hover{color:var(--fg);background:color-mix(in srgb, var(--fg) 5%, transparent)}
+  .tabbtn.on{color:var(--primary);background:color-mix(in srgb, var(--primary) 14%, transparent);
+    border-color:color-mix(in srgb, var(--primary) 30%, transparent)}
+
+  .panes{flex:1;position:relative;min-height:0}
+  .pane{position:absolute;inset:0;display:none}
+  .pane.on{display:block}
+  .pane iframe{width:100%;height:100%;border:0;display:block}
+
+  .pane-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:10px;color:var(--muted);font-size:13px;background:var(--bg)}
+  .pane-empty svg{width:34px;height:34px;opacity:.4}
+</style>
+</head>
+<body>
+
+<script>
+(function(){ try{
+  var p = new URLSearchParams(location.search);
+  var stored = localStorage.getItem('chromogen-theme');
+  if(stored==='light' || p.get('theme')==='light') document.documentElement.setAttribute('data-theme','light');
+  var storedAccent = p.get('accent') || localStorage.getItem('chromogen-accent');
+  if(storedAccent && storedAccent!=='green') document.documentElement.setAttribute('data-accent', storedAccent);
+  window.addEventListener('storage', function(e){
+    if(e.key==='chromogen-theme') document.documentElement.setAttribute('data-theme', e.newValue==='light'?'light':'dark');
+    if(e.key==='chromogen-accent'){
+      if(e.newValue && e.newValue!=='green') document.documentElement.setAttribute('data-accent', e.newValue);
+      else document.documentElement.removeAttribute('data-accent');
+    }
+  });
+}catch(e){} })();
+</script>
+
+<div class="tabbar">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3c0 6 12 6 12 12M6 21c0-6 12-6 12-12"/><path d="M7 6h10M7 18h10M8.5 9.5h7M8.5 14.5h7" stroke-width="1.1"/></svg>
+    ChromoGen
+  </div>
+  <button class="tabbtn on" id="tabChromatin">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r="2"/><path d="M8 7l3 4M16 7l-3 4M8 17l3-4M16 17l-3-4"/></svg>
+    <span>مقارنة الكروماتين</span>
+  </button>
+  <button class="tabbtn" id="tabProtein">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><circle cx="12" cy="11" r="2.3"/><path d="M12 2v6.7M4 6.5l7 4M20 6.5l-7 4"/></svg>
+    <span>مقارنة البروتين</span>
+  </button>
+</div>
+
+<div class="panes">
+  <div class="pane on" id="paneChromatin">
+    <iframe id="frameChromatin" title="مقارنة الكروماتين"></iframe>
+  </div>
+  <div class="pane" id="paneProtein">
+    <div class="pane-empty" id="proteinEmpty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><circle cx="12" cy="11" r="2.3"/></svg>
+      <span>اختار جينًا من مقارنة الكروماتين لعرض مقارنة البروتين خاصته</span>
+    </div>
+    <iframe id="frameProtein" title="مقارنة البروتين" style="display:none"></iframe>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const outputId = params.get('output_id') || params.get('output') || '';
+const inputId  = params.get('input_id') || '';
+const token    = params.get('token') || localStorage.getItem('chromogen-token') || '';
+
+function buildQS(obj){
+  const qs = new URLSearchParams();
+  Object.entries(obj).forEach(([k,v])=>{ if(v) qs.set(k,v); });
+  return qs.toString();
+}
+
+
+document.getElementById('frameChromatin').src =
+  'hic_compare.html?' + buildQS({output_id: outputId, input_id: inputId, token});
+
+let proteinLoadedGene = null;
+
+function showTab(tab){
+  const isChrom = tab==='chromatin';
+  document.getElementById('tabChromatin').classList.toggle('on', isChrom);
+  document.getElementById('tabProtein').classList.toggle('on', !isChrom);
+  document.getElementById('paneChromatin').classList.toggle('on', isChrom);
+  document.getElementById('paneProtein').classList.toggle('on', !isChrom);
+}
+
+function openProteinTab(geneName){
+  const frame = document.getElementById('frameProtein');
+  const empty = document.getElementById('proteinEmpty');
+  if(geneName && geneName !== proteinLoadedGene){
+    proteinLoadedGene = geneName;
+    frame.src = 'protein_compare.html?' + buildQS({output_id: outputId, gene: geneName, protein: geneName, token});
+  }
+  frame.style.display = proteinLoadedGene ? 'block' : 'none';
+  empty.style.display  = proteinLoadedGene ? 'none' : 'flex';
+  showTab('protein');
+}
+
+document.getElementById('tabChromatin').addEventListener('click', ()=> showTab('chromatin'));
+document.getElementById('tabProtein').addEventListener('click', ()=> openProteinTab(null));
+
+
+window.addEventListener('message', (ev)=>{
+  const d = ev.data;
+  if(!d || d.type !== 'chromo-switch-tab') return;
+  if(d.tab === 'protein') openProteinTab(d.gene || null);
+  else showTab('chromatin');
+});
+</script>
+</body>
+</html>

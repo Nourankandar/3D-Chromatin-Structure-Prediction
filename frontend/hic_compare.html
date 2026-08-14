@@ -167,7 +167,7 @@
   }
   .stage.single .pane.control{display:none}
 
-  /* شريط أدوات الكاميرا العائم */
+ 
   .icon-rail{
     flex:none; width:56px; display:flex; flex-direction:column; align-items:center; gap:10px;
     padding:16px 0; background:var(--card-solid); border-inline-end:1px solid var(--border);
@@ -240,14 +240,17 @@
   .gb-rule .lab.s{transform:none; inset-inline-start:3px}
   .gb-rule .lab.e{transform:none; inset-inline-end:3px}
 
-  /*  "مناطق" مرقّمة */
-  .gb-tad{height:16px; display:flex}
-  .gb-tad .seg{position:relative; height:100%; border-inline-end:1px solid var(--card-solid);
+
+  .gb-tad{height:16px; position:relative}
+  .gb-tad .seg{position:absolute; top:0; bottom:0; border-inline-end:1px solid var(--card-solid);
     display:flex; align-items:center; justify-content:center; overflow:hidden}
   .gb-tad .seg span{font-family:var(--font-mono); font-size:.5rem; color:var(--card-solid);
     mix-blend-mode:luminosity; font-weight:700}
   .gb-tad .zoom-box{position:absolute; top:0; bottom:0; border-inline:1.5px solid var(--primary);
     background:color-mix(in srgb, var(--primary) 16%, transparent); pointer-events:none}
+
+  /* طبقة الانفتاح/الانغلاق (نيوكليوزوم) */
+  .gb-nuc{height:14px}
 
   /* مسارات البروتينات  */
   .gb-feat{height:34px; background:
@@ -354,7 +357,7 @@
   <div id="helixCard">
     <div class="helix-head">
       <div>
-        <p style="font-weight:600; font-size:15px; margin:0">🧬 الحلزون الجزيئي الحقيقي</p>
+        <p style="font-weight:600; font-size:15px; margin:0"> الحلزون الجزيئي الحقيقي</p>
         <p class="xs muted" id="helixSubtitle" style="margin:2px 0 0"></p>
       </div>
       <span onclick="closeHelixModal()" style="cursor:pointer; color:var(--muted); font-size:16px">✕</span>
@@ -429,7 +432,7 @@ window.addEventListener('storage', function(e){
 });
 </script>
 
-<!--  الشريط العلوي  -->
+
 <div class="topbar">
   <div class="brand">
     <div class="logo">
@@ -482,9 +485,6 @@ window.addEventListener('storage', function(e){
     <button id="btnProtPanel" onclick="toggleProteinPanel()" title="البروتينات">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><circle cx="12" cy="11" r="2.3"/><path d="M12 2v6.7M4 6.5l7 4M20 6.5l-7 4"/></svg>
     </button>
-    <button onclick="exportCSV()" title="تصدير CSV">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>
-    </button>
     <div class="sep"></div>
     <button id="floatRot" class="on" onclick="ctlToggle('rot','floatRot')" title="تدوير تلقائي">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5.3L21 9"/><path d="M21 4v5h-5"/><path d="M20 12a8 8 0 0 1-14 5.3L3 15"/><path d="M3 20v-5h5"/></svg>
@@ -494,6 +494,9 @@ window.addEventListener('storage', function(e){
     </button>
     <button id="floatSync" class="on" onclick="toggleSync()" title="ربط حركة الكاميرا بين الشاشتين">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15a3 3 0 0 0 4.24 0l3-3a3 3 0 0 0-4.24-4.24l-.53.53"/><path d="M15 9a3 3 0 0 0-4.24 0l-3 3a3 3 0 0 0 4.24 4.24l.53-.53"/></svg>
+    </button>
+    <button id="floatNuc" onclick="toggleNucColor()" title="لوّن الشكل حسب مناطق الفتح/الانغلاق (نيوكليوزوم)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2" opacity=".4"/><rect x="3" y="14" width="7" height="7" rx="1.2" opacity=".4"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg>
     </button>
   </aside>
   <div class="work">
@@ -535,6 +538,12 @@ window.addEventListener('storage', function(e){
 
         <div class="gb-lbl"><b>TADs</b></div>
         <div class="gb-row" id="gbTadRow"><div class="gb-tad" id="tadStrip"></div></div>
+
+        <div class="gb-lbl"><b>فتح</b><span>P</span></div>
+        <div class="gb-row gb-nuc" id="nucPatientRow"></div>
+
+        <div class="gb-lbl"><b>فتح</b><span>C</span></div>
+        <div class="gb-row gb-nuc" id="nucControlRow"></div>
 
         <div class="gb-lbl"><b>مريض</b><span>P</span></div>
         <div class="gb-row gb-feat" id="lanePatient"></div>
@@ -580,6 +589,12 @@ function ctlToggle(key, btnId){
   ctlState[key] = !ctlState[key];
   document.getElementById(btnId)?.classList.toggle('on', ctlState[key]);
   ctl({[key]: ctlState[key]});
+}
+let nucColorOn=false;
+function toggleNucColor(){
+  nucColorOn = !nucColorOn;
+  document.getElementById('floatNuc')?.classList.toggle('on', nucColorOn);
+  ctl({clr: nucColorOn ? 'nucleosome' : 'emerald'});
 }
 
 let loadedData=null, currentMode='split', camSyncOn=true;
@@ -634,7 +649,7 @@ function geneRows(){
   }));
 }
 
-/* الإطارات والتزامن */
+
 function frames(){
   return [document.getElementById('framePatient'),
           document.getElementById('frameControl')].filter(Boolean);
@@ -662,7 +677,7 @@ window.addEventListener('message', ev=>{
   fs.forEach(f=>{ if(f!==from) tellFrame(f,d); });
 });
 
-/* لستة البروتينات — إظهار/إخفاء كل بروتين */
+
 function pushVisibility(){
   frames().forEach(f=> tellFrame(f, {type:'chromo-protein-visibility', hidden:[...hiddenProts]}));
 }
@@ -713,7 +728,7 @@ function renderProteinList(){
       `<span class="pdot" style="background:${STATUS[r.st].color}"></span>`+
       `<span class="pname" title="${r.name}">${r.name}</span>`+
       `<span class="ptag">${STATUS[r.st].label}</span>`+
-      (selectedProt===r.key ? `<button class="helix-btn" title="عرض الحلزون الجزيئي الحقيقي" onclick="event.stopPropagation(); openHelixModal('${r.key}')">🧬</button>` : '');
+      (selectedProt===r.key ? `<button class="helix-btn" title="عرض الحلزون الجزيئي الحقيقي" onclick="event.stopPropagation(); openHelixModal('${r.key}')"></button>` : '');
     el.querySelector('input').onclick=e=>{ e.stopPropagation(); toggleProtVisible(r.key, e.target.checked); };
     el.onclick=()=> openProteinCompare(r.name);
     box.appendChild(el);
@@ -721,6 +736,9 @@ function renderProteinList(){
 }
 
 function openProteinCompare(geneName){
+  if(window.parent && window.parent !== window){
+    try{ window.parent.postMessage({type:'chromo-switch-tab', tab:'protein', gene:geneName}, '*'); return; }catch(e){}
+  }
   const params = new URLSearchParams(location.search);
   const outputId = params.get('output_id') || params.get('output') || '';
   const token = params.get('token') || localStorage.getItem('chromogen-token') || '';
@@ -728,6 +746,30 @@ function openProteinCompare(geneName){
     + `&gene=${encodeURIComponent(geneName)}&protein=${encodeURIComponent(geneName)}`
     + (token ? `&token=${encodeURIComponent(token)}` : '');
   window.open(url, '_blank');
+}
+
+
+function renderNucRow(elId, track, regionStart, regionEnd){
+  const el=document.getElementById(elId);
+  if(!el) return;
+  el.querySelectorAll('.gb-grid, .zoom-box').forEach(n=>n.remove());
+  const span = regionEnd-regionStart;
+  if(!track || !track.length || !(span>0)){
+    el.style.background='transparent';
+    el.title='لا توجد بيانات نيوكليوزوم لهذه الجهة';
+    return;
+  }
+  const stops=[];
+  track.forEach(u=>{
+    const s=Math.max(0, Math.min(100, ((u.genomic_start-regionStart)/span)*100));
+    const e=Math.max(0, Math.min(100, ((u.genomic_end-regionStart)/span)*100));
+    if(e<=s) return;
+    const color = u.state==='open' ? '#f2b84b' : '#3f5750';
+    stops.push(`${color} ${s.toFixed(3)}% ${e.toFixed(3)}%`);
+  });
+  el.style.background = stops.length ? `linear-gradient(90deg, ${stops.join(', ')})` : 'transparent';
+  const nOpen=track.filter(u=>u.state==='open').length;
+  el.title = `${nOpen}/${track.length} وحدة مفتوحة (${Math.round(nOpen/track.length*100)}%) — كل وحدة ~200bp`;
 }
 
 /*  المسار الجينومي */
@@ -772,15 +814,26 @@ function renderTrack(){
 
   const strip=document.getElementById('tadStrip');
   strip.innerHTML='';
-  const nT=P.n_tads||1, colors=P.tad_colors||['#8eb69b'];
-  const counts=new Array(nT).fill(0);
-  (P.coords_raw||[]).forEach(r=> counts[r.tad_id||0]++);
-  const total=counts.reduce((a,b)=>a+b,0)||1;
-  for(let i=0;i<nT;i++){
-    const f=(counts[i]||1)/total;
+  const colors=P.tad_colors||['#8eb69b'];
+  const tadBp = {};
+  (P.coords_raw||[]).forEach(r=>{
+    const m = /^(\d+)kb-(\d+)kb$/.exec(r.region||'');
+    if(!m) return;
+    const s = Number(m[1])*1000, e = Number(m[2])*1000, tid = r.tad_id||0;
+    if(!tadBp[tid]) tadBp[tid] = {start:s, end:e, count:1};
+    else { tadBp[tid].start = Math.min(tadBp[tid].start, s); tadBp[tid].end = Math.max(tadBp[tid].end, e); tadBp[tid].count++; }
+  });
+  const fullSpan = P.end-P.start;
+  Object.keys(tadBp).map(Number).sort((a,b)=>tadBp[a].start-tadBp[b].start).forEach(tid=>{
+    const b = tadBp[tid];
+    const s = Math.max(0, Math.min(100, ((b.start-P.start)/fullSpan)*100));
+    const e = Math.max(0, Math.min(100, ((b.end-P.start)/fullSpan)*100));
+    const w = Math.max(e-s, 0.3);
     strip.insertAdjacentHTML('beforeend',
-      `<div class="seg" title="TAD ${i+1} — ${counts[i]||0} bin" style="flex:${f}; background:${colors[i]||'#8eb69b'}"><span>${i+1}</span></div>`);
-  }
+      `<div class="seg" title="TAD ${tid+1} — ${b.count} bin — ${Math.round(b.start).toLocaleString()}-${Math.round(b.end).toLocaleString()}bp"
+        style="inset-inline-start:${s.toFixed(3)}%; width:${w.toFixed(3)}%; background:${colors[tid]||'#8eb69b'}">
+        <span>${tid+1}</span></div>`);
+  });
   const tadRow=document.getElementById('gbTadRow');
   tadRow.querySelector('.zoom-box')?.remove();
   if(zoomed){
@@ -788,6 +841,10 @@ function renderTrack(){
     tadRow.insertAdjacentHTML('beforeend',
       `<div class="zoom-box" style="inset-inline-start:${l.toFixed(2)}%; width:${Math.max(w,0.6).toFixed(2)}%"></div>`);
   }
+
+  /*  طبقة الانفتاح/الانغلاق (نيوكليوزوم) — لكل جهة على حدة */
+  renderNucRow('nucPatientRow', P.nucleosome_track, P.start, P.end);
+  renderNucRow('nucControlRow', loadedData?.control?.nucleosome_track, P.start, P.end);
 
   /*  الفلاتر  */
   const fl=document.getElementById('trackFilters');
@@ -817,13 +874,17 @@ function renderTrack(){
     });
   });
 
-  document.getElementById('trackLegend').innerHTML =
+  const nucLegend = (P.nucleosome_track?.length || loadedData?.control?.nucleosome_track?.length)
+    ? `<span><span class="lg-sw" style="background:#f2b84b"></span>مفتوح</span>`+
+      `<span><span class="lg-sw" style="background:#3f5750"></span>ملفوف</span>`
+    : '';
+  document.getElementById('trackLegend').innerHTML = nucLegend +
     Object.keys(STATUS).filter(k=>present[k]).map(k=>
       `<span><span class="lg-sw" style="background:${STATUS[k].color}"></span>${STATUS[k].label}</span>`).join('');
 }
 
 function setFilter(f){
-  protFilter=f; renderTrack(); renderTable(); renderProteinList();
+  protFilter=f; renderTrack(); renderProteinList();
   frames().forEach(fr=> tellFrame(fr,{type:'chromo-protein-filter', filter:f}));
 }
 
@@ -872,7 +933,7 @@ function highlightGeneOnScenes(row){
 
 function selectProt(key, targetSide){
   selectedProt = (selectedProt===key) ? null : key;
-  renderTrack(); renderTable(); renderProteinList();
+  renderTrack(); renderProteinList();
   const msg = {type:'chromo-protein-focus', protein:selectedProt};
   if(targetSide && selectedProt){
     const f = document.getElementById(targetSide==='patient' ? 'framePatient' : 'frameControl');
@@ -880,68 +941,6 @@ function selectProt(key, targetSide){
   } else {
     frames().forEach(fr=> tellFrame(fr, msg));
   }
-}
-
-/*  الجدول */
-const COLS=[
-  {k:'name',   t:'البروتين'},
-  {k:'status', t:'الحالة'},
-  {k:'pScore', t:'مريض'},
-  {k:'cScore', t:'سليم'},
-  {k:'delta',  t:'الفرق'},
-  {k:'pos',    t:'الموقع'},
-  {k:'tad',    t:'TAD'}
-];
-
-function renderTable(){
-  const head=document.getElementById('ptHead'), body=document.getElementById('ptBody');
-  if(!head||!body) return;
-  head.innerHTML='<tr>'+COLS.map(c=>
-    `<th onclick="sortBy('${c.k}')">${c.t}${sortKey===c.k?(sortDir>0?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
-
-  const q=(document.getElementById('protSearch')?.value||'').trim().toLowerCase();
-  let rows=geneRows()
-    .filter(r=> protFilter==='all' || r.st===protFilter)
-    .filter(r=> !q || r.name.toLowerCase().includes(q) || r.key.toLowerCase().includes(q));
-
-  const val=(r,k)=>({ name:r.name, status:STATUS[r.st].rank, pScore:r.pScore??-1,
-                      cScore:r.cScore??-1, delta:r.delta??0, pos:r.anyAbs??-1, tad:r.tad??-1 }[k]);
-  rows.sort((a,b)=>{
-    const x=val(a,sortKey), y=val(b,sortKey);
-    if(typeof x==='string') return x.localeCompare(y)*sortDir;
-    return (x-y)*sortDir;
-  });
-
-  document.getElementById('tableCount').textContent=`${rows.length} بروتين`;
-  body.innerHTML = rows.map(r=>{
-    const s=STATUS[r.st];
-    return `<tr class="${selectedProt===r.key?'on':''}" onclick="selectProt('${r.key}')">
-      <td class="mono">${r.name}</td>
-      <td><span class="st-dot" style="background:${s.color}"></span>${s.label}</td>
-      <td class="mono">${r.pScore==null?'—':r.pScore.toFixed(2)}</td>
-      <td class="mono">${r.cScore==null?'—':r.cScore.toFixed(2)}</td>
-      <td class="mono" style="color:${r.delta==null?'var(--muted)':r.delta<0?'#e0b24d':'#6fd3c0'}">${
-        r.delta==null?'—':(r.delta>0?'+':'')+r.delta.toFixed(2)}</td>
-      <td class="mono">${r.anyAbs==null?'—':Math.round(r.anyAbs).toLocaleString()}</td>
-      <td class="mono">${r.tad==null?'—':r.tad+1}</td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="7" style="padding:16px; text-align:center; color:var(--muted)">لا نتائج</td></tr>`;
-}
-function sortBy(k){ if(sortKey===k) sortDir*=-1; else { sortKey=k; sortDir=1; } renderTable(); }
-
-function exportCSV(){
-  const rows=geneRows().filter(r=> protFilter==='all' || r.st===protFilter);
-  const head=['protein','status','patient_score','control_score','delta','position_bp','tad'];
-  const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;
-  const csv=[head.join(',')].concat(rows.map(r=>[
-    r.name, STATUS[r.st].label, r.pScore??'', r.cScore??'', r.delta??'',
-    r.anyAbs==null?'':Math.round(r.anyAbs), r.tad==null?'':r.tad+1
-  ].map(esc).join(','))).join('\n');
-  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`binding_proteins_${loadedData?.patient?.chrom||'region'}.csv`;
-  a.click(); URL.revokeObjectURL(a.href);
 }
 
 /*  واجهة */
@@ -1012,6 +1011,7 @@ function reloadFrames(mode){
     else frame.onload=()=>{ frame.dataset.ready='1'; post(); };
     setTimeout(post, 300);
     setTimeout(pushSyncState, 350);
+    setTimeout(()=> tellFrame(frame, {type:'chromo-ctl', ctl:{clr: nucColorOn?'nucleosome':'emerald'}}), 500);
   };
 
   if(mode==='both'){
@@ -1024,7 +1024,7 @@ function reloadFrames(mode){
 
 
 function afterData(){
-  renderProteinList(); renderTable();
+  renderProteinList();
   if(!document.getElementById('track').classList.contains('hidden')) renderTrack();
 }
 
@@ -1061,6 +1061,9 @@ async function bootFromAPI(){
     afterData();
     reloadFrames('split');
     setStatus('output #'+outputId, true);
+
+    nucColorOn = true;
+    document.getElementById('floatNuc')?.classList.add('on');
 
     loadGenes(outputId, token).then(()=>{ renderProteinList(); renderTrack(); });
   }catch(err){ console.error('[compare] API load failed:', err); setStatus('تعذّر الجلب — استورد ملف', false); }
@@ -1123,7 +1126,6 @@ function buildHelixSVG(seq, diffMask, width=220, height=380){
   rungs.sort((a,b)=>a.depth-b.depth);
 
   let svg = `<svg viewBox="0 0 ${width} ${height}" width="100%" style="display:block">`;
-  // العمود الفقري (backbone) — خطّان متصلان
   const path1 = pts1.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   const path2 = pts2.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
   svg += `<polyline points="${path1}" fill="none" stroke="var(--muted)" stroke-width="2.5" opacity=".55"/>`;

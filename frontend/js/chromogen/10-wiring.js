@@ -172,12 +172,117 @@ document.getElementById('signupPassword')?.addEventListener('input', e=>{
   });
 });
 
-async function doSignup(e){
+/* ══════════════ تسجيل حساب جديد — 3 خطوات (initiate → verify → complete) ══════════════ */
+const SU = {email:'', photo:null};
+
+function signupShowStep(n){
+  document.getElementById('signupStep1Form').hidden = n!==1;
+  document.getElementById('signupStep2Form').hidden = n!==2;
+  document.getElementById('signupStep3Form').hidden = n!==3;
+}
+
+// أرقام كود التحقق — نفس سلوك otpBoxes بشاشة استعادة كلمة المرور، بحاوية مستقلة
+document.querySelectorAll('#signupOtpBoxes .signup-otp-box').forEach((box,i,all)=>{
+  box.addEventListener('input', ()=>{
+    box.value = box.value.replace(/[^0-9]/g,'').slice(0,1);
+    if(box.value && all[i+1]) all[i+1].focus();
+  });
+  box.addEventListener('keydown', e=>{
+    if(e.key==='Backspace' && !box.value && all[i-1]) all[i-1].focus();
+  });
+});
+function signupOtpValue(){
+  return [...document.querySelectorAll('#signupOtpBoxes .signup-otp-box')].map(b=>b.value).join('');
+}
+function signupOtpClear(){
+  document.querySelectorAll('#signupOtpBoxes .signup-otp-box').forEach(b=> b.value='');
+}
+
+/* خطوة 1: إرسال الكود للإيميل */
+async function doSignupInitiate(e){
   if(e) e.preventDefault();
-  const err = document.getElementById('signupError'), errText = document.getElementById('signupErrorText');
+  const err = document.getElementById('signupStep1Error'), errText = document.getElementById('signupStep1ErrorText');
+  const btn = document.getElementById('signupStep1Btn');
+  const email = (document.getElementById('signupInitEmail').value||'').trim();
+  err.hidden = true;
+
+  const emailRule = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!emailRule.test(email)){ err.hidden=false; errText.textContent = t('signup_email_required'); return; }
+
+  btn.disabled = true; btn.innerHTML = `<span class="spin"></span><span>${t('loading')}</span>`;
+  try{
+    await api.post('/auth/signup/initiate/', { email });
+    SU.email = email;
+    document.getElementById('signupStep2Email').textContent = email;
+    signupOtpClear();
+    signupShowStep(2);
+  }catch(ex){
+    err.hidden = false; errText.textContent = apiErrorText(ex, t('signup_error'));
+  }finally{
+    btn.disabled = false; btn.innerHTML = `<span>${t('signup_step1_button')}</span>`;
+  }
+}
+document.getElementById('signupStep1Form')?.addEventListener('submit', doSignupInitiate);
+
+/* خطوة 2: التحقق من الكود */
+async function doSignupVerify(e){
+  if(e) e.preventDefault();
+  const err = document.getElementById('signupStep2Error'), errText = document.getElementById('signupStep2ErrorText');
+  const btn = document.getElementById('signupStep2Btn');
+  const code = signupOtpValue();
+  err.hidden = true;
+
+  if(code.length !== 6){ err.hidden=false; errText.textContent = t('signup_code_error'); return; }
+
+  btn.disabled = true; btn.innerHTML = `<span class="spin"></span><span>${t('loading')}</span>`;
+  try{
+    await api.post('/auth/signup/verify/', { email: SU.email, code });
+    signupShowStep(3);
+  }catch(ex){
+    err.hidden = false; errText.textContent = apiErrorText(ex, t('signup_error'));
+  }finally{
+    btn.disabled = false; btn.innerHTML = `<span>${t('signup_step2_button')}</span>`;
+  }
+}
+document.getElementById('signupStep2Form')?.addEventListener('submit', doSignupVerify);
+
+document.getElementById('signupBackTo1')?.addEventListener('click', e=>{ e.preventDefault(); signupShowStep(1); });
+
+document.getElementById('signupResendBtn')?.addEventListener('click', async e=>{
+  e.preventDefault();
+  const link = e.currentTarget;
+  const original = link.textContent;
+  try{
+    await api.post('/auth/signup/initiate/', { email: SU.email });
+    link.textContent = t('signup_resend_sent');
+    setTimeout(()=>{ link.textContent = original; }, 2500);
+  }catch(ex){
+    const err = document.getElementById('signupStep2Error'), errText = document.getElementById('signupStep2ErrorText');
+    err.hidden = false; errText.textContent = apiErrorText(ex, t('signup_error'));
+  }
+});
+
+/* رفع/معاينة الصورة الشخصية (اختياري) */
+document.getElementById('signupPhotoBtn')?.addEventListener('click', ()=> document.getElementById('signupPhotoInput').click());
+document.getElementById('signupPhotoInput')?.addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  SU.photo = file;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    const box = document.getElementById('signupPhotoPreview');
+    box.style.backgroundImage = `url(${ev.target.result})`;
+    box.querySelector('[data-icon]')?.remove();
+  };
+  reader.readAsDataURL(file);
+});
+
+/* خطوة 3: بيانات الحساب النهائية + الصورة */
+async function doSignupComplete(e){
+  if(e) e.preventDefault();
+  const err = document.getElementById('signupStep3Error'), errText = document.getElementById('signupStep3ErrorText');
   const btn = document.getElementById('signupBtn');
   const username = (document.getElementById('signupUsername').value||'').trim();
-  const email = (document.getElementById('signupEmail').value||'').trim();
   const pw = document.getElementById('signupPassword').value;
   const pw2 = document.getElementById('signupConfirm').value;
   err.hidden = true;
@@ -189,18 +294,26 @@ async function doSignup(e){
 
   btn.disabled = true; btn.innerHTML = `<span class="spin"></span><span>${t('loading')}</span>`;
   try{
-    await api.post('/auth/signup/', { username, password: pw, email });
+    const fd = new FormData();
+    fd.append('email', SU.email);
+    fd.append('username', username);
+    fd.append('password', pw);
+    if(SU.photo) fd.append('profile_image', SU.photo);
+
+    await api.post('/auth/signup/complete/', fd);
+
     go('login');
+    signupShowStep(1);
     const le = document.getElementById('loginError');
     if(le){ le.hidden=false; le.classList.remove('error'); le.classList.add('info'); le.querySelector('span:last-child').textContent = t('signup_success'); }
     document.getElementById('username').value = username;
   }catch(ex){
     err.hidden = false; errText.textContent = apiErrorText(ex, t('signup_error'));
   }finally{
-    btn.disabled = false; btn.innerHTML = `<span>${t('signup_button')}</span>`;
+    btn.disabled = false; btn.innerHTML = `<span>${t('signup_step3_button')}</span>`;
   }
 }
-document.getElementById('signupForm')?.addEventListener('submit', doSignup);
+document.getElementById('signupStep3Form')?.addEventListener('submit', doSignupComplete);
 
 applyTheme(); applyLocale(); applyAccent();
 

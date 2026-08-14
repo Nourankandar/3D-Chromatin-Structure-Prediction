@@ -285,12 +285,10 @@
 
 <div class="legend">
   <span class="lbl">لون:</span>
-  <div class="clr on" onclick="setClr('emerald',this)" title="زمردي" style="background:linear-gradient(135deg,#2f6b57,#8eb69b,#daf1de)"></div>
-  <div class="clr" onclick="setClr('plasma',this)" title="بلازما" style="background:conic-gradient(#f97316,#818cf8,#f97316)"></div>
-  <div class="clr" onclick="setClr('cool',this)" title="بارد" style="background:conic-gradient(#06b6d4,#10b981,#06b6d4)"></div>
-  <div class="clr" onclick="setClr('health',this)" title="صحة/مرض" style="background:conic-gradient(#22c55e,#ef4444,#22c55e)"></div>
+  <div class="clr on" onclick="setClr('emerald',this)" title="زمردي (افتراضي)" style="background:linear-gradient(135deg,#2f6b57,#8eb69b,#daf1de)"></div>
   <div class="clr" onclick="setClr('density',this)" title="كثافة" style="background:linear-gradient(135deg,#8eb69b,#daf1de)"></div>
   <div class="clr" onclick="setClr('tad',this)" title="TAD" style="background:conic-gradient(#8eb69b,#818cf8,#e0b24d,#8eb69b)"></div>
+  <div class="clr" onclick="setClr('nucleosome',this)" title="فتح/غلق الكروماتين" style="background:linear-gradient(135deg,#f2b84b,#3f5750)"></div>
 </div>
 
 <div class="hint" id="scaleBadge" style="inset-inline-end:auto; inset-inline-start:12px; bottom:58px">×6 — مكبّر، ليس بالمقياس</div>
@@ -327,6 +325,10 @@
   <div class="sec">
     <h4>مناطق TAD</h4>
     <div id="tad-list"></div>
+  </div>
+  <div class="sec" id="nuc-sec" style="display:none">
+    <h4>الانفتاح/الانغلاق (نيوكليوزوم)</h4>
+    <div id="nuc-summary"></div>
   </div>
   <div class="sec">
     <h4>النقطة المحددة</h4>

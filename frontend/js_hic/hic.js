@@ -282,6 +282,22 @@ let globalData=null;
 let raycaster,mouse;
 let isoScene,isoCamera,isoRenderer,isoRunning=false;
 
+// ══ طبقة النيوكليوزوم (فتح/غلق الكروماتين) ══
+// nucleosome_track: [{unit_index, genomic_start, genomic_end, state:'open'|'wrapped', dnase_signal, x,y,z}]
+// t هو نفس معامل المنحنى (0→1) المستخدم بألوان الأنبوب، فمنحوّله لموقع جينومي
+// ومنلاقي الوحدة يلي بتغطيه (بحث خطي — العدد صغير، عادة أقل من ~500 وحدة).
+function nucStateAt(t){
+  const track = globalData?.nucleosome_track;
+  const start = globalData?.start, end = globalData?.end;
+  if(!track || !track.length || !isFinite(start) || !isFinite(end) || end<=start) return null;
+  const bp = start + t*(end-start);
+  for(let i=0;i<track.length;i++){
+    const u=track[i];
+    if(bp>=u.genomic_start && bp<u.genomic_end) return u.state;
+  }
+  return null;
+}
+
 function sceneColor(){
   const c = getComputedStyle(document.documentElement).getPropertyValue('--scene').trim();
   return new THREE.Color(c || '#08201c');
@@ -367,6 +383,7 @@ function applyData(d){
   if(d.collapse_ratio!=null) set('p-collapse', Number(d.collapse_ratio).toFixed(2));
 
   buildTADList(d);
+  buildNucleosomeSummary(d);
   buildScene();
   
   if(controlData) buildControlOverlay();
@@ -1242,6 +1259,24 @@ function buildTADList(d){
   }
 }
 
+function buildNucleosomeSummary(d){
+  const sec=document.getElementById('nuc-sec');
+  const box=document.getElementById('nuc-summary');
+  if(!sec || !box) return;
+  const track=d.nucleosome_track;
+  if(!track || !track.length){ sec.style.display='none'; return; }
+  sec.style.display='';
+  const nOpen=track.filter(u=>u.state==='open').length;
+  const nWrapped=track.length-nOpen;
+  const pctOpen=Math.round(nOpen/track.length*100);
+  box.innerHTML=
+    `<div class="row"><span><span class="tad-sw" style="background:#f2b84b;display:inline-block"></span> مفتوح</span>`+
+      `<span class="val hi">${nOpen} (${pctOpen}%)</span></div>`+
+    `<div class="row"><span><span class="tad-sw" style="background:#3f5750;display:inline-block"></span> ملفوف</span>`+
+      `<span class="val">${nWrapped} (${100-pctOpen}%)</span></div>`+
+    `<div class="row" style="opacity:.7; font-size:.62rem">وحدة كل ~200bp (تقريب نيوكليوزوم)</div>`;
+}
+
 function buildRibbonGeometry(curve, segments, width, hlRange, hlMult){
   const frames = curve.computeFrenetFrames(segments, false);
   const pts = curve.getPoints(Math.min(segments, 200));
@@ -1420,14 +1455,6 @@ function getClr(t,density,tadId,deviation){
       return t<.5 ? new THREE.Color().lerpColors(a,b,t*2)
                   : new THREE.Color().lerpColors(b,c,(t-.5)*2);
     }
-    case 'plasma':
-      return new THREE.Color(.1+t*.9,Math.sin(t*Math.PI)*.55,Math.max(0,1-t*1.1));
-    case 'cool':
-      return new THREE.Color().setHSL(.55+t*.25,.9,.4+t*.2);
-    case 'health':{
-      const a=new THREE.Color(0x22c55e),b=new THREE.Color(0xeab308),c2=new THREE.Color(0xef4444);
-      return t<.5?new THREE.Color().lerpColors(a,b,t*2):new THREE.Color().lerpColors(b,c2,(t-.5)*2);
-    }
     case 'density':
       return new THREE.Color().setHSL(.13,.6+density*.4, .2+density*.6);
     case 'tad':{
@@ -1435,9 +1462,16 @@ function getClr(t,density,tadId,deviation){
       const hex=pal[tadId%pal.length]||'#c9a84c';
       return new THREE.Color(hex);
     }
+    case 'nucleosome':{
+      const state=nucStateAt(t);
+      if(state==='open')    return new THREE.Color(0xf2b84b);  // مفتوح — DNase قادر يوصل
+      if(state==='wrapped') return new THREE.Color(0x3f5750);  // ملفوف حول الهيستون
+      return new THREE.Color(0x6b7d76);                        // لا توجد بيانات لهالمقطع
+    }
     default: return new THREE.Color(0xc9a84c);
   }
 }
+
 
 function hexToRgb(hex){
   const r=parseInt(hex.slice(1,3),16)/255;
@@ -1613,7 +1647,7 @@ function switchMode(m){
 function setClr(m,btn){
   clrMode=m;
   document.querySelectorAll('.clr').forEach(b=>b.style.borderColor='transparent');
-  btn.style.borderColor='#fff';
+  if(btn) btn.style.borderColor='#fff';
   buildScene();
 }
 
@@ -1780,6 +1814,7 @@ window.addEventListener('message', (ev)=>{
     if(c.lod!=null)         lodEnabled=!!c.lod;
     if(c.repr)              setReprMode(c.repr);
     if(c.magnify!=null)     setProteinMagnify(c.magnify);
+    if(c.clr)                setClr(c.clr);
     return;
   }
   if(d.type==='chromo-protein-visibility'){ setProteinVisibility(d.hidden); return; }

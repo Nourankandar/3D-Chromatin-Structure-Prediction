@@ -38,6 +38,8 @@ urlpatterns = [
     #############################################################################################
     path('hic_compare.html', TemplateView.as_view(template_name='hic_compare.html')),
     path('protein_compare.html', TemplateView.as_view(template_name='protein_compare.html')),
+    path('compare_shell.html', TemplateView.as_view(template_name='compare_shell.html')),
+
 
     path('api/patients/', include('apps.patients.urls')),
     path('api/genomics/', include('apps.genomics.urls')),

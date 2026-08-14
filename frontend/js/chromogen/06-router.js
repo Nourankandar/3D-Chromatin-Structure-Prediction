@@ -24,6 +24,7 @@ function go(route){
   document.getElementById('screen-forgot').hidden  = route!=='forgot';
   document.getElementById('screen-reset').hidden   = route!=='reset';
   document.getElementById('screen-signup').hidden  = route!=='signup';
+  if(route==='signup') signupShowStep(1);
   document.getElementById('shell').hidden          = !inApp;
   window.scrollTo(0,0);
   renderNav(); renderRoute();
@@ -95,7 +96,7 @@ function renderOverview(view){
         <li>
           <div class="rl-main">
             <div class="rl-title">${esc(r.patient||'—')} — <span class="mono">${esc(r.chromosome||'—')}:${fmtNum(r.start_pos)}–${fmtNum(r.end_pos)}</span></div>
-            <div class="rl-sub">${esc(r.cell_type||'—')} · ${new Date(r.created_at).toLocaleString(locale==='ar'?'ar-EG':'en-US')}</div>
+            <div class="rl-sub">${esc(r.cell_type||'—')} · ${fmtDateTime(r.created_at)}</div>
           </div>
           ${statusBadge(r.status)}
         </li>`).join('')}</ul>`
@@ -118,9 +119,16 @@ function renderProfile(view){
     <div class="head" style="margin-bottom:2rem"><h1>${t('pr_title')}</h1><p>${t('pr_subtitle')}</p></div>
 
     <div class="card" style="padding:1.75rem;display:flex;align-items:center;gap:1.25rem;margin-bottom:1.25rem">
-      <div style="width:72px;height:72px;border-radius:50%;display:grid;place-items:center;
-        background:var(--primary);color:var(--primary-foreground);font-size:1.8rem;font-weight:600">
-        ${(USER.username[0]||'?').toUpperCase()}
+      <div style="position:relative;flex:none">
+        <div id="prAvatar" style="width:72px;height:72px;border-radius:50%;display:grid;place-items:center;overflow:hidden;
+          background:${USER.profile_image?'transparent':'var(--primary)'};color:var(--primary-foreground);font-size:1.8rem;font-weight:600;
+          background-size:cover;background-position:center;${USER.profile_image?`background-image:url(${USER.profile_image})`:''}">
+          ${USER.profile_image ? '' : (USER.username[0]||'?').toUpperCase()}
+        </div>
+        <button type="button" id="prPhotoBtn" title="${t('signup_photo_choose')}" style="position:absolute;bottom:-2px;inset-inline-end:-2px;
+          width:26px;height:26px;border-radius:50%;background:var(--card-solid,var(--card));border:1px solid var(--border);
+          color:var(--fg);display:grid;place-items:center;cursor:pointer">${ICON.pencil}</button>
+        <input id="prPhotoInput" type="file" accept="image/*" hidden>
       </div>
       <div><p style="font-size:1.35rem;font-weight:600">${USER.username}</p>
         <p class="sm-t muted">${role}</p></div>
@@ -146,6 +154,28 @@ function renderProfile(view){
 
   const openBtn = view.querySelector('#pwOpen');
   if (openBtn) openBtn.onclick = openPasswordModal;
+
+  const photoBtn = view.querySelector('#prPhotoBtn');
+  const photoInput = view.querySelector('#prPhotoInput');
+  photoBtn?.addEventListener('click', ()=> photoInput.click());
+  photoInput?.addEventListener('change', async e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    photoBtn.disabled = true;
+    try{
+      const fd = new FormData();
+      fd.append('profile_image', file);
+      const res = await api.post('/auth/profile/update-image/', fd);
+      USER.profile_image = res?.profile_image || URL.createObjectURL(file);
+      toast(t('pr_photo_updated'));
+      renderRoute();
+    }catch(ex){
+      console.error('[profile photo]', ex.response?ex.response.data:ex);
+      toast(apiErrorText(ex, t('pr_photo_error')), 'error');
+    }finally{
+      photoBtn.disabled = false;
+    }
+  });
 }
 
 /* ── منبثق تغيير كلمة المرور  ── */

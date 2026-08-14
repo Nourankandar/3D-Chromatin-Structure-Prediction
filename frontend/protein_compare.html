@@ -356,7 +356,322 @@
     color: var(--fg);
     font-weight: 600;
   }
+
+    /* شريط القياس والمواقع الجينومية العلوية */
+  .genome-scale-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    padding-left: 65px; /* لتطبيق نفس المحاذاة مع الكودونات */
+  }
+
+  /* الكودون الواحد - العمود */
+  .video-style-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 90px;
+  }
+
+  .video-style-col .codon-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }
+
+  /* صف المربعات (DNA/RNA Triplet) */
+  .nucleotide-row {
+    display: flex;
+    gap: 4px;
+  }
+
+  /* مربع النيوكليوتيد السكني */
+  .nuc-box {
+    width: 26px;
+    height: 28px;
+    background: #1e232a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: #c5ced8;
+  }
+
+  /* حالة المربع المصاب بالطفرة */
+  .nuc-box.is-mutated {
+    border-color: #ff5252;
+    color: #ffffff;
+    background: rgba(255, 82, 82, 0.15);
+    box-shadow: 0 0 8px rgba(255, 82, 82, 0.3);
+  }
+
+  /* مستطيل الحمض الأميني (AA Label) */
+  .aa-box {
+    width: 100%;
+    height: 32px;
+    background: #1e232a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: #dfeee2;
+    margin-top: 4px;
+  }
+
+  /* في حال كان الحمض المتغير Stop */
+  .aa-box.is-stop {
+    background: #b0362f;
+    color: #ffffff;
+    border-color: #ff8c82;
+  }
+
+  .ge-section {
+    background: var(--card-solid);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-top: 16px;
+    position: relative;
+  }
+
+  .ge-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    direction: rtl;
+  }
+
+  .ge-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ge-title-bar {
+    width: 4px;
+    height: 18px;
+    background: var(--primary);
+    border-radius: 999px;
+  }
+
+  .ge-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--fg);
+    margin: 0;
+  }
+
+  .ge-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(229, 118, 111, 0.12);
+    border: 1px solid rgba(229, 118, 111, 0.3);
+    direction: ltr;
+  }
+
+  .ge-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff5252;
+    box-shadow: 0 0 8px #ff5252;
+    animation: gePing 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  @keyframes gePing {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.2); }
+  }
+
+  .ge-badge .lbl {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: #ff8c82;
+    letter-spacing: 0.05em;
+  }
+
+  .ge-badge .code-pill {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--fg);
+    background: color-mix(in srgb, var(--fg) 8%, transparent);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .ge-scroll-wrap {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    direction: ltr;
+  }
+
+  .ge-scroll-wrap::-webkit-scrollbar { height: 6px; }
+  .ge-scroll-wrap::-webkit-scrollbar-track { background: color-mix(in srgb, var(--fg) 4%, transparent); border-radius: 4px; }
+  .ge-scroll-wrap::-webkit-scrollbar-thumb { background: var(--primary-deep); border-radius: 4px; }
+
+  .ge-tracks {
+    min-width: 850px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* الصف الرابط والمسطرة */
+  .ge-track-row {
+    display: flex;
+    align-items: stretch;
+    background: color-mix(in srgb, var(--fg) 4%, var(--card-solid));
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .ge-track-row.alt {
+    background: var(--bg);
+    border: 1px solid color-mix(in srgb, var(--fg) 4%, transparent);
+  }
+
+  .ge-track-lbl {
+    width: 120px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 14px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    border-right: 1px solid color-mix(in srgb, var(--fg) 6%, transparent);
+    background: color-mix(in srgb, var(--fg) 2%, transparent);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+
+  .ge-track-lbl.strong {
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+  .ge-track-lbl .pat-dot {
+    width: 6px;
+    height: 6px;
+    background: #ff5252;
+    border-radius: 50%;
+    margin-left: 6px;
+  }
+
+  .ge-track-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 6px 20px;
+    gap: 16px;
+  }
+
+  /* مظهر الكودونات والقواعد */
+  .ge-codon-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    position: relative;
+  }
+
+  .ge-base-box {
+    width: 24px;
+    height: 26px;
+    background: color-mix(in srgb, var(--fg) 8%, var(--bg));
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .ge-base-box.is-mut {
+    background: rgba(229, 118, 111, 0.2);
+    border: 1px solid #ff5252;
+    color: #ffffff;
+    font-weight: 800;
+    box-shadow: 0 0 8px rgba(255, 82, 82, 0.4);
+    position: relative;
+  }
+
+  /* نقطة نابضة فوق القاعدة المتحوّرة بالضبط —  */
+  .ge-base-box.is-mut::after {
+    content: '';
+    position: absolute;
+    top: -3px; right: -3px;
+    width: 8px; height: 8px;
+    background: #ff5252;
+    border-radius: 50%;
+    animation: gePing 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  .ge-codon-idx {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    opacity: 0.6;
+    text-align: center;
+    width: 78px;
+  }
+
+  /* مستطيلات الأحماض الأمينية */
+  .ge-aa-pill {
+    width: 78px;
+    height: 26px;
+    background: color-mix(in srgb, var(--fg) 8%, var(--bg));
+    border: 1px solid color-mix(in srgb, var(--fg) 5%, transparent);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+
+  .ge-aa-pill.is-mut-aa {
+    background: rgba(229, 118, 111, 0.25);
+    border-color: #ff5252;
+    color: #ff8c82;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(229, 118, 111, 0.2);
+  }
+
+  .ge-aa-pill.is-stop {
+    background: #b0362f;
+    border-color: #ff8c82;
+    color: #ffffff;
+    font-weight: 700;
+  }
 </style>
+
 
 </head>
 <body>
@@ -576,50 +891,97 @@ function mrnaToDna(mrna){
   return mrna ? mrna.toUpperCase().replace(/U/g, 'T') : null;
 }
 
-function buildDarkCardTrack(dnaSeq, mrnaSeq, proteinSeq, mutatedCodons = [], isPatient = false, scrollId = '') {
-  if (!mrnaSeq) return '<p style="font-size:12px; color:var(--muted);">لا تتوفر بيانات التسلسل.</p>';
+
+/* بناء الـ 5 مسارات الجينومية بالكامل مع المحاذاة الدقيقة */
+function buildGeneExpressionTrack(controlDna, patientDna, controlAA, patientAA, mutatedCodons = []) {
+  if (!controlDna && !patientDna) return '<p style="font-size:12px; color:var(--muted); padding:20px;">لا تتوفر بيانات التسلسل الجيني.</p>';
 
   const mutMap = new Map((mutatedCodons || []).map(c => [c.codon_number, c]));
-  const totalCodons = Math.floor(mrnaSeq.length / 3);
+  const refSeq = controlDna || (patientDna || '');
+  const patSeq = patientDna || refSeq;
+  const totalCodons = Math.floor(Math.max(refSeq.length, patSeq.length) / 3);
 
-  let columnsHtml = '';
+  let rulerItems = '';
+  let refDnaItems = '';
+  let patDnaItems = '';
+  let refAaItems = '';
+  let patAaItems = '';
 
   for (let i = 0; i < totalCodons; i++) {
     const codonNum = i + 1;
-    const mrnaTriplet = mrnaSeq.substr(i * 3, 3);
-    const dnaTriplet = dnaSeq ? dnaSeq.substr(i * 3, 3) : mrnaTriplet.replace(/U/g, 'T');
-    let aa = proteinSeq ? (proteinSeq[i] || '—') : '—';
-
+    const refTriplet = (refSeq.substr(i * 3, 3) || '---').padEnd(3, '-').split('');
+    const patTriplet = (patSeq.substr(i * 3, 3) || '---').padEnd(3, '-').split('');
     const mutData = mutMap.get(codonNum);
     const isDiff = !!mutData;
-    const isMutated = isPatient && isDiff;
-    const isStop = isMutated && (aa === '*' || aa === 'STOP' || mutData.patient_amino_acid === '*');
 
-    if (isStop) aa = 'STOP';
+    let refAA = controlAA ? (controlAA[i] || '—') : '—';
+    let patAA = patientAA ? (patientAA[i] || '—') : (controlAA ? (controlAA[i] || '—') : '—');
+    
+    const patIsStop = isDiff && (patAA === '*' || patAA === 'STOP' || mutData.patient_amino_acid === '*');
+    if (patIsStop) patAA = 'Stop';
+    if (refAA === '*') refAA = 'Stop';
 
-    columnsHtml += `
-      <div class="dark-col ${isMutated ? 'is-mutated' : ''} ${isStop ? 'is-stop' : ''}" data-codon="${codonNum}">
-        <span class="idx">${codonNum}</span>
-        <span class="dna-code">${dnaTriplet}</span>
-        <span class="mrna-code">${mrnaTriplet}</span>
-        <div class="aa-circle" title="الكودون #${codonNum}">${aa}</div>
-      </div>
-    `;
+    // 1. المسطرة وأرقام الكودونات
+    rulerItems += `<div class="ge-codon-idx">${codonNum}</div>`;
+
+    // 2. مربعات DNA السليم (Ref)
+    const refBoxes = refTriplet.map(ch => `<div class="ge-base-box">${ch}</div>`).join('');
+    refDnaItems += `<div class="ge-codon-group">${refBoxes}</div>`;
+
+    // 3. مربعات DNA المريض (Pat) مع تمييز القواعد الطافرة بدقة
+    const baseDiff = [false, false, false];
+    if (isDiff) {
+      for (let b = 0; b < 3; b++) { if (refTriplet[b] !== patTriplet[b]) baseDiff[b] = true; }
+    }
+    const patBoxes = patTriplet.map((ch, b) => 
+      `<div class="ge-base-box ${baseDiff[b] ? 'is-mut' : ''}">${ch}</div>`
+    ).join('');
+    patDnaItems += `<div class="ge-codon-group">${patBoxes}</div>`;
+
+    // 4. مستطيل الحمض الأميني السليم (AA Ref)
+    refAaItems += `<div class="ge-aa-pill">${esc(refAA)}</div>`;
+
+    // 5. مستطيل الحمض الأميني للمريض (AA Pat)
+    patAaItems += `<div class="ge-aa-pill ${patIsStop ? 'is-stop' : (isDiff ? 'is-mut-aa' : '')}">${esc(patAA)}</div>`;
   }
 
   return `
-    <div class="dark-track-content">
-      <div class="dark-track-labels">
-        <span>DNA</span>
-        <span>mRNA</span>
-        <span>AA</span>
+    <div class="ge-tracks">
+      <!-- 1. Ruler / Index Track -->
+      <div class="ge-track-row" style="background:transparent;">
+        <div class="ge-track-lbl" style="background:transparent; border:none; font-family:var(--font-mono); font-size:11px;">INDEX</div>
+        <div class="ge-track-content">${rulerItems}</div>
       </div>
-      <div class="dark-track-scroll" id="${scrollId}">
-        ${columnsHtml}
+
+      <!-- 2. DNA (Ref) -->
+      <div class="ge-track-row">
+        <div class="ge-track-lbl">DNA (Ref)</div>
+        <div class="ge-track-content">${refDnaItems}</div>
+      </div>
+
+      <!-- 3. DNA (Pat) -->
+      <div class="ge-track-row">
+        <div class="ge-track-lbl strong">DNA (Pat)<span class="pat-dot"></span></div>
+        <div class="ge-track-content">${patDnaItems}</div>
+      </div>
+
+      <div style="height:4px;"></div>
+
+      <!-- 4. AA (Ref) -->
+      <div class="ge-track-row alt">
+        <div class="ge-track-lbl">AA (Ref)</div>
+        <div class="ge-track-content">${refAaItems}</div>
+      </div>
+
+      <!-- 5. AA (Pat) -->
+      <div class="ge-track-row alt">
+        <div class="ge-track-lbl strong">AA (Pat)</div>
+        <div class="ge-track-content">${patAaItems}</div>
       </div>
     </div>
   `;
 }
+
 
 function syncTrackScroll(){
   const a = document.getElementById('track-scroll-control');
@@ -737,7 +1099,7 @@ function renderGeneExpression(geneData) {
       لا تتوفّر بيانات تعبير جيني حقيقية لهذا الجين ضمن هذا التحليل.</div>`;
   }
 
-  const mut = geneData.mutation_type;
+  const mut = geneData.mutation_type || 'MISSENSE';
   const codons = geneData.mutated_codons || [];
 
   window.MUTATED_CODONS_DATA = codons;
@@ -746,49 +1108,32 @@ function renderGeneExpression(geneData) {
 
   const controlDna = mrnaToDna(geneData.control_mrna_sequence);
   const patientDna = mrnaToDna(geneData.patient_mrna_sequence);
-  const totalAA = geneData.control_amino_acid_sequence ? geneData.control_amino_acid_sequence.length : 0;
+  const firstMutCode = codons[0] ? `c.${codons[0].genomic_position ?? codons[0].codon_number}${esc(codons[0].reference_codon||'')}&gt;${esc(codons[0].patient_codon||'')}` : 'c.5266dupC';
+
+  const trackHtml = buildGeneExpressionTrack(
+    controlDna, patientDna,
+    geneData.control_amino_acid_sequence, geneData.patient_amino_acid_sequence,
+    codons
+  );
 
   return `
-  <div class="dark-inspector-card">
-
-    <!-- Top Bar -->
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:14px;">
-      <div style="display:flex; align-items:center; gap:12px;">
-      <span style="display:flex; align-items:center; justify-content:center; width:32px; height:32px; background:color-mix(in srgb, var(--fg) 5%, transparent); border:1px solid var(--border); border-radius:8px; color:var(--primary);">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3c0 6 12 6 12 12M6 21c0-6 12-6 12-12"/></svg>
-      </span>
-        <div>
-          <h3 style="margin:0; font-family:var(--font-display); font-size:16px; color:var(--fg);">التعبير الجيني — ${esc(geneData.gene_name||'HBB')}</h3>
-          <div style="font-size:9px; color:var(--muted); font-family:var(--font-mono); margin-top:2px;">GENOMIC CENTRAL DOGMA · DNA 5'→3' · mRNA · AMINO ACID</div>
-        </div>
+  <div class="ge-section">
+    <!-- Header Area -->
+    <div class="ge-header">
+      <div class="ge-title-wrap">
+        <div class="ge-title-bar"></div>
+        <h2 class="ge-title">التعبير الجيني / Gene Expression</h2>
       </div>
-      <span style="font-family:var(--font-mono); font-size:11px; padding:4px 12px; border-radius:20px; background:color-mix(in srgb, var(--patient) 15%, transparent); border:1px solid color-mix(in srgb, var(--patient) 30%, transparent); color:var(--patient);">
-        MUTATION: ${esc(mut||'NONSENSE').toUpperCase()}
-      </span>
+      <div class="ge-badge">
+        <span class="dot"></span>
+        <span class="lbl">MUTATION: ${esc(mut.toUpperCase())}</span>
+        <span class="code-pill">${firstMutCode}</span>
+      </div>
     </div>
 
-    <!-- Control Track -->
-    <div class="dark-track-panel">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="width:8px; height:8px; border-radius:50%; background:var(--control);"></span>
-          <b style="font-size:13px; color:var(--fg);">CONTROL — العينة السليمة</b>
-        </div>
-        <span style="font-size:10px; font-family:var(--font-mono); color:var(--muted);">${totalAA} CODONS</span>
-      </div>
-      ${buildDarkCardTrack(controlDna, geneData.control_mrna_sequence, geneData.control_amino_acid_sequence, codons, false, 'track-scroll-control')}
-    </div>
-
-    <!-- Patient Track -->
-    <div class="dark-track-panel">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span style="width:8px; height:8px; border-radius:50%; background:var(--patient);"></span>
-          <b style="font-size:13px; color:var(--fg);">PATIENT — عينة المريض</b>
-        </div>
-        <span style="font-size:10px; font-family:var(--font-mono); color:var(--patient);">${codons.length} MUTATIONS DETECTED</span>
-      </div>
-      ${buildDarkCardTrack(patientDna, geneData.patient_mrna_sequence, geneData.patient_amino_acid_sequence, codons, true, 'track-scroll-patient')}
+    <!-- Tracks Container -->
+    <div class="ge-scroll-wrap">
+      ${trackHtml}
     </div>
 
     <!-- Codon Table Container -->
@@ -805,7 +1150,6 @@ function renderGeneExpression(geneData) {
         ${renderCodonTableBody(codons)}
       </div>
     </div>
-
   </div>`;
 }
 

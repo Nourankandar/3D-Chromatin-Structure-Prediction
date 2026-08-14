@@ -48,7 +48,7 @@ function renderChromatin(view){
   const outputId = test.output_data_id;
   const authToken = localStorage.getItem('chromogen-token') || '';
   const compareHref = outputId
-    ? `hic_compare.html?output_id=${encodeURIComponent(outputId)}&input_id=${encodeURIComponent(test.id)}` + (authToken ? `&token=${encodeURIComponent(authToken)}` : '')
+    ? `compare_shell.html?output_id=${encodeURIComponent(outputId)}&input_id=${encodeURIComponent(test.id)}` + (authToken ? `&token=${encodeURIComponent(authToken)}` : '')
     : null;
 
   const panel = `
@@ -60,7 +60,7 @@ function renderChromatin(view){
       ${row(t('region_size'), fmtRegion(regionSize))}
       ${row(t('cell_type'), esc(test.cell_type))}
       ${pts!=null ? row(t('viewer_points'), fmtNum(pts)) : ''}
-      ${row(t('created_at'), fmtDate(test.created_at))}
+      ${row(t('created_at'), fmtDateTime(test.created_at))}
     </div>
     ${test.report?.summary ? `<div class="card" style="padding:1.25rem">
       <p class="xs muted">${t('summary')}</p><p class="sm-t" style="margin-top:.5rem">${esc(test.report.summary)}</p></div>`:''}
@@ -293,7 +293,7 @@ function renderReportBody(r){
       <div style="display:flex;gap:8px;align-items:center">
         <span style="background:color-mix(in srgb, var(--primary) 16%, transparent);color:var(--primary);
           font-size:11px;padding:4px 12px;border-radius:999px">مكتمل</span>
-        <span class="mono-s muted" style="font-size:11px">${fmtDate(r.created_at)}</span>
+        <span class="mono-s muted" style="font-size:11px">${fmtDateTime(r.created_at)}</span>
       </div>
       <button title="إعادة توليد" onclick="regenerateReport(${r.id})"
         style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer">↻</button>

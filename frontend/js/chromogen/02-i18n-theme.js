@@ -44,6 +44,7 @@ const DICT = {
     ov_success:'Success rate', ov_avg:'Avg tests / patient', ov_recent:'Recent tests', ov_derived:'Derived in the browser — no extra API',
     pr_title:'Profile', pr_subtitle:'Your account details',
     pr_username:'Username', pr_email:'Email', pr_role:'Role', pr_joined:'Joined',
+    pr_photo_updated:'Profile photo updated.', pr_photo_error:'Could not update photo. Please try again.',
     pr_superuser:'Superuser', pr_staff:'Administrator',
     login_title:'Login', login_subtitle:'Access your genomic analysis workspace', username:'Username', password:'Password', email:'Email',
     login_button:'Login', login_error:'Login failed. Please check your credentials and try again.',
@@ -58,6 +59,14 @@ const DICT = {
     signup_link:"Don't have an account? Create one", signup_title:'Create account', signup_subtitle:'Set up a new workspace account',
     signup_email_optional:'Email (optional)', signup_button:'Create account',
     signup_error:'Something went wrong. Please try again.', signup_success:'Account created — you can now log in.',
+    signup_step1_title:'Create account', signup_step1_subtitle:'Enter your email to receive a verification code',
+    signup_step1_button:'Send code', signup_email_required:'Please enter a valid email.',
+    signup_step2_title:'Verify your email', signup_step2_subtitle:'Enter the 6-digit code sent to',
+    signup_step2_button:'Verify code', signup_code_error:'Please enter the full 6-digit code.',
+    signup_resend:'Resend code', signup_resend_sent:'Code resent.',
+    signup_step3_title:'Complete your profile', signup_step3_subtitle:'Choose a username and password to finish',
+    signup_photo_label:'Profile photo (optional)', signup_photo_choose:'Choose photo',
+    signup_step3_button:'Create account', signup_back:'Back',
     logout:'Log out', login_hint:'Demo: any username and password will sign you in.',
     nav_patients:'Patients', nav_predict:'New prediction', nav_settings:'Settings', nav_chromatin:'Chromatin viewer', nav_protein:'Protein viewer',
     patients_title:'Patients', patients_subtitle:'Manage registered patients and their tests',
@@ -147,6 +156,7 @@ const DICT = {
     ov_success:'نسبة النجاح', ov_avg:'متوسّط التحاليل لكل مريض', ov_recent:'آخر التحاليل', ov_derived:'محسوبة في المتصفّح — بدون أي API إضافي',
     pr_title:'الملف الشخصي', pr_subtitle:'تفاصيل حسابك',
     pr_username:'اسم المستخدم', pr_email:'البريد الإلكتروني', pr_role:'الصلاحية', pr_joined:'تاريخ الانضمام',
+    pr_photo_updated:'تم تحديث الصورة الشخصية.', pr_photo_error:'تعذّر تحديث الصورة، حاول مرة أخرى.',
     pr_superuser:'مشرف عام', pr_staff:'مسؤول', 
     login_title:'تسجيل الدخول', login_subtitle:'ادخل إلى مساحة عمل التحليل الجينومي', username:'اسم المستخدم', password:'كلمة المرور', email:'البريد الإلكتروني',
     login_button:'تسجيل الدخول', login_error:'فشل تسجيل الدخول. يرجى التحقق من بياناتك والمحاولة مرة أخرى.',
@@ -161,6 +171,14 @@ const DICT = {
     signup_link:'لا يوجد حساب؟ إنشاء حساب جديد', signup_title:'إنشاء حساب', signup_subtitle:'إعداد حساب جديد لمساحة العمل',
     signup_email_optional:'البريد الإلكتروني (اختياري)', signup_button:'إنشاء الحساب',
     signup_error:'حدث خطأ ما، يرجى المحاولة مرة أخرى.', signup_success:'تم إنشاء الحساب — يمكن الآن تسجيل الدخول.',
+    signup_step1_title:'إنشاء حساب', signup_step1_subtitle:'أدخل بريدك الإلكتروني لتصلك رمز التحقق',
+    signup_step1_button:'إرسال الرمز', signup_email_required:'الرجاء إدخال بريد إلكتروني صحيح.',
+    signup_step2_title:'تحقّق من بريدك', signup_step2_subtitle:'أدخل الرمز المكوّن من 6 أرقام المُرسل إلى',
+    signup_step2_button:'تحقّق من الرمز', signup_code_error:'الرجاء إدخال الرمز كاملاً (6 أرقام).',
+    signup_resend:'إعادة إرسال الرمز', signup_resend_sent:'تم إعادة إرسال الرمز.',
+    signup_step3_title:'أكملي ملفك الشخصي', signup_step3_subtitle:'اختاري اسم مستخدم وكلمة مرور لإنهاء التسجيل',
+    signup_photo_label:'صورة شخصية (اختياري)', signup_photo_choose:'اختيار صورة',
+    signup_step3_button:'إنشاء الحساب', signup_back:'رجوع',
     logout:'تسجيل الخروج', login_hint:'تجريبي: أي اسم مستخدم وكلمة مرور سيسجّلان الدخول.',
     nav_patients:'المرضى', nav_predict:'تنبؤ جديد', nav_settings:'الإعدادات', nav_chromatin:'عارض الكروماتين', nav_protein:'عارض البروتين',
     patients_title:'المرضى', patients_subtitle:'إدارة المرضى المسجّلين واختباراتهم',
@@ -276,5 +294,6 @@ function applyAccent(){
 const nf = () => new Intl.NumberFormat(locale==='ar'?'ar-EG':'en-US');
 const fmtNum = n => nf().format(n);
 const fmtDate = iso => new Intl.DateTimeFormat(locale==='ar'?'ar-EG':'en-US',{year:'numeric',month:'short',day:'numeric'}).format(new Date(iso));
+const fmtDateTime = iso => new Intl.DateTimeFormat(locale==='ar'?'ar-EG':'en-US',{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(iso));
 const fmtRegion = bp => bp<=0 ? '—' : bp>=1e6 ? `${fmtNum(Math.round(bp/1e4)/100)} Mb` : `${fmtNum(Math.round(bp/100)/10)} kb`;
 const estPoints = (s,e) => Math.max(1, Math.round((e-s)/5000));

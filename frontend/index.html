@@ -111,13 +111,60 @@
     <div class="row"><button class="btn outline sm js-lang"></button><button class="btn outline icon sm js-theme"></button></div>
   </header>
   <main style="position:relative;z-index:1;flex:1;display:grid;place-items:center;padding:2rem 1rem">
-    <form id="signupForm" class="card fade" style="width:min(100%,26rem);padding:2rem">
-      <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em" data-t="signup_title"></h1>
-      <p class="sm-t muted" style="margin-top:.35rem" data-t="signup_subtitle"></p>
-      <div id="signupError" class="alert error" style="margin-top:1.25rem" hidden><span data-icon="alert"></span><span id="signupErrorText"></span></div>
+
+    <!-- خطوة 1: إدخال الإيميل وإرسال الكود -->
+    <form id="signupStep1Form" class="card fade" style="width:min(100%,26rem);padding:2rem">
+      <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em" data-t="signup_step1_title"></h1>
+      <p class="sm-t muted" style="margin-top:.35rem" data-t="signup_step1_subtitle"></p>
+      <div id="signupStep1Error" class="alert error" style="margin-top:1.25rem" hidden><span data-icon="alert"></span><span id="signupStep1ErrorText"></span></div>
       <div class="stack" style="margin-top:1.5rem;gap:1rem">
+        <div class="field"><label class="label" for="signupInitEmail" data-t="email"></label><input id="signupInitEmail" type="email" class="input" autocomplete="email"></div>
+        <button class="btn lg" style="width:100%" id="signupStep1Btn" type="submit"><span data-t="signup_step1_button"></span></button>
+      </div>
+      <a href="#" data-go="login" class="sm-t" style="display:block;text-align:center;margin-top:1.25rem;color:var(--primary);text-decoration:none" data-t="back_to_login"></a>
+    </form>
+
+    <!-- خطوة 2: التحقق من الكود -->
+    <form id="signupStep2Form" class="card fade" style="width:min(100%,26rem);padding:2rem" hidden>
+      <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em" data-t="signup_step2_title"></h1>
+      <p class="sm-t muted" style="margin-top:.35rem"><span data-t="signup_step2_subtitle"></span> <span id="signupStep2Email" class="mono" style="color:var(--fg)"></span></p>
+      <div id="signupStep2Error" class="alert error" style="margin-top:1.25rem" hidden><span data-icon="alert"></span><span id="signupStep2ErrorText"></span></div>
+      <div class="stack" style="margin-top:1.5rem;gap:1rem">
+        <div class="field">
+          <div id="signupOtpBoxes" dir="ltr" style="display:flex;gap:8px">
+            <input maxlength="1" inputmode="numeric" class="input signup-otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+            <input maxlength="1" inputmode="numeric" class="input signup-otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+            <input maxlength="1" inputmode="numeric" class="input signup-otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+            <input maxlength="1" inputmode="numeric" class="input signup-otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+            <input maxlength="1" inputmode="numeric" class="input signup-otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+            <input maxlength="1" inputmode="numeric" class="input signup-otp-box" style="width:2.4rem;text-align:center;padding:.6rem 0">
+          </div>
+        </div>
+        <button class="btn lg" style="width:100%" id="signupStep2Btn" type="submit"><span data-t="signup_step2_button"></span></button>
+        <div class="row" style="justify-content:space-between">
+          <a href="#" id="signupBackTo1" class="sm-t" style="color:var(--muted-foreground);text-decoration:none" data-t="signup_back"></a>
+          <a href="#" id="signupResendBtn" class="sm-t" style="color:var(--primary);text-decoration:none" data-t="signup_resend"></a>
+        </div>
+      </div>
+    </form>
+
+    <!-- خطوة 3: بيانات الحساب + صورة شخصية -->
+    <form id="signupStep3Form" class="card fade" style="width:min(100%,26rem);padding:2rem" hidden>
+      <h1 style="font-size:1.5rem;font-weight:600;letter-spacing:-.02em" data-t="signup_step3_title"></h1>
+      <p class="sm-t muted" style="margin-top:.35rem" data-t="signup_step3_subtitle"></p>
+      <div id="signupStep3Error" class="alert error" style="margin-top:1.25rem" hidden><span data-icon="alert"></span><span id="signupStep3ErrorText"></span></div>
+      <div class="stack" style="margin-top:1.5rem;gap:1rem">
+        <div class="field" style="align-items:center;text-align:center">
+          <label class="label" data-t="signup_photo_label" style="display:block;margin-bottom:.5rem"></label>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:.6rem">
+            <div id="signupPhotoPreview" style="width:72px;height:72px;border-radius:50%;background:var(--muted);background-size:cover;background-position:center;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted-foreground)">
+              <span data-icon="users"></span>
+            </div>
+            <button type="button" class="btn outline sm" id="signupPhotoBtn"><span data-t="signup_photo_choose"></span></button>
+            <input id="signupPhotoInput" type="file" accept="image/*" hidden>
+          </div>
+        </div>
         <div class="field"><label class="label" for="signupUsername" data-t="username"></label><input id="signupUsername" class="input" autocomplete="username"></div>
-        <div class="field"><label class="label" for="signupEmail" data-t="signup_email_optional"></label><input id="signupEmail" type="email" class="input" autocomplete="email"></div>
         <div class="field" style="position:relative">
           <label class="label" for="signupPassword" data-t="password"></label>
           <input id="signupPassword" type="password" class="input" autocomplete="new-password" style="padding-inline-end:2.5rem">
@@ -130,10 +177,11 @@
           <input id="signupConfirm" type="password" class="input" autocomplete="new-password" style="padding-inline-end:2.5rem">
           <button type="button" class="js-eye" data-target="signupConfirm" style="position:absolute;inset-inline-end:.6rem;top:2.05rem;background:none;border:0;cursor:pointer;color:var(--muted-foreground)"></button>
         </div>
-        <button class="btn lg" style="width:100%" id="signupBtn" type="submit"><span data-t="signup_button"></span></button>
+        <button class="btn lg" style="width:100%" id="signupBtn" type="submit"><span data-t="signup_step3_button"></span></button>
       </div>
       <a href="#" data-go="login" class="sm-t" style="display:block;text-align:center;margin-top:1.25rem;color:var(--primary);text-decoration:none" data-t="back_to_login"></a>
     </form>
+
   </main>
 </div>
 
