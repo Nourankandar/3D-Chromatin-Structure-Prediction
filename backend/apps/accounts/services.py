@@ -70,7 +70,6 @@ class AuthService:
         logger.info("User registered completely: %s", user.username)
         return {"status": "success", "message": "Account created successfully. You can now log in."}
 
-
     @staticmethod
     def resend_signup_otp(email: str) -> dict:
         """Resend the signup verification code."""
@@ -93,8 +92,6 @@ class AuthService:
         except Exception as e:
             logger.error(f"Failed to resend signup OTP to {email}: {str(e)}")
             return {"status": "error", "message": "Failed to send email. Check SMTP settings."}
-
-    # --- PROFILE SERVICES ---
 
     @staticmethod
     def update_profile_image(user: User, new_image) -> dict:
@@ -109,72 +106,19 @@ class AuthService:
         profile.save()
         return {"status": "success", "message": "Profile image updated successfully."}
 
-    # --- EXISTING SERVICES ---
-    # (الأكواد الخاصة بـ login_user, logout_user, change_password, forgot_password تبقى كما هي تماماً من الرد السابق)
-    # ...
-
-
     @staticmethod
-    def send_signup_otp(user: User) -> dict:
-        """Generate and email a signup verification code."""
-        code = str(random.randint(100000, 999999))
-        cache.set(f"signup_otp_{user.email}", code, timeout=900)  # 15 min
+    def delete_profile_image(user: User) -> dict:
+        """Delete the user's profile image and remove the file from storage."""
+        # التأكد من أن المستخدم لديه Profile وأنه يحتوي على صورة
+        if not hasattr(user, 'profile') or not user.profile.profile_image:
+            return {"status": "error", "message": "No profile image found to delete."}
 
-        subject = "Verify your account"
-        message = f"Hello {user.username},\n\nYour verification code is: {code}\nThis code will expire in 15 minutes."
-
-        try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
-            return {"status": "success", "message": "Verification code sent to your email."}
-        except Exception as e:
-            logger.error(f"Failed to send signup OTP to {user.email}: {str(e)}")
-            return {"status": "error", "message": "Account created, but failed to send verification email."}
-
-    @staticmethod
-    def verify_signup_otp(email: str, code: str) -> dict:
-        """Verify the signup code and activate the user."""
-        cached_code = cache.get(f"signup_otp_{email}")
-
-        if not cached_code:
-            return {"status": "error", "message": "Verification code has expired or does not exist."}
-        if cached_code != code:
-            return {"status": "error", "message": "Invalid verification code."}
-
-        user = User.objects.filter(email=email).first()
-        if not user:
-            return {"status": "error", "message": "User not found."}
-
-        user.is_active = True
-        user.save(update_fields=["is_active"])
-        cache.delete(f"signup_otp_{email}")
-
-        logger.info("User activated after OTP verification: %s", user.username)
-        return {"status": "success", "message": "Account verified successfully. You can now log in."}
-
-    @staticmethod
-    def resend_signup_otp(email: str) -> dict:
-        """Resend the signup verification code."""
-        if User.objects.filter(email=email).exists():
-            return {"status": "error", "message": "Email already registered."}
-
-        # توليد رمز جديد
-        code = str(random.randint(100000, 999999))
+        # حذف الصورة الفعلية من المجلد وحفظ التعديل في قاعدة البيانات
+        user.profile.profile_image.delete(save=True)
         
-        # تخزين الرمز الجديد في الـ Cache لـ 5 دقائق (هذا سيكتب فوق الرمز القديم إن وجد)
-        cache.set(f"signup_otp_{email}", code, timeout=300) 
-
-        subject = "Resend: Verify your account"
-        message = f"Hello,\n\nYour new verification code is: {code}\nThis code will expire in 5 minutes."
-
-        try:
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
-            logger.info(f"New Signup OTP sent to {email}")
-            return {"status": "success", "message": "A new verification code has been sent to your email."}
-        except Exception as e:
-            logger.error(f"Failed to resend signup OTP to {email}: {str(e)}")
-            return {"status": "error", "message": "Failed to send email. Check SMTP settings."}
-
-
+        logger.info(f"Profile image deleted for user: {user.username}")
+        return {"status": "success", "message": "Profile image deleted successfully."}
+    
     @staticmethod
     def get_tokens_for_user(user: User) -> dict:
         refresh = RefreshToken.for_user(user)
@@ -203,23 +147,6 @@ class AuthService:
 
         return {"status": "forbidden", "message": "This account does not have admin/staff privileges."}
 
-        # الآن نستخدم authenticate() بشكل طبيعي (بيمرر لأنه is_active=True فعلاً)
-        user = authenticate(request, username=username, password=password)
-        if user is None:
-            # حالة نادرة: مثلاً backend مخصص رفض تسجيل الدخول لسبب تاني
-            return {
-                "status": "unauthorized",
-                "message": "Invalid username or password.",
-            }
-
-        if user.is_staff or user.is_superuser:
-            tokens = AuthService.get_tokens_for_user(user)
-            return {"status": "success", "tokens": tokens, "user": user}
-
-        return {
-            "status": "forbidden",
-            "message": "This account does not have admin/staff privileges.",
-        }
     @staticmethod
     def logout_user(refresh_token: str) -> None:
         token = RefreshToken(refresh_token)
@@ -248,7 +175,6 @@ class AuthService:
 
         subject = "Password Reset Code"
         message = f"Hello {user.username},\n\nYour password reset code is: {code}\nThis code will expire in 15 minutes."
-
         try:
             send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
             return {"status": "success", "message": "Password reset code sent to your email."}

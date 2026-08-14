@@ -236,7 +236,7 @@ async function doSignupVerify(e){
 
   btn.disabled = true; btn.innerHTML = `<span class="spin"></span><span>${t('loading')}</span>`;
   try{
-    await api.post('/auth/signup-verify/', { email: SU.email, code });
+    await api.post('/auth/signup/verify/', { email: SU.email, code });
     signupShowStep(3);
   }catch(ex){
     err.hidden = false; errText.textContent = apiErrorText(ex, t('signup_error'));
