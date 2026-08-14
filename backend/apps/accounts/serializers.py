@@ -42,6 +42,18 @@ class CompleteSignupSerializer(serializers.Serializer):
     def validate_password(self, value):
         return validate_strong_password(value)
 
+
+
+class ResendSignupOTPSerializer(serializers.Serializer):
+    """Serializer for resending the signup OTP"""
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("This email is already fully registered.")
+        return value
+    
+    
 # --- EXISTING SERIALIZERS ---
 
 class LoginSerializer(serializers.Serializer):

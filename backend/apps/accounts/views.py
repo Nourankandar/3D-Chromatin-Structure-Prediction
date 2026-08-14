@@ -58,6 +58,21 @@ class CompleteSignupAPIView(APIView):
             return Response(result, status=status.HTTP_201_CREATED)
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
+
+class ResendSignupOTPAPIView(APIView):
+    """POST /api/auth/resend-signup-otp/ - resend verification code."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResendSignupOTPSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        result = AuthService.resend_signup_otp(email=serializer.validated_data["email"])
+        if result["status"] == "success":
+            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+
 # --- PROFILE VIEWS ---
 
 class UpdateProfileImageAPIView(APIView):
@@ -76,10 +91,6 @@ class UpdateProfileImageAPIView(APIView):
         if result["status"] == "success":
             return Response(result, status=status.HTTP_200_OK)
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
-
-# --- EXISTING VIEWS ---
-# (باقي الـ Views الخاصة بـ LoginAPIView, LogoutAPIView, MyAccountAPIView, إلخ، تبقى كما هي)
-# ...
 
 
 class LoginAPIView(APIView):

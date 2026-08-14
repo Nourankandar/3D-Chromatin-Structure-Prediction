@@ -70,6 +70,30 @@ class AuthService:
         logger.info("User registered completely: %s", user.username)
         return {"status": "success", "message": "Account created successfully. You can now log in."}
 
+
+    @staticmethod
+    def resend_signup_otp(email: str) -> dict:
+        """Resend the signup verification code."""
+        if User.objects.filter(email=email).exists():
+            return {"status": "error", "message": "Email already registered."}
+
+        # توليد رمز جديد
+        code = str(random.randint(100000, 999999))
+        
+        # تخزين الرمز الجديد في الـ Cache لـ 5 دقائق (هذا سيكتب فوق الرمز القديم إن وجد)
+        cache.set(f"signup_otp_{email}", code, timeout=300) 
+
+        subject = "Resend: Verify your account"
+        message = f"Hello,\n\nYour new verification code is: {code}\nThis code will expire in 5 minutes."
+
+        try:
+            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
+            logger.info(f"New Signup OTP sent to {email}")
+            return {"status": "success", "message": "A new verification code has been sent to your email."}
+        except Exception as e:
+            logger.error(f"Failed to resend signup OTP to {email}: {str(e)}")
+            return {"status": "error", "message": "Failed to send email. Check SMTP settings."}
+
     # --- PROFILE SERVICES ---
 
     @staticmethod

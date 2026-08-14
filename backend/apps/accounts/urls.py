@@ -10,7 +10,8 @@ urlpatterns = [
     path("signup/initiate/", InitiateSignupAPIView.as_view(), name="signup_initiate"),
     path("signup/verify/", VerifySignupOTPAPIView.as_view(), name="signup_verify"),
     path("signup/complete/", CompleteSignupAPIView.as_view(), name="signup_complete"),
-
+    # أضف هذا السطر مع روابط التسجيل (3-STEP SIGNUP URLS)
+    path("resend-signup-otp/", ResendSignupOTPAPIView.as_view(), name="resend_signup_otp"),
     # --- PROFILE URLS ---
     path("profile/update-image/", UpdateProfileImageAPIView.as_view(), name="update_profile_image"),
 
