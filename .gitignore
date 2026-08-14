@@ -5,9 +5,10 @@ __pycache__/
 .venv/
 .env
 
+
 # Django
 db.sqlite3
-media/
+backend/media/
 staticfiles/
 
 # AI Data & Weights
