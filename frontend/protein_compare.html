@@ -760,10 +760,7 @@ async function resolveByGeneName(name){
     const ur = await fetch(uq, {signal: AbortSignal.timeout(12000)});
     const acc = ur.ok ? (await ur.json())?.results?.[0]?.primaryAccession : null;
     if(acc){
-      let pdbId = null;
-      try{ pdbId = await searchRCSBByAccession(acc); }catch(e){}
-      if(pdbId) out = {kind:'pdb', value:pdbId, source:'experimental', accession:acc};
-      else out = {kind:'uniprot', value:acc, source:'predicted', accession:acc};
+      out = {kind:'uniprot', value:acc, source:'predicted', accession:acc};
     }
   }catch(e){}
   NAME_CACHE.set(gene, out);
@@ -796,7 +793,40 @@ async function foldWithESMFold(sequence){
   return text;
 }
 
-async function loadPaneStructure(side, label, sequence, fallbackResolved, proteinName, geneName){
+// نجيب حدود "ببتيد الإشارة" الموثّقة من UniProt لهالبروتين (لو موجودة)
+const SIGNAL_CACHE = new Map();
+async function fetchSignalPeptideEnd(accession){
+  if(!accession) return null;
+  if(SIGNAL_CACHE.has(accession)) return SIGNAL_CACHE.get(accession);
+  let end = null;
+  try{
+    const res = await fetch(`https://rest.uniprot.org/uniprotkb/${accession}.json`, {signal:AbortSignal.timeout(12000)});
+    if(res.ok){
+      const data = await res.json();
+      const sig = (data.features||[]).find(f => /signal/i.test(f.type||'') && f.location?.end?.value);
+      if(sig) end = sig.location.end.value;
+    }
+  }catch(e){}
+  SIGNAL_CACHE.set(accession, end);
+  return end;
+}
+
+// نتحقق: هل في أي كودون متطفّر واقع جوا نطاق ببتيد الإشارة؟ (بالاعتماد على codon_number 1-based)
+function mutationInsideSignalPeptide(mutatedCodons, sigEnd){
+  if(!sigEnd || !mutatedCodons || !mutatedCodons.length) return false;
+  return mutatedCodons.some(c => Number(c.codon_number) > 0 && Number(c.codon_number) <= sigEnd);
+}
+
+// نقص ببتيد الإشارة من التسلسل — إلا إذا كانت الطفرة نفسها واقعة جواه (ساعتها نتركه كامل)
+function trimSignalPeptideIfSafe(sequence, sigEnd, mutatedCodons){
+  if(!sequence || !sigEnd || sigEnd >= sequence.length) return {seq: sequence, trimmed: false, unsafe: false};
+  if(mutationInsideSignalPeptide(mutatedCodons, sigEnd)){
+    return {seq: sequence, trimmed: false, unsafe: true};
+  }
+  return {seq: sequence.slice(sigEnd), trimmed: true, unsafe: false};
+}
+
+async function loadPaneStructure(side, label, sequence, fallbackResolved, proteinName, geneName, mutatedCodons){
   const bodyEl = document.getElementById('body-'+side);
   const statusEl = document.getElementById('status-'+side);
   const badgeEl = document.getElementById('badge-'+side);
@@ -806,12 +836,17 @@ async function loadPaneStructure(side, label, sequence, fallbackResolved, protei
   const frame = document.getElementById(frameId);
   const frameReady = new Promise(resolve => frame.addEventListener('load', resolve, {once:true}));
 
+  // أول كودون متطفّر — هو موقع "الطفرة" يلي رح نميّزه بالشكل ثلاثي الأبعاد
+  const firstMutation = (mutatedCodons && mutatedCodons.length) ? mutatedCodons[0] : null;
+  const mutationResidue = firstMutation ? Number(firstMutation.codon_number) : null;
+
   const showReference = async ()=>{
     if(!fallbackResolved) return false;
     badgeEl.style.display='inline-block';
     badgeEl.textContent = fallbackResolved.source==='predicted' ? 'AlphaFold — بنية مرجعية معروفة' : 'RCSB — بنية تجريبية معروفة';
     badgeEl.style.background='color-mix(in srgb, var(--control) 18%, transparent)'; badgeEl.style.color='var(--control)';
-    const common = `name=${encodeURIComponent(proteinName||'')}&gene=${encodeURIComponent(geneName||'')}`;
+    const common = `name=${encodeURIComponent(proteinName||'')}&gene=${encodeURIComponent(geneName||'')}`
+      + (mutationResidue ? `&highlightResidue=${mutationResidue}` : '');
     frame.src = fallbackResolved.kind==='pdb'
       ? `protein_viewer.html?pdb=${encodeURIComponent(fallbackResolved.value)}&${common}`
       : `protein_viewer.html?uniprot=${encodeURIComponent(fallbackResolved.value)}&${common}`;
@@ -821,11 +856,23 @@ async function loadPaneStructure(side, label, sequence, fallbackResolved, protei
   const showESMFold = async ()=>{
     if(!sequence || sequence.length < 3) return false;
     try{
-      const pdbText = await foldWithESMFold(sequence);
-      badgeEl.style.display='inline-block'; badgeEl.textContent='ESMFold — تسلسل حقيقي';
+      const accession = fallbackResolved?.accession || null;
+      const sigEnd = accession ? await fetchSignalPeptideEnd(accession) : null;
+      const {seq: foldSeq, trimmed, unsafe} = trimSignalPeptideIfSafe(sequence, sigEnd, mutatedCodons);
+
+      const pdbText = await foldWithESMFold(foldSeq);
+      badgeEl.style.display='inline-block';
+      badgeEl.textContent = unsafe
+        ? '⚠ ESMFold — الطفرة داخل ببتيد الإشارة، لم يُقص'
+        : (trimmed ? `ESMFold — بعد قص ببتيد إشارة (1–${sigEnd})` : 'ESMFold — تسلسل حقيقي');
       badgeEl.style.background='color-mix(in srgb, var(--patient) 16%, transparent)'; badgeEl.style.color='var(--patient)';
       await frameReady;
-      frame.contentWindow.postMessage({type:'load-pdb-raw', pdbText, name:proteinName, sub:`ESMFold · ${sequence.length} حمض أميني`}, '*');
+      // نصحّح رقم موقع الطفرة حسب القص (لو انقص ببتيد الإشارة، ترقيم ESMFold بيبلش من 1 من جديد)
+      const adjustedResidue = (mutationResidue && trimmed) ? (mutationResidue - sigEnd) : mutationResidue;
+      frame.contentWindow.postMessage({
+        type:'load-pdb-raw', pdbText, name:proteinName, sub:`ESMFold · ${foldSeq.length} حمض أميني`,
+        highlightResidue: (adjustedResidue && adjustedResidue > 0) ? adjustedResidue : null
+      }, '*');
       return true;
     }catch(err){
       console.warn('[ESMFold] فشل الطي لـ', side, err.message);
@@ -880,8 +927,9 @@ async function boot(){
   let fallbackResolved = null;
   try{ fallbackResolved = await resolveByGeneName(proteinName); }catch(e){}
 
-  loadPaneStructure('control', 'السليم', geneData?.control_amino_acid_sequence, fallbackResolved, proteinName, geneName);
-  loadPaneStructure('patient', 'المريض', geneData?.patient_amino_acid_sequence, fallbackResolved, proteinName, geneName);
+  const mutatedCodonsForCheck = geneData?.mutated_codons || [];
+  loadPaneStructure('control', 'السليم', geneData?.control_amino_acid_sequence, fallbackResolved, proteinName, geneName, mutatedCodonsForCheck);
+  loadPaneStructure('patient', 'المريض', geneData?.patient_amino_acid_sequence, fallbackResolved, proteinName, geneName, mutatedCodonsForCheck);
 
   document.getElementById('geneExprSection').innerHTML = renderGeneExpression(geneData);
   syncTrackScroll();

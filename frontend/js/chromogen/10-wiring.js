@@ -319,6 +319,9 @@ applyTheme(); applyLocale(); applyAccent();
 
 /*  DNA حقن أشكال */
 injectDnaField(document.getElementById('loginDnaField'), 14);
+injectDnaField(document.getElementById('signupDnaField'), 14);
+injectDnaField(document.getElementById('forgotDnaField'), 14);
+injectDnaField(document.getElementById('resetDnaField'), 14);
 
 (async function restoreSession(){
   if (!_accessToken) return;
