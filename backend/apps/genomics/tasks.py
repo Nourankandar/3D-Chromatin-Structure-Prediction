@@ -78,19 +78,14 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
                 },
             )
 
-            # ─── حفظ نتائج الجينات/البروتينات — سجل منفصل لكل جين ───
-            # نمسح أي نتائج قديمة لنفس الـ output (حالة regenerate/إعادة تشغيل)
-            # حتى ما تصير تكرارات أو نتائج قديمة عالقة
             GeneProteinResult.objects.filter(output_data=output_data).delete()
 
             proteins_diff = results["report_payload"].get("amino_acid_and_protein_diff", [])
-            # الإحداثيات الحقيقية (gene_start/gene_end) موجودة بس بـ "genes"،
-            # مش بـ "amino_acid_and_protein_diff" — لازم lookup عبر gene_id
+      
             genes_info = results["report_payload"].get("genes", [])
             genes_by_id = {g["gene_id"]: g for g in genes_info}
 
             gene_names_list = [gene["gene_name"] for gene in proteins_diff]
-            # طلب واحد "جماعي" بالتوازي بدل ما نستنى كل جين لحاله بالتسلسل
             protein_names_by_gene = get_protein_names_for_genes_batch(gene_names_list)
 
             gene_rows = []
@@ -182,13 +177,13 @@ def generate_llm_report_task(self, output_data_id: int) -> dict:
 
         logger.error("[LLM Task] All retries exhausted for OutputData ID=%s", output_data_id)
         report.summary_text = f"Clinical report generation failed after retries: {exc}"
-        report.status = "failed"  # تحديث الحالة هنا
+        report.status = "failed" 
         report.save(update_fields=["summary_text", "status"])
         raise exc
 
     report.summary_text = markdown_result
     report.detected_disease = "Structural Chromatin Alteration Detected"
-    report.status = "completed"  # التقرير أصبح جاهزاً
+    report.status = "completed" 
     report.save(update_fields=["summary_text", "detected_disease", "status"])
 
     

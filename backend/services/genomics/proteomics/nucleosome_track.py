@@ -22,15 +22,15 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-NUCLEOSOME_PERIOD_BP = 200   # 147 wrapped + ~53 linker (تقريب قياسي بيولوجياً)
-DEFAULT_OPEN_FRACTION_OF_MAX = 0.3  # threshold ابتدائي — لازم يُعاير على GAPDH/ACTB قبل الاعتماد عليه
+NUCLEOSOME_PERIOD_BP = 200  
+DEFAULT_OPEN_FRACTION_OF_MAX = 0.3  
 
 
 class NucleosomeUnit(TypedDict):
     unit_index: int
     genomic_start: int
     genomic_end: int
-    state: str          # "wrapped" | "open"
+    state: str         
     dnase_signal: float
     x: float
     y: float

@@ -16,7 +16,7 @@ services/pipeline_manager.py
   7) DNase على المريض + السليم (على مستوى النافذة الكاملة)
   8) Hi-C على المريض + السليم
   9) 3D coordinates (+ nucleosome track مدموجة فيها) لمريض وسليم
-  10) Motifs/التنظيميات (scanner) بالاعتماد على DNase + 3D
+  10) Motifs/التنظيميات (scanner) بالاعتماد على DNase + 3D موقفة حاليا 
   11) تجميع كل الفروقات بـ report_payload واحد وإرجاعه
 ====================================================================
 """
@@ -126,7 +126,7 @@ class GenomicPipelineManager:
             "coords_control_file": coords_control_file,
             "affected_proteins": affected_proteins,
             "proteins_diff": proteins_diff, 
-            "report_payload": report_payload,   # ← هاد يلي بينبعت لتابع التقرير النهائي
+            "report_payload": report_payload,   
         }
 
     # ------------------------------------------------------------------

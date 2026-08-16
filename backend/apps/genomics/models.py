@@ -102,9 +102,7 @@ class OutputData(models.Model):
         ordering = ['-generated_at']
 
 
-'''
-gene_protein_result
-'''
+
 class GeneProteinResult(models.Model):
     """
     نتيجة تحليل جين واحد (ترجمة + مقارنة طفرة) — سجل منفصل لكل جين

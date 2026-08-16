@@ -46,12 +46,21 @@ def _format_codon_row(codon: dict) -> str:
     aa_after = codon.get("patient_amino_acid") or "?"
     genomic_pos = codon.get("genomic_position") or ""
 
+    grantham_distance = codon.get("grantham_distance")
+    grantham_severity = codon.get("grantham_severity")
+    grantham_part = (
+        f" | Grantham distance {grantham_distance} ({grantham_severity})"
+        if grantham_distance is not None
+        else ""
+    )
+
     return (
         f"    - Codon #{position}"
         f"{f' (genomic pos {genomic_pos})' if genomic_pos else ''}: "
         f"DNA {dna_before} -> {dna_after} | "
         f"mRNA {mrna_before} -> {mrna_after} | "
         f"Amino acid {aa_before} -> {aa_after}"
+        f"{grantham_part}"
     )
 
 
@@ -115,21 +124,7 @@ def run_llm_report_bridge(output_data_instance) -> str:
         'chromosome': input_ref.chromosome,
     }
 
-    # 2. بيانات الـ Alignment — الجدول الحقيقي (اسم الجين + الكودونات المتغيّرة)
-    affected_proteins = output_data_instance.affected_proteins or {}
-
-    missing_protein_names = [
-        name for name, info in affected_proteins.items() if info.get('is_missing')
-    ]
-
-    if missing_protein_names:
-        disrupted_motifs_summary = (
-            f"{len(missing_protein_names)} protein(s) present in the healthy reference "
-            f"were not detected in the patient sequence: {', '.join(missing_protein_names)}."
-        )
-    else:
-        disrupted_motifs_summary = "No protein-binding motifs were found missing relative to the reference."
-
+    
     gene_mutations_block = _build_gene_mutations_block(proteins_diff)
 
     n_genes_analyzed = len(genes_info)
@@ -140,7 +135,6 @@ def run_llm_report_bridge(output_data_instance) -> str:
         'genes_analyzed_count': n_genes_analyzed,
         'incomplete_genes_count': n_incomplete,
         'mutation_details': gene_mutations_block,  # ← الجدول الحقيقي (اسم الجين + الكودونات)
-        'disrupted_motifs': disrupted_motifs_summary,
     }
 
     # 3. بيانات الـ Delta — من ملفات إحداثيات 3D الحقيقية (مريض vs سليم)
@@ -169,8 +163,10 @@ def run_llm_report_bridge(output_data_instance) -> str:
         'affected_genes': [g.get("gene_name") for g in proteins_diff if g.get("mutation_type") not in (None, "none")] or "None detected.",
     }
 
-    # 4. لستة البروتينات المفقودة فعلياً
-    missing_proteins = missing_protein_names
+    # 4. لستة البروتينات المفقودة فعلياً — فاضية دايماً حالياً لأنه motif
+    # scanning (_step_motifs) معطّلة بالـ pipeline؛ لما تترفعّل بالمستقبل
+    # بتترجع هون القيمة الحقيقية بدل [] الثابتة.
+    missing_proteins = []
 
     logger.info("[LLM Bridge] Triggering LLM report generation for Patient: %s", patient_ref.name)
 

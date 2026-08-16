@@ -128,9 +128,7 @@ def translate_dna_to_protein(
             "warnings": warnings,
         }
 
-    # 2) تحديد نقطة بداية الترجمة
     if skip_atg_search:
-        # التسلسل جاي من splicer.py — أصلاً مقصوص بدقة من حدود CDS بالـ GTF
         coding_sequence = sequence
         has_start_codon = sequence.startswith(START_CODON)
         if not has_start_codon:
@@ -195,12 +193,7 @@ def translate_dna_to_protein(
 
     if not stopped_at_stop_codon:
         if skip_atg_search:
-            # التسلسل جاي من splicer.py — حدود الـ CDS أصلاً محسوبة بثقة
-            # كاملة من ملف الـ GTF نفسه (cds_start/cds_end)، فمش محتاجين
-            # تحقق إضافي من وجود TAA/TAG/TGA حرفياً. كمان، نسخة GENCODE
-            # "basic" ما فيها سطر "stop_codon" منفصل أصلاً، فهاد التحقق
-            # كان دايماً رح يفشل حتى لو الترجمة صحيحة 100% — يعني تحذير
-            # كاذب دائم بلا فائدة حقيقية بهاي الحالة تحديداً.
+            
             pass
         else:
             warnings.append(

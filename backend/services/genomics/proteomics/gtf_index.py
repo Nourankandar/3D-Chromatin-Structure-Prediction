@@ -177,14 +177,7 @@ def build_gtf_index(gtf_gz_path: str, cache_path: str) -> Dict[str, List[GeneInf
                 transcript = gene["transcripts"].get(transcript_id)
                 if transcript is None:
                     continue
-                # كودون الإيقاف (TAA/TAG/TGA) بملفات GENCODE بيجي بسطر منفصل
-                # تماماً عن الـ CDS (المعيار القياسي: الـ CDS ما بيشمله إطلاقاً).
-                # لازم نوسّع حدود cds_start/cds_end حتى يشمله splicer.py،
-                # وإلا الترجمة رح توصل دايماً لآخر الـ CDS بدون ما "تشوف"
-                # كودون إيقاف حقيقي — حتى لو عينة المريض كانت كاملة 100%.
-                # على الخيط الموجب (+): كودون الإيقاف بعد نهاية الـ CDS جينومياً.
-                # على الخيط السالب (-): كودون الإيقاف قبل بداية الـ CDS جينومياً
-                # (لأنه الاتجاه معكوس بيولوجياً، بس الإحداثيات لسا تصاعدية).
+                
                 if transcript["cds_start"] is None or start0 < transcript["cds_start"]:
                     transcript["cds_start"] = start0
                 if transcript["cds_end"] is None or end0 > transcript["cds_end"]:

@@ -12,7 +12,6 @@ logger = logging.getLogger("apps.accounts")
 
 class AuthService:
     
-    # --- SIGNUP FLOW SERVICES ---
 
     @staticmethod
     def initiate_signup(email: str) -> dict:
@@ -63,7 +62,6 @@ class AuthService:
         user.is_active = True
         user.save()
 
-        # إنشاء الملف الشخصي وحفظ الصورة إذا تم توفيرها
         UserProfile.objects.create(user=user, profile_image=profile_image)
 
         cache.delete(f"signup_verified_{email}")
@@ -77,10 +75,8 @@ class AuthService:
         if User.objects.filter(email=email).exists():
             return {"status": "error", "message": "Email already registered."}
 
-        # توليد رمز جديد
         code = str(random.randint(100000, 999999))
         
-        # تخزين الرمز الجديد في الـ Cache لـ 5 دقائق (هذا سيكتب فوق الرمز القديم إن وجد)
         cache.set(f"signup_otp_{email}", code, timeout=300) 
 
         subject = "Resend: Verify your account"
@@ -98,10 +94,8 @@ class AuthService:
 
     @staticmethod
     def update_profile_image(user: User, new_image) -> dict:
-        # البحث عن الـ Profile أو إنشائه في حال لم يكن موجوداً
         profile, created = UserProfile.objects.get_or_create(user=user)
         
-        # مسح الصورة القديمة من السيرفر (اختياري، يفضل لتوفير المساحة)
         if profile.profile_image and not created:
             profile.profile_image.delete(save=False)
             
@@ -110,8 +104,6 @@ class AuthService:
         return {"status": "success", "message": "Profile image updated successfully."}
 
     # --- EXISTING SERVICES ---
-    # (الأكواد الخاصة بـ login_user, logout_user, change_password, forgot_password تبقى كما هي تماماً من الرد السابق)
-    # ...
 
 
     @staticmethod
@@ -157,10 +149,7 @@ class AuthService:
         if User.objects.filter(email=email).exists():
             return {"status": "error", "message": "Email already registered."}
 
-        # توليد رمز جديد
         code = str(random.randint(100000, 999999))
-        
-        # تخزين الرمز الجديد في الـ Cache لـ 5 دقائق (هذا سيكتب فوق الرمز القديم إن وجد)
         cache.set(f"signup_otp_{email}", code, timeout=300) 
 
         subject = "Resend: Verify your account"
@@ -203,23 +192,7 @@ class AuthService:
 
         return {"status": "forbidden", "message": "This account does not have admin/staff privileges."}
 
-        # الآن نستخدم authenticate() بشكل طبيعي (بيمرر لأنه is_active=True فعلاً)
-        user = authenticate(request, username=username, password=password)
-        if user is None:
-            # حالة نادرة: مثلاً backend مخصص رفض تسجيل الدخول لسبب تاني
-            return {
-                "status": "unauthorized",
-                "message": "Invalid username or password.",
-            }
-
-        if user.is_staff or user.is_superuser:
-            tokens = AuthService.get_tokens_for_user(user)
-            return {"status": "success", "tokens": tokens, "user": user}
-
-        return {
-            "status": "forbidden",
-            "message": "This account does not have admin/staff privileges.",
-        }
+    
     @staticmethod
     def logout_user(refresh_token: str) -> None:
         token = RefreshToken(refresh_token)

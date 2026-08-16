@@ -373,7 +373,6 @@ class GeneDetailAPIView(APIView):
 
         data = GeneDetailSerializer(gene).data
 
-        # تحميل نقاط الاحداثيات (مريض/سليم) اللي بتقع ضمن مدى الجين
         from .models import OutputData
         import json
         output = OutputData.objects.get(pk=output_id)
