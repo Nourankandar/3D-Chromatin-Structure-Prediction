@@ -93,37 +93,18 @@ class UpdateProfileImageAPIView(APIView):
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
 
 
-class VerifySignupOTPAPIView(APIView):
-    """POST /api/auth/verify-signup/ — verify OTP and activate account."""
-    permission_classes = [AllowAny]
+class DeleteProfileImageAPIView(APIView):
+    """DELETE /api/auth/profile/delete-image/ — Delete the current user's profile image."""
+    permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        serializer = VerifySignupOTPSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+    def delete(self, request):
+        result = AuthService.delete_profile_image(user=request.user)
 
-        result = AuthService.verify_signup_otp(
-            email=serializer.validated_data["email"],
-            code=serializer.validated_data["code"],
-        )
         if result["status"] == "success":
             return Response(result, status=status.HTTP_200_OK)
         return Response(result, status=status.HTTP_400_BAD_REQUEST)
-
-
-class ResendSignupOTPAPIView(APIView):
-    """POST /api/auth/resend-signup-otp/ - resend verification code."""
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = ResendSignupOTPSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        result = AuthService.resend_signup_otp(email=serializer.validated_data["email"])
-        if result["status"] == "success":
-            return Response(result, status=status.HTTP_200_OK)
-        return Response(result, status=status.HTTP_400_BAD_REQUEST)
-
-
+    
+    
 
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
@@ -131,7 +112,6 @@ class LoginAPIView(APIView):
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         result = AuthService.login_user(
             request,
             serializer.validated_data["username"],
