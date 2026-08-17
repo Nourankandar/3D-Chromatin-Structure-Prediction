@@ -257,10 +257,7 @@ def build_codon_map(
         sequence = sequence[: len(sequence) - remainder]
 
     codons: List[CodonInfo] = []
-    # الترقيم بيبلش من 0: ATG/Met = 0 (مش محسوب سريرياً)، أول حمض أميني
-    # بالبروتين الناضج بعد قطع الـ Met = 1 (مطابق للترقيم السريري، مثلاً
-    # HBB: Val=1, His=2, ... Glu=6 → موقع طفرة HbS "codon 6 Glu>Val")
-    for codon_index, i in enumerate(range(0, len(sequence), 3)):
+    for codon_index, i in enumerate(range(0, len(sequence), 3),start=1):
         codon_dna = sequence[i : i + 3]
         codon_mrna = codon_dna.replace("T", "U")
 
