@@ -699,6 +699,33 @@ function visibleRows(){
     .sort((a,b)=> STATUS[a.st].rank-STATUS[b.st].rank || a.name.localeCompare(b.name));
 }
 
+
+function escLocal(s){ return String(s??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function inferCodonType(c, geneType){
+  if(geneType === 'frameshift') return 'frameshift';
+  const ref = String(c.reference_amino_acid||'').toUpperCase();
+  const pat = String(c.patient_amino_acid||'').toUpperCase();
+  if(ref === pat) return 'silent';
+  if(pat === '*' || pat === 'STOP' || pat === 'TER') return 'nonsense';
+  return 'missense';
+}
+
+function renderCodonBreakdown(row){
+  if(!row.mutatedCodons || row.mutatedCodons.length <= 1) return '';
+  const lines = row.mutatedCodons.map(c=>{
+    const t = inferCodonType(c, row.st);
+    const col = STATUS[t]?.color || STATUS.none.color;
+    const lbl = STATUS[t]?.label || '';
+    return `<div class="codon-line" style="display:flex; align-items:center; gap:6px; padding:3px 0 3px 30px; font-size:10.5px">
+      <span class="pdot" style="width:6px; height:6px; background:${col}"></span>
+      <span class="mono" style="color:var(--muted)">#${escLocal(c.codon_number ?? '')}</span>
+      <span class="mono" style="color:var(--fg)">${escLocal(c.reference_amino_acid||'?')}→${escLocal(c.patient_amino_acid||'?')}</span>
+      <span style="color:${col}">${lbl}</span>
+    </div>`;
+  }).join('');
+  return `<div class="codon-breakdown">${lines}</div>`;
+}
+
 function renderProteinList(){
   const box=document.getElementById('protList');
   const all=geneRows();
@@ -727,11 +754,18 @@ function renderProteinList(){
       `<input type="checkbox" ${on?'checked':''}>`+
       `<span class="pdot" style="background:${STATUS[r.st].color}"></span>`+
       `<span class="pname" title="${r.name}">${r.name}</span>`+
-      `<span class="ptag">${STATUS[r.st].label}</span>`+
+      `<span class="ptag">${STATUS[r.st].label}${r.mutatedCodons.length>1 ? ` (${r.mutatedCodons.length} طفرات)` : ''}</span>`+
       (selectedProt===r.key ? `<button class="helix-btn" title="عرض الحلزون الجزيئي الحقيقي" onclick="event.stopPropagation(); openHelixModal('${r.key}')"></button>` : '');
     el.querySelector('input').onclick=e=>{ e.stopPropagation(); toggleProtVisible(r.key, e.target.checked); };
     el.onclick=()=> openProteinCompare(r.name);
     box.appendChild(el);
+
+    // تفصيل كل طفرة فردية بسطر لحالها تحت الجين — يظهر بس لو أكتر من طفرة وحدة
+    if(r.mutatedCodons.length > 1){
+      const detail = document.createElement('div');
+      detail.innerHTML = renderCodonBreakdown(r);
+      box.appendChild(detail.firstElementChild);
+    }
   });
 }
 
@@ -867,7 +901,7 @@ function renderTrack(){
       el.style.insetInlineStart=left.toFixed(2)+'%';
       el.style.width=width.toFixed(2)+'%';
       el.style.background=col;
-      el.title=`${r.name} · ${STATUS[r.st].label}\n${P.chrom}:${Math.round(r.start).toLocaleString()}-${Math.round(r.end).toLocaleString()}`+
+      el.title=`${r.name} · ${STATUS[r.st].label}${r.mutatedCodons.length>1 ? ` (${r.mutatedCodons.length} طفرات)` : ''}\n${P.chrom}:${Math.round(r.start).toLocaleString()}-${Math.round(r.end).toLocaleString()}`+
         (r.isComplete===false ? '\n⚠ الجين غير مغطّى بالكامل ضمن منطقة التحليل' : '');
       el.onclick=()=>highlightGeneOnScenes(r);
       lane.appendChild(el);

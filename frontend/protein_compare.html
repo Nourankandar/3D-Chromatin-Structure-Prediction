@@ -525,6 +525,15 @@
     padding-bottom: 12px;
     direction: ltr;
   }
+  .ge-scroll-wrap {
+  width: 100%;
+  overflow-x: scroll !important;
+  display: block;
+}
+.ge-tracks {
+  width: max-content !important;
+  min-width: 100%;
+}
 
   .ge-scroll-wrap::-webkit-scrollbar { height: 6px; }
   .ge-scroll-wrap::-webkit-scrollbar-track { background: color-mix(in srgb, var(--fg) 4%, transparent); border-radius: 4px; }
@@ -760,10 +769,7 @@ async function resolveByGeneName(name){
     const ur = await fetch(uq, {signal: AbortSignal.timeout(12000)});
     const acc = ur.ok ? (await ur.json())?.results?.[0]?.primaryAccession : null;
     if(acc){
-      let pdbId = null;
-      try{ pdbId = await searchRCSBByAccession(acc); }catch(e){}
-      if(pdbId) out = {kind:'pdb', value:pdbId, source:'experimental', accession:acc};
-      else out = {kind:'uniprot', value:acc, source:'predicted', accession:acc};
+      out = {kind:'uniprot', value:acc, source:'predicted', accession:acc};
     }
   }catch(e){}
   NAME_CACHE.set(gene, out);
@@ -783,20 +789,84 @@ function renderPane(side, label){
     </div>`;
 }
 
+// كاش محلي لنتائج ESMFold — بمجرد ما ينجح تسلسل مرة وحدة، بيصير محفوظ بالمتصفح
+// وما بيحتاج يتواصل مع أي سيرفر خارجي تاني لنفس التسلسل بالضبط 
+function esmCacheKey(seq){ return 'esmfold_cache_' + seq.length + '_' + seq.slice(0,20) + '_' + seq.slice(-20); }
+function esmCacheGet(seq){
+  try{
+    const raw = localStorage.getItem(esmCacheKey(seq));
+    if(!raw) return null;
+    const obj = JSON.parse(raw);
+    return obj && obj.seq === seq ? obj.pdb : null;
+  }catch(e){ return null; }
+}
+function esmCacheSet(seq, pdb){
+  try{ localStorage.setItem(esmCacheKey(seq), JSON.stringify({seq, pdb})); }catch(e){}
+}
+
 async function foldWithESMFold(sequence){
   const clean = String(sequence||'').replace(/[^A-Za-z]/g,'').toUpperCase();
   if(!clean || clean.length < 3) throw new Error('تسلسل فارغ أو قصير جداً');
   if(clean.length > 768) throw new Error('التسلسل أطول من الحد المسموح (768 حمض أميني) لهذه الخدمة');
-  const res = await fetch('https://api.esmatlas.com/foldSequence/v1/pdb/', {
-    method:'POST', body:clean, signal:AbortSignal.timeout(30000)
-  });
-  if(!res.ok) throw new Error('HTTP '+res.status);
-  const text = await res.text();
-  if(!/^ATOM\s|\nATOM\s/.test(text)) throw new Error('رد غير صالح من الخدمة');
-  return text;
+
+  // 1) لو محفوظة بالكاش من محاولة ناجحة سابقة — نستخدمها فورًا، بدون أي طلب شبكة
+  const cached = esmCacheGet(clean);
+  if(cached) return cached;
+
+  // 2) إعادة محاولة تلقائية (3 محاولات) قبل ما نستسلم — لمقاومة الأعطال المؤقتة بالخدمة
+  let lastErr = null;
+  for(let attempt = 1; attempt <= 3; attempt++){
+    try{
+      const res = await fetch('https://api.esmatlas.com/foldSequence/v1/pdb/', {
+        method:'POST', body:clean, signal:AbortSignal.timeout(60000)
+      });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const text = await res.text();
+      if(!/^ATOM\s|\nATOM\s/.test(text)) throw new Error('رد غير صالح من الخدمة');
+      esmCacheSet(clean, text); // ننجح؟ نحفظ فورًا لأي مرة جاية
+      return text;
+    }catch(err){
+      lastErr = err;
+      if(attempt < 3) await new Promise(r => setTimeout(r, 1500 * attempt)); // فاصل متزايد قبل إعادة المحاولة
+    }
+  }
+  throw lastErr;
 }
 
-async function loadPaneStructure(side, label, sequence, fallbackResolved, proteinName, geneName){
+// نجيب حدود "ببتيد الإشارة" الموثّقة من UniProt لهالبروتين (لو موجودة)
+const SIGNAL_CACHE = new Map();
+async function fetchSignalPeptideEnd(accession){
+  if(!accession) return null;
+  if(SIGNAL_CACHE.has(accession)) return SIGNAL_CACHE.get(accession);
+  let end = null;
+  try{
+    const res = await fetch(`https://rest.uniprot.org/uniprotkb/${accession}.json`, {signal:AbortSignal.timeout(12000)});
+    if(res.ok){
+      const data = await res.json();
+      const sig = (data.features||[]).find(f => /signal/i.test(f.type||'') && f.location?.end?.value);
+      if(sig) end = sig.location.end.value;
+    }
+  }catch(e){}
+  SIGNAL_CACHE.set(accession, end);
+  return end;
+}
+
+// نتحقق: هل في أي كودون متطفّر واقع جوا نطاق ببتيد الإشارة؟ (بالاعتماد على codon_number 1-based)
+function mutationInsideSignalPeptide(mutatedCodons, sigEnd){
+  if(!sigEnd || !mutatedCodons || !mutatedCodons.length) return false;
+  return mutatedCodons.some(c => Number(c.codon_number) > 0 && Number(c.codon_number) <= sigEnd);
+}
+
+// نقص ببتيد الإشارة من التسلسل — إلا إذا كانت الطفرة نفسها واقعة جواه (ساعتها نتركه كامل)
+function trimSignalPeptideIfSafe(sequence, sigEnd, mutatedCodons){
+  if(!sequence || !sigEnd || sigEnd >= sequence.length) return {seq: sequence, trimmed: false, unsafe: false};
+  if(mutationInsideSignalPeptide(mutatedCodons, sigEnd)){
+    return {seq: sequence, trimmed: false, unsafe: true};
+  }
+  return {seq: sequence.slice(sigEnd), trimmed: true, unsafe: false};
+}
+
+async function loadPaneStructure(side, label, sequence, fallbackResolved, proteinName, geneName, mutatedCodons){
   const bodyEl = document.getElementById('body-'+side);
   const statusEl = document.getElementById('status-'+side);
   const badgeEl = document.getElementById('badge-'+side);
@@ -806,12 +876,17 @@ async function loadPaneStructure(side, label, sequence, fallbackResolved, protei
   const frame = document.getElementById(frameId);
   const frameReady = new Promise(resolve => frame.addEventListener('load', resolve, {once:true}));
 
+  // أول كودون متطفّر — هو موقع "الطفرة" يلي رح نميّزه بالشكل ثلاثي الأبعاد
+  const firstMutation = (mutatedCodons && mutatedCodons.length) ? mutatedCodons[0] : null;
+  const mutationResidue = firstMutation ? Number(firstMutation.codon_number) : null;
+
   const showReference = async ()=>{
     if(!fallbackResolved) return false;
     badgeEl.style.display='inline-block';
     badgeEl.textContent = fallbackResolved.source==='predicted' ? 'AlphaFold — بنية مرجعية معروفة' : 'RCSB — بنية تجريبية معروفة';
     badgeEl.style.background='color-mix(in srgb, var(--control) 18%, transparent)'; badgeEl.style.color='var(--control)';
-    const common = `name=${encodeURIComponent(proteinName||'')}&gene=${encodeURIComponent(geneName||'')}`;
+    const common = `name=${encodeURIComponent(proteinName||'')}&gene=${encodeURIComponent(geneName||'')}`
+      + (mutationResidue ? `&highlightResidue=${mutationResidue}` : '');
     frame.src = fallbackResolved.kind==='pdb'
       ? `protein_viewer.html?pdb=${encodeURIComponent(fallbackResolved.value)}&${common}`
       : `protein_viewer.html?uniprot=${encodeURIComponent(fallbackResolved.value)}&${common}`;
@@ -821,11 +896,23 @@ async function loadPaneStructure(side, label, sequence, fallbackResolved, protei
   const showESMFold = async ()=>{
     if(!sequence || sequence.length < 3) return false;
     try{
-      const pdbText = await foldWithESMFold(sequence);
-      badgeEl.style.display='inline-block'; badgeEl.textContent='ESMFold — تسلسل حقيقي';
+      const accession = fallbackResolved?.accession || null;
+      const sigEnd = accession ? await fetchSignalPeptideEnd(accession) : null;
+      const {seq: foldSeq, trimmed, unsafe} = trimSignalPeptideIfSafe(sequence, sigEnd, mutatedCodons);
+
+      const pdbText = await foldWithESMFold(foldSeq);
+      badgeEl.style.display='inline-block';
+      badgeEl.textContent = unsafe
+        ? '⚠ ESMFold — الطفرة داخل ببتيد الإشارة، لم يُقص'
+        : (trimmed ? `ESMFold — بعد قص ببتيد إشارة (1–${sigEnd})` : 'ESMFold — تسلسل حقيقي');
       badgeEl.style.background='color-mix(in srgb, var(--patient) 16%, transparent)'; badgeEl.style.color='var(--patient)';
       await frameReady;
-      frame.contentWindow.postMessage({type:'load-pdb-raw', pdbText, name:proteinName, sub:`ESMFold · ${sequence.length} حمض أميني`}, '*');
+      // نصحّح رقم موقع الطفرة حسب القص (لو انقص ببتيد الإشارة، ترقيم ESMFold بيبلش من 1 من جديد)
+      const adjustedResidue = (mutationResidue && trimmed) ? (mutationResidue - sigEnd) : mutationResidue;
+      frame.contentWindow.postMessage({
+        type:'load-pdb-raw', pdbText, name:proteinName, sub:`ESMFold · ${foldSeq.length} حمض أميني`,
+        highlightResidue: (adjustedResidue && adjustedResidue > 0) ? adjustedResidue : null
+      }, '*');
       return true;
     }catch(err){
       console.warn('[ESMFold] فشل الطي لـ', side, err.message);
@@ -838,11 +925,14 @@ async function loadPaneStructure(side, label, sequence, fallbackResolved, protei
   if(side==='control'){
     ok = await showReference();
     if(!ok) ok = await showESMFold();
+    if(!ok) bodyEl.innerHTML = `<div class="empty-state">تعذّر الحصول على بنية ثلاثية الأبعاد لهذا البروتين من أي مصدر.</div>`;
   } else {
+    // ═══ جهة المريض: ESMFold فقط — بدون أي رجوع لـ AlphaFold (بنية غير متحوّرة) ═══
     ok = await showESMFold();
-    if(!ok) ok = await showReference();
+    if(!ok){
+      bodyEl.innerHTML = `<div class="empty-state">تعذّر التنبؤ بالبنية المتحوّرة للمريض (يتجاوز الحد المسموح للخدمة السريعة أو تعطل السيرفر). يتم عرض الطفرة والتسلسل في شريط التعبير الجيني أدناه.</div>`;
+    }
   }
-  if(!ok) bodyEl.innerHTML = `<div class="empty-state">تعذّر الحصول على بنية ثلاثية الأبعاد لهذا البروتين من أي مصدر.</div>`;
 }
 
 async function boot(){
@@ -880,8 +970,9 @@ async function boot(){
   let fallbackResolved = null;
   try{ fallbackResolved = await resolveByGeneName(proteinName); }catch(e){}
 
-  loadPaneStructure('control', 'السليم', geneData?.control_amino_acid_sequence, fallbackResolved, proteinName, geneName);
-  loadPaneStructure('patient', 'المريض', geneData?.patient_amino_acid_sequence, fallbackResolved, proteinName, geneName);
+  const mutatedCodonsForCheck = geneData?.mutated_codons || [];
+  loadPaneStructure('control', 'السليم', geneData?.control_amino_acid_sequence, fallbackResolved, proteinName, geneName, mutatedCodonsForCheck);
+  loadPaneStructure('patient', 'المريض', geneData?.patient_amino_acid_sequence, fallbackResolved, proteinName, geneName, mutatedCodonsForCheck);
 
   document.getElementById('geneExprSection').innerHTML = renderGeneExpression(geneData);
   syncTrackScroll();

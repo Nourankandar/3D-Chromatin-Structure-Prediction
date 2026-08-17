@@ -82,18 +82,23 @@
   body{background:var(--bg);color:var(--fg);font-family:var(--font-sans);overflow:hidden;
     display:flex;flex-direction:column}
 
-  .tabbar{flex:none;display:flex;align-items:center;gap:6px;padding:10px 14px;
+  .tabbar{flex:none;position:relative;display:flex;align-items:center;gap:6px;padding:10px 14px;
     background:var(--card-solid);border-bottom:1px solid var(--border)}
   .tabbar .brand{display:flex;align-items:center;gap:8px;font-family:var(--font-display);
     font-weight:700;font-size:15px;color:var(--fg);margin-inline-end:14px}
   .tabbar .brand svg{width:20px;height:20px;color:var(--primary)}
-  .tabbtn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 16px;
-    border-radius:10px;border:1px solid transparent;background:transparent;color:var(--muted);
-    font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
-  .tabbtn svg{width:16px;height:16px}
-  .tabbtn:hover{color:var(--fg);background:color-mix(in srgb, var(--fg) 5%, transparent)}
-  .tabbtn.on{color:var(--primary);background:color-mix(in srgb, var(--primary) 14%, transparent);
-    border-color:color-mix(in srgb, var(--primary) 30%, transparent)}
+
+  /* الزر البيضاوي المقسوم —   */
+  .tabseg{position:absolute;inset-inline-start:30%;transform:translateX(-50%);
+    display:flex;align-items:center;background:var(--bg);
+    border:1px solid var(--border);border-radius:999px;padding:3px}
+  .tabseg-btn{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 18px;
+    border-radius:999px;border:none;background:transparent;color:var(--muted);
+    font-family:var(--font-sans);font-size:13px;font-weight:600;cursor:pointer;
+    transition:background .15s,color .15s;white-space:nowrap}
+  .tabseg-btn:hover{color:var(--fg)}
+  .tabseg-btn.on{color:var(--bg);background:var(--primary)}
+  .tabseg-divider{width:1px;height:16px;background:var(--border)}
 
   .panes{flex:1;position:relative;min-height:0}
   .pane{position:absolute;inset:0;display:none}
@@ -129,14 +134,15 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3c0 6 12 6 12 12M6 21c0-6 12-6 12-12"/><path d="M7 6h10M7 18h10M8.5 9.5h7M8.5 14.5h7" stroke-width="1.1"/></svg>
     ChromoGen
   </div>
-  <button class="tabbtn on" id="tabChromatin">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r="2"/><path d="M8 7l3 4M16 7l-3 4M8 17l3-4M16 17l-3-4"/></svg>
-    <span>مقارنة الكروماتين</span>
-  </button>
-  <button class="tabbtn" id="tabProtein">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4.5v9L12 20l-8-4.5v-9L12 2z"/><circle cx="12" cy="11" r="2.3"/><path d="M12 2v6.7M4 6.5l7 4M20 6.5l-7 4"/></svg>
-    <span>مقارنة البروتين</span>
-  </button>
+  <div class="tabseg">
+    <button class="tabseg-btn on" id="tabChromatin">
+      <span>مقارنة الكروماتين</span>
+    </button>
+    <div class="tabseg-divider"></div>
+    <button class="tabseg-btn" id="tabProtein">
+      <span>مقارنة البروتين</span>
+    </button>
+  </div>
 </div>
 
 <div class="panes">

@@ -101,6 +101,32 @@ function renderChromatin(view){
 }
 
 /* بحث بروتين حسب الجين */
+const PDB_TITLE_CACHE = {};
+async function fetchPdbTitle(id){
+  if(PDB_TITLE_CACHE[id] !== undefined) return PDB_TITLE_CACHE[id];
+  try{
+    const res = await fetch(`https://data.rcsb.org/rest/v1/core/entry/${encodeURIComponent(id)}`, {signal:AbortSignal.timeout(10000)});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    const title = (data?.struct?.title || '').trim();
+    PDB_TITLE_CACHE[id] = title || null;
+  }catch(e){
+    PDB_TITLE_CACHE[id] = null;
+  }
+  return PDB_TITLE_CACHE[id];
+}
+
+const MUTATION_HINT_RE = /\bmutant\b|\bmutation\b|\bvariant\b|\b[A-Z]\d{1,4}[A-Z]\b/i;
+function loadPdbTitlesIntoSelect(selectEl, ids){
+  if(!selectEl) return;
+  ids.forEach(async id=>{
+    const title = await fetchPdbTitle(id);
+    if(!title || !MUTATION_HINT_RE.test(title)) return;
+    const opt = [...selectEl.options].find(o=>o.value===id);
+    if(opt){ opt.textContent = `${id} ${t('pdb_mutant_tag')}`; opt.title = title; }
+  });
+}
+
 async function searchProteinForViewer(gene){
   gene = (gene||'').trim();
   if(!gene) return;
@@ -177,7 +203,7 @@ function renderProtein(view){
     <div class="card" style="padding:1.25rem">
       <label class="label" for="pdbSelect">${t('select_pdb')}</label>
       <select id="pdbSelect" class="select mono" style="margin-top:.5rem">
-        ${p.pdb_ids.map(id=>`<option ${id===S.activePdb?'selected':''}>${id}</option>`).join('')}
+        ${p.pdb_ids.map(id=>`<option value="${id}" ${id===S.activePdb?'selected':''}>${id}</option>`).join('')}
       </select>
       <a class="btn outline" style="width:100%;margin-top:1rem" target="_blank" rel="noreferrer"
          href="https://www.rcsb.org/structure/${S.activePdb}">${ICON.external}<span>${t('viewer_open_rcsb')}</span></a>
@@ -206,6 +232,7 @@ function renderProtein(view){
 
   wireProteinSearch(view);
   const sel = view.querySelector('#pdbSelect');
+  if(sel && !isPredicted) loadPdbTitlesIntoSelect(sel, p.pdb_ids);
   if (sel) sel.onchange = e=>{
     S.activePdb = e.target.value;
     const fr = document.getElementById('proteinFrame'); if (fr) fr.src = proteinSrc();
@@ -272,7 +299,7 @@ async function loadReport(reportId){
 }
 function renderReportBody(r){
   const body=document.getElementById('reportModalBody');
-  const st = r.status; // draft | generating | completed | failed — قيم حقيقية من الباك
+  const st = r.status; 
   if(st==='draft' || st==='generating'){
     body.innerHTML=`<div style="text-align:center;padding:24px 0">
       <p class="sm-t muted">${st==='generating' ? 'التقرير يتولّد الآن...' : ' التقرير لم يتم توليده.'}</p>

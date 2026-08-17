@@ -257,11 +257,91 @@ function parsePDB(text){
   return atoms;
 }
 
+// محلّل صيغة mmCIF — بديل احتياطي لما RCSB ما توفّر الصيغة القديمة (.pdb) لبنى كبيرة/معقّدة.
+// بيرجّع نفس شكل البيانات بالضبط يلي بيرجعها parsePDB، عشان يشتغل مباشرة مع باقي الكود.
+function tokenizeCifLine(line){
+  const tokens=[]; let i=0;
+  while(i<line.length){
+    while(i<line.length && /\s/.test(line[i])) i++;
+    if(i>=line.length) break;
+    if(line[i]==="'"||line[i]==='"'){
+      const q=line[i]; i++; const start=i;
+      while(i<line.length && line[i]!==q) i++;
+      tokens.push(line.slice(start,i)); i++;
+    } else {
+      const start=i;
+      while(i<line.length && !/\s/.test(line[i])) i++;
+      tokens.push(line.slice(start,i));
+    }
+  }
+  return tokens;
+}
+function parseCIF(text){
+  const lines=text.split('\n');
+  const atoms=[]; let cols=[], colIndex={}, collecting=false, dataStarted=false;
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i].trim();
+    if(!collecting){
+      if(line==='loop_'){ cols=[]; colIndex={}; dataStarted=false; collecting='maybe'; }
+      continue;
+    }
+    if(collecting==='maybe'){
+      if(line.startsWith('_atom_site.')){ cols.push(line.slice('_atom_site.'.length)); continue; }
+      if(cols.length){ collecting=true; } 
+      else { collecting=false; continue; } 
+    }
+    if(collecting===true){
+      if(line===''||line==='#'||line.startsWith('loop_')||line.startsWith('_')||line.startsWith('data_')){
+        collecting=false; continue;
+      }
+      if(!dataStarted){ cols.forEach((c,idx)=>colIndex[c]=idx); dataStarted=true; }
+      const parts=tokenizeCifLine(line);
+      const group=parts[colIndex['group_PDB']];
+      if(group!=='ATOM' && group!=='HETATM') continue;
+      const el=(parts[colIndex['type_symbol']]||'').toUpperCase();
+      if(el==='H'||el==='D') continue;
+      const x=parseFloat(parts[colIndex['Cartn_x']]), y=parseFloat(parts[colIndex['Cartn_y']]), z=parseFloat(parts[colIndex['Cartn_z']]);
+      if(isNaN(x)||isNaN(y)||isNaN(z)) continue;
+      const name=(parts[colIndex['label_atom_id']] ?? parts[colIndex['auth_atom_id']] ?? '').replace(/"/g,'');
+      const chainIdx = colIndex['auth_asym_id'] ?? colIndex['label_asym_id'];
+      const chain = (chainIdx!=null ? parts[chainIdx] : '') || 'A';
+      const resIdx = colIndex['auth_seq_id'] ?? colIndex['label_seq_id'];
+      const resSeq = parseInt(resIdx!=null ? parts[resIdx] : '') || 0;
+      atoms.push({x,y,z, element:el||'C', name, chain, resSeq});
+    }
+  }
+  return atoms;
+}
+
 function disposeGroup(g){ g.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose(); }); }
 
-const CHAIN_COLORS = [0x8eb69b, 0xe0b24d, 0x6ba3d6, 0xd98a6a, 0xb088d9, 0x5cbf9e, 0xd97aa5];
+const CHAIN_COLORS = [
+  0x8eb69b, 0xe0b24d, 0x6ba3d6, 0xd98a6a, 0xb088d9, 0x5cbf9e, 0xd97aa5,
+  0xd96b6b, 0xb5cc5e, 0x5cc4d9, 0x8a8fe0, 0xc9a23a, 0xc962c2, 0x94a3b3
+];
 const TARGET_R = 42;
 let currentAtoms = null, currentMode = 'ribbon';
+let highlightResSeq = null, highlightChain = null; // موقع الحمض الأميني المتحوّر (لو محدّد)
+
+// نضيف كرة مميّزة (أحمر) فوق موقع الحمض الأميني المتحوّر، فوق أي رسمة (شريط أو ذرات)
+function addMutationMarker(atoms, cx,cy,cz,scale){
+  if(highlightResSeq==null) return;
+  const target = atoms.find(a => a.name==='CA' && a.resSeq===highlightResSeq &&
+    (highlightChain==null || a.chain===highlightChain));
+  if(!target) return;
+  const pos = new THREE.Vector3((target.x-cx)*scale,(target.y-cy)*scale,(target.z-cz)*scale);
+  // هالة توهج شفّافة  — طبقتين متداخلتين بشفافية متدرّجة لإحساس "توهّج" ناعم
+  const outer=new THREE.Mesh(
+    new THREE.SphereGeometry(4.2, 20, 20),
+    new THREE.MeshBasicMaterial({color:0xff4d4d, transparent:true, opacity:.16, depthWrite:false})
+  );
+  const inner=new THREE.Mesh(
+    new THREE.SphereGeometry(2.4, 20, 20),
+    new THREE.MeshBasicMaterial({color:0xff6b5f, transparent:true, opacity:.32, depthWrite:false})
+  );
+  outer.position.copy(pos); inner.position.copy(pos);
+  proteinGroup.add(outer); proteinGroup.add(inner);
+}
 
 function centerScale(atoms){
   const n=atoms.length; let cx=0,cy=0,cz=0;
@@ -305,6 +385,7 @@ function drawAtoms(atoms){
     ats.forEach((a,i)=>{ m.setPosition((a.x-cx)*scale,(a.y-cy)*scale,(a.z-cz)*scale); mesh.setMatrixAt(i,m); });
     mesh.instanceMatrix.needsUpdate=true; proteinGroup.add(mesh);
   });
+  addMutationMarker(atoms, cx,cy,cz,scale);
   scene.add(proteinGroup); frameCamera(); legendMode('atoms');
 }
 
@@ -315,15 +396,35 @@ function drawRibbon(atoms){
   if(!keys.length){ drawAtoms(atoms); return; }   
   clearProtein();
   const {cx,cy,cz,scale}=centerScale(atoms);
+  const HI_COLOR = new THREE.Color(0xe8453f); // أحمر تمييز موقع الطفرة على الشريط
   keys.forEach((ch,ci)=>{
     const cas=chains[ch].sort((p,q)=>p.resSeq-q.resSeq);
     if(cas.length<2) return;
     const pts=cas.map(a=>new THREE.Vector3((a.x-cx)*scale,(a.y-cy)*scale,(a.z-cz)*scale));
     const curve=new THREE.CatmullRomCurve3(pts,false,'catmullrom',0.5);
-    const geo=new THREE.TubeGeometry(curve, Math.min(700,cas.length*6), 1.5, 8, false);
-    const mat=new THREE.MeshPhongMaterial({color:CHAIN_COLORS[ci%CHAIN_COLORS.length], shininess:55, transparent:true, opacity:.97});
+    const radialSegments=8, tubularSegments=Math.min(700,cas.length*6);
+    const geo=new THREE.TubeGeometry(curve, tubularSegments, 1.5, radialSegments, false);
+
+    const baseColor=new THREE.Color(CHAIN_COLORS[ci%CHAIN_COLORS.length]);
+    const doHighlight = highlightResSeq!=null && (highlightChain==null || ch===highlightChain);
+    const vertsPerRing = radialSegments+1, colors=[];
+    for(let i=0;i<=tubularSegments;i++){
+      const u = i/tubularSegments;
+      const ringPos = curve.getPointAt(u); 
+      let nearestIdx=0, minD=Infinity;
+      for(let k=0;k<pts.length;k++){
+        const d = ringPos.distanceToSquared(pts[k]);
+        if(d<minD){ minD=d; nearestIdx=k; }
+      }
+      const isHi = doHighlight && Math.abs(cas[nearestIdx].resSeq - highlightResSeq) <= 1;
+      const c = isHi ? HI_COLOR : baseColor;
+      for(let j=0;j<vertsPerRing;j++) colors.push(c.r,c.g,c.b);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    const mat=new THREE.MeshPhongMaterial({vertexColors:true, shininess:55, transparent:true, opacity:.97});
     proteinGroup.add(new THREE.Mesh(geo,mat));
   });
+  addMutationMarker(atoms, cx,cy,cz,scale);
   scene.add(proteinGroup); frameCamera(); legendMode('ribbon', keys);
 }
 
@@ -346,8 +447,9 @@ async function loadPDB(pdbId){
   const L=document.getElementById('loading'), msg=document.getElementById('load-msg');
   L.classList.remove('hidden'); L.querySelector('.spin')?.style && (L.querySelector('.spin').style.display='block');
   msg.className=''; msg.textContent='جاري التحميل من RCSB…';
-  const rcsb=`https://files.rcsb.org/download/${pdbId}.pdb`;
-  return loadStructure([rcsb, ...proxied(rcsb)], msg, L);
+  const rcsbPdb=`https://files.rcsb.org/download/${pdbId}.pdb`;
+  const rcsbCif=`https://files.rcsb.org/download/${pdbId}.cif`;
+  return loadStructure([rcsbPdb, ...proxied(rcsbPdb), rcsbCif, ...proxied(rcsbCif)], msg, L);
 }
 
 async function loadAlphaFold(uniprotId){
@@ -394,7 +496,7 @@ function renderRawPDB(text){
 
 async function loadStructure(urls, msg, L){
   try{
-    let text=null; const notes=[];
+    let text=null, format='pdb'; const notes=[];
     for(const url of urls){
       const isProxy=/allorigins|corsproxy|codetabs/.test(url);
       try{
@@ -402,7 +504,8 @@ async function loadStructure(urls, msg, L){
         const res=await fetch(url,{signal:AbortSignal.timeout(isProxy?25000:12000)});
         if(!res.ok){ notes.push('HTTP '+res.status); continue; }
         const body=await res.text();
-        if(/^ATOM\s|\nATOM\s/.test(body)){ text=body; break; }
+        const isCIF = /_atom_site\./.test(body);
+        if(isCIF || /^ATOM\s|\nATOM\s/.test(body)){ text=body; format=isCIF?'cif':'pdb'; break; }
         notes.push('رد غير صالح');
       }catch(e){
         notes.push(e && e.name==='TimeoutError' ? 'مهلة' : 'حجب/شبكة');
@@ -414,10 +517,10 @@ async function loadStructure(urls, msg, L){
       throw new Error('تعذّر تحميل ملف البنية — ' + hint);
     }
     msg.textContent='جاري تحليل البنية الذرية…';
-    const atoms=parsePDB(text);
+    const atoms = format==='cif' ? parseCIF(text) : parsePDB(text);
     if(!atoms.length) throw new Error('الملف لا يحتوي إحداثيات ذرية');
     currentAtoms = atoms; setMode(currentMode);
-    document.getElementById('tSub').textContent = atoms.length.toLocaleString('ar-EG') + ' ذرة';
+    document.getElementById('tSub').textContent = atoms.length.toLocaleString('ar-EG') + ' ذرة' + (format==='cif' ? ' · mmCIF' : '');
     L.classList.add('hidden');
   }catch(err){
     const spin=L.querySelector('.spin'); if(spin) spin.style.display='none';
@@ -431,6 +534,8 @@ initThree();
   const pdb=(p.get('pdb')||'').trim().toUpperCase();
   const uniprot=(p.get('uniprot')||'').trim().toUpperCase();
   const name=p.get('name')||'', gene=p.get('gene')||'';
+  const hr=p.get('highlightResidue');
+  if(hr && !isNaN(+hr)) highlightResSeq = +hr;
   const tc=document.getElementById('titleCard');
   if(pdb){
     tc.style.display='block';
@@ -459,6 +564,10 @@ window.addEventListener('message', e=>{
     document.getElementById('titleCard').style.display='block';
     document.getElementById('tTitle').textContent = e.data.name || 'ESMFold';
     document.getElementById('tSub').textContent = e.data.sub || '';
+    if(e.data.highlightResidue!=null && !isNaN(+e.data.highlightResidue)){
+      highlightResSeq = +e.data.highlightResidue;
+      highlightChain = e.data.highlightChain || null;
+    }
     renderRawPDB(e.data.pdbText);
   }
 });
