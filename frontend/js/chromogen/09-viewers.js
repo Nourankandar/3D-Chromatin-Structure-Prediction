@@ -324,6 +324,8 @@ function renderReportBody(r){
       </div>
       <button title="إعادة توليد" onclick="regenerateReport(${r.id})"
         style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer">↻</button>
+      <button title="حذف التقرير" onclick="deleteReport(${r.id})"
+        style="width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--destructive);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-inline-start:6px">🗑</button>
     </div>
     <div style="background:var(--muted);border-radius:12px;padding:14px;margin-bottom:14px">
       <p class="xs muted" style="text-transform:uppercase;letter-spacing:.04em;margin:0 0 4px">التشخيص المحتمل</p>
@@ -344,6 +346,20 @@ async function regenerateReport(reportId){
     await loadReport(reportId);
   }catch(e){
     body.innerHTML=`<p class="sm-t" style="color:var(--destructive)">تعذّر إعادة التوليد.</p>`;
+  }
+}
+async function deleteReport(reportId){
+  if(!await confirmDialog('حذف التقرير؟', 'هذا الإجراء نهائي ولا يمكن التراجع عنه — سيُحذف التقرير بالكامل.')) return;
+  const body=document.getElementById('reportModalBody');
+  body.innerHTML=`<p class="sm-t muted">جاري الحذف...</p>`;
+  try{
+    await api.del(`/reports/${reportId}/`);
+    closeReportModal();
+    if(typeof toast==='function') toast('تم حذف التقرير');
+  }catch(e){
+    console.error('[report delete]', e.response ? e.response.data : e);
+    body.innerHTML=`<p class="sm-t" style="color:var(--destructive)">تعذّر حذف التقرير.</p>`;
+    if(typeof toast==='function') toast('تعذّر حذف التقرير','error');
   }
 }
 async function exportReportPDF(reportId){

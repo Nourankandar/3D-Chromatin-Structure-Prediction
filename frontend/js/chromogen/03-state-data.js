@@ -45,7 +45,7 @@ async function fetchCellTypes(){
     CELL_TYPES = [];
   }
 }
-/* عمليات أنواع الخلايا —( CRUD ) */
+/* عمليات أنواع الخلايا  */
 async function createCellType(payload){
   return api.post('/genomics/cell-types/', payload);
 }
@@ -122,11 +122,11 @@ function pollTestStatus(inputId){
       S.patients.forEach(p=>p.genomic_inputs.forEach(g=>{
         if (g.id===inputId){ g.status = st.status; if (st.output_data_id) g.output_data_id = st.output_data_id; }
       }));
-      if (S.route==='dashboard') renderRoute();
+      if (['dashboard','predict','patient'].includes(S.route)) renderRoute();
       if (st.status==='completed' || st.status==='failed'){
         stopPolling(inputId);
         if (st.status==='completed') toast(t('toast_test_completed') || 'اكتمل التحليل بنجاح');
-        else toast('فشل التحليل — راجعي السيرفر','error');
+        else toast('فشل التحليل — راجع السيرفر','error');
       }
     } catch(e){
       if (e.response && e.response.status===404){ stopPolling(inputId); return; }

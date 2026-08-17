@@ -6,6 +6,14 @@
    ============================================================ */
 const PF = {patient:'', cell:'', chrom:'', file:null, submitting:false, started:false, startedId:null, stopping:false, rejected:false};
 
+function findTestStatus(id){
+  if(!id) return null;
+  for(const p of (S.patients||[])){
+    const g = (p.genomic_inputs||[]).find(x=>x.id===id);
+    if(g) return g.status;
+  }
+  return null;
+}
 
 function renderPredict(view){
   let form;
@@ -20,14 +28,27 @@ function renderPredict(view){
       <p class="sm-t muted" style="margin-top:.25rem;max-width:34ch">${t('predict_no_patients_desc')}</p>
       <button class="btn" style="margin-top:1.25rem" data-go="dashboard">${ICON.plus}<span>${t('add_patient')}</span></button></div>`;
   } else if (PF.started){
+    // نجيب الحالة الفعلية الحالية للتحليل من S.patients (بتتحدّث لحظيًا عبر pollTestStatus)
+    // بدل نص ثابت "بدأ التحليل" يضل معروض حتى بعد الاكتمال
+    const liveStatus = findTestStatus(PF.startedId);
+    const grp = liveStatus ? statusGroup(liveStatus) : 'pending';
+    const isDone = grp === 'completed';
+    const isFailed = grp === 'failed';
+    const runTitle = isDone ? (t('prediction_completed') || 'اكتمل التحليل بنجاح')
+                    : isFailed ? (t('prediction_failed') || 'فشل التحليل')
+                    : t('prediction_running_title');
+    const runDesc = isDone ? (t('prediction_completed_desc') || 'التحليل جاهز — تقدري تستعرضي النتائج الآن.')
+                    : isFailed ? (t('prediction_failed_desc') || 'صار خطأ أثناء التحليل — راجعي حالة التحليل أو جرّبي من جديد.')
+                    : t('prediction_running_desc');
+    const runIcon = isDone ? ICON.check : isFailed ? (ICON.alert || ICON.check) : ICON.clock;
     form = `<div class="empty fade" style="border-style:solid;border-color:color-mix(in srgb,var(--primary) 30%,transparent);background:color-mix(in srgb,var(--primary) 5%,transparent)">
-      <div class="ico">${ICON.check}</div>
-      <p style="margin-top:1rem;font-weight:500">${t('prediction_running_title')}</p>
-      <p class="sm-t muted" style="margin-top:.25rem;max-width:36ch">${t('prediction_running_desc')}</p>
+      <div class="ico">${runIcon}</div>
+      <p style="margin-top:1rem;font-weight:500">${runTitle}</p>
+      <p class="sm-t muted" style="margin-top:.25rem;max-width:36ch">${runDesc}</p>
       <div class="row" style="margin-top:1.5rem">
         <button class="btn" id="viewTestsBtn">${t('view_tests')}</button>
         <button class="btn outline" id="againBtn">${t('start_another')}</button>
-        ${PF.startedId ? `<button class="btn outline" id="stopStartedBtn" ${PF.stopping?'disabled':''}>
+        ${(PF.startedId && !isDone && !isFailed) ? `<button class="btn outline" id="stopStartedBtn" ${PF.stopping?'disabled':''}>
           ${PF.stopping ? `<span class="spin"></span>` : `${ICON.x}<span>${t('stop_test')}</span>`}
         </button>` : ''}
       </div></div>`;
@@ -345,7 +366,7 @@ function renderSettings(view){
         ${seg('lang', locale, [{v:'ar',label:t('lang_ar'),icon:ICON.lang},{v:'en',label:t('lang_en')}])}
       </div>
       <div class="card" style="padding:1.25rem">
-        <div style="margin-bottom:1rem"><p style="font-weight:500">${locale==='ar'?'لون التطبيق':'App color'}</p><p class="sm-t muted" style="margin-top:.15rem">${locale==='ar'?'اختاري لون الثيم المفضّل':'Choose your preferred theme color'}</p></div>
+        <div style="margin-bottom:1rem"><p style="font-weight:500">${locale==='ar'?'لون التطبيق':'App color'}</p><p class="sm-t muted" style="margin-top:.15rem">${locale==='ar'?'اختار لون الثيم المفضّل':'Choose your preferred theme color'}</p></div>
         <div class="accent-grid">
           ${ACCENTS.map(a=>`<button class="accent-chip${a.id===accent?' on':''}" data-accent-id="${a.id}" title="${locale==='ar'?a.label:a.labelEn}" aria-label="${locale==='ar'?a.label:a.labelEn}">
             <span class="accent-dot" style="background:${a.swatch}"></span>
