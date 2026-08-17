@@ -27,3 +27,5 @@ genome_reference
 docs
 best_model.pt
 kmer_index
+
+.celery_pid.tmp

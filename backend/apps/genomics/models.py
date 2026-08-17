@@ -54,6 +54,7 @@ class InputData(models.Model):
 
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending', verbose_name="Processing Status")
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Last Status Update")   # ← هاد الجديد
     celery_task_id = models.CharField(max_length=255, null=True, blank=True)
     def __str__(self):
         return f"Input for {self.patient.name} - {self.chromosome}:{self.start_pos}-{self.end_pos}"
@@ -102,9 +103,7 @@ class OutputData(models.Model):
         ordering = ['-generated_at']
 
 
-'''
-gene_protein_result
-'''
+
 class GeneProteinResult(models.Model):
     """
     نتيجة تحليل جين واحد (ترجمة + مقارنة طفرة) — سجل منفصل لكل جين

@@ -50,8 +50,8 @@ class InputDataCreateSerializer(serializers.ModelSerializer):
 class OutputDataSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source='input_data.patient.name', read_only=True)
     chromosome = serializers.CharField(source='input_data.chromosome', read_only=True)
-    affected_proteins = serializers.SerializerMethodField() # تعديل مخصص هنا
-    report_id = serializers.SerializerMethodField()  # ← جديد: الربط الصريح مع AnalysisReport
+    affected_proteins = serializers.SerializerMethodField() 
+    report_id = serializers.SerializerMethodField()
 
     class Meta:
         model = OutputData
@@ -59,9 +59,6 @@ class OutputDataSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'generated_at']
 
     def get_report_id(self, obj):
-        # OneToOneField بين OutputData و AnalysisReport — الـ id مختلف
-        # عن قصد (كل جدول عندو تسلسل خاص فيه)، فلازم نرجع الربط صراحة
-        # حتى الفرونت يعرف يوصل لتقرير الـ output هاد بدون أي تخمين
         return obj.report.id if hasattr(obj, 'report') else None
 
     def get_affected_proteins(self, obj):

@@ -16,7 +16,7 @@ services/pipeline_manager.py
   7) DNase على المريض + السليم (على مستوى النافذة الكاملة)
   8) Hi-C على المريض + السليم
   9) 3D coordinates (+ nucleosome track مدموجة فيها) لمريض وسليم
-  10) Motifs/التنظيميات (scanner) بالاعتماد على DNase + 3D
+  10) Motifs/التنظيميات (scanner) بالاعتماد على DNase + 3D موقفة حاليا 
   11) تجميع كل الفروقات بـ report_payload واحد وإرجاعه
 ====================================================================
 """
@@ -126,7 +126,7 @@ class GenomicPipelineManager:
             "coords_control_file": coords_control_file,
             "affected_proteins": affected_proteins,
             "proteins_diff": proteins_diff, 
-            "report_payload": report_payload,   # ← هاد يلي بينبعت لتابع التقرير النهائي
+            "report_payload": report_payload,   
         }
 
     # ------------------------------------------------------------------
@@ -237,7 +237,7 @@ class GenomicPipelineManager:
         # 2) المريض — التسلسل الأصلي يلي عندنا
         original_patient_seq = _read_fasta_sequence(patient_fasta_path)
 
-        # مهم جداً: DNA_locator بيجرب الاتجاهين (+ و -) ويختار الأفضل تطابقاً.
+        # DNA_locator بيجرب الاتجاهين (+ و -) ويختار الأفضل تطابقاً.
         # لو طلع إنه أفضل تطابق كان عالـ reverse complement (strand == "-")،
         # هاد معناه إنه ملف المريض المرفوع أصلاً معكوس الاتجاه (مثلاً جاي من
         # NCBI efetch بصيغة complement/strand=2 بدل strand=1 المعتمدة عندنا).
@@ -632,7 +632,6 @@ class GenomicPipelineManager:
     # ------------------------------------------------------------------
     @staticmethod
     def _update_status(input_data, status: str) -> None:
-        # نتأكد إذا حدا طلب إلغاء التحليل من برا (عبر /stop/) بين الخطوات
         input_data.refresh_from_db(fields=["status"])
         if input_data.status == "cancelled":
             raise PipelineCancelledError(
@@ -640,4 +639,4 @@ class GenomicPipelineManager:
             )
 
         input_data.status = status
-        input_data.save(update_fields=["status"])
+        input_data.save(update_fields=["status", "updated_at"])   # ← تأكد إنه فيها updated_at

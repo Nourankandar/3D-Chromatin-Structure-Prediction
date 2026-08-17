@@ -121,10 +121,15 @@ def _ensure_weights_downloaded(basset_dir: str, filename: str = "pretrained_mode
 
     print(f"  [Download] ملف أوزان Basset مش موجود — عم يتنزّل من Zenodo (~ملفات ضخمة، قد يأخذ وقت)...")
     try:
-        urllib.request.urlretrieve(BASSET_WEIGHTS_URL, target_path)
+        import socket
+        old_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(300)
+        try:
+            urllib.request.urlretrieve(BASSET_WEIGHTS_URL, target_path)
+        finally:
+            socket.setdefaulttimeout(old_timeout)
         print("  [Download] تم التنزيل بنجاح ✅")
     except Exception as exc:
-        # تنظيف ملف ناقص لو فشل التنزيل بمنتصف الطريق
         if os.path.exists(target_path):
             os.remove(target_path)
         raise FileNotFoundError(

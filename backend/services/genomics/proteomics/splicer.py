@@ -67,7 +67,7 @@ def extract_mature_cds(
         piece_end = min(exon["end"], cds_end)
 
         if piece_start >= piece_end:
-            continue  # هاد الإكسون بالكامل خارج الـ CDS (UTR بحت) — نتجاهله
+            continue  
 
         local_start = piece_start - genomic_sequence_start
         local_end = piece_end - genomic_sequence_start
@@ -139,17 +139,14 @@ def extract_mature_cds_with_position_map(
             )
 
         coding_pieces.append(genomic_sequence[local_start:local_end])
-        # المواقع الجينومية الحقيقية لهاد الجزء بالضبط (متسلسلة تصاعدياً دايماً هون،
-        # بغض النظر عن الـ strand — لأنها لسا إحداثيات جينوم خام)
+        
         position_pieces.append(list(range(piece_start, piece_end)))
 
     if not coding_pieces:
         raise SplicingError("لم يتم استخراج أي قطعة CDS صالحة.")
 
     if strand == "-":
-        # نفس منطق القلب المستخدم للتسلسل، بنطبقه بالضبط على المواقع كمان:
-        # كل قطعة بتنقلب لحالها (reverse فقط، المواقع ما إلها complement)،
-        # وبعدين القطع بترتيب معكوس — تماماً متل التسلسل النووي.
+       
         reversed_seq_pieces = [_reverse_complement(p) for p in reversed(coding_pieces)]
         reversed_pos_pieces = [list(reversed(p)) for p in reversed(position_pieces)]
 

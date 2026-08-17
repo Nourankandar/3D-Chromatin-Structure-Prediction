@@ -49,8 +49,7 @@ def fetch_reference_sequence(chromosome: str, start: int, end: int) -> str:
         raise ReferenceFetchError(f"Invalid coordinates: start={start}, end={end}")
 
     try:
-        # مهم: rebuild=False حتى ما تحاول pyfaidx تنشئ .fai من جديد كل مرة
-        # لو موجود أصلاً (يوفر وقت، خصوصاً مع ملف 3GB)
+      
         genome = Fasta(str(fasta_path), rebuild=False)
 
         if chromosome not in genome.keys():

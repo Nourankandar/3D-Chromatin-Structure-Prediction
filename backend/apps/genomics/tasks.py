@@ -32,7 +32,7 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
     except SoftTimeLimitExceeded:
         logger.error("[Task] Pipeline TIMEOUT (>5min) for InputData id=%s — marking as failed", input_data_id)
         input_data.status = "failed"
-        input_data.save(update_fields=["status"])
+        input_data.save(update_fields=["status", "updated_at"])  
         return {"status": "failed", "reason": "timeout_exceeded"}
     except PipelineCancelledError:
         logger.info("[Task] Pipeline cancelled by user. Cleaning up InputData ID=%s", input_data_id)
@@ -51,7 +51,7 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
 
         logger.exception("[Task] Pipeline FAILED for InputData id=%s", input_data_id)
         input_data.status = "failed"
-        input_data.save(update_fields=["status"])
+        input_data.save(update_fields=["status", "updated_at"])   
         raise self.retry(exc=exc)
 
     output_data = None
@@ -78,19 +78,14 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
                 },
             )
 
-            # ─── حفظ نتائج الجينات/البروتينات — سجل منفصل لكل جين ───
-            # نمسح أي نتائج قديمة لنفس الـ output (حالة regenerate/إعادة تشغيل)
-            # حتى ما تصير تكرارات أو نتائج قديمة عالقة
             GeneProteinResult.objects.filter(output_data=output_data).delete()
 
             proteins_diff = results["report_payload"].get("amino_acid_and_protein_diff", [])
-            # الإحداثيات الحقيقية (gene_start/gene_end) موجودة بس بـ "genes"،
-            # مش بـ "amino_acid_and_protein_diff" — لازم lookup عبر gene_id
+      
             genes_info = results["report_payload"].get("genes", [])
             genes_by_id = {g["gene_id"]: g for g in genes_info}
 
             gene_names_list = [gene["gene_name"] for gene in proteins_diff]
-            # طلب واحد "جماعي" بالتوازي بدل ما نستنى كل جين لحاله بالتسلسل
             protein_names_by_gene = get_protein_names_for_genes_batch(gene_names_list)
 
             gene_rows = []
@@ -125,7 +120,7 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
             InputData.objects.filter(pk=input_data_id).update(status="completed")
     except Exception:
         input_data.status = "failed"
-        input_data.save(update_fields=["status"])
+        input_data.save(update_fields=["status", "updated_at"])
         raise
 
     logger.info("[Task] Pipeline completed → OutputData id=%s (%d genes saved)", output_data.id, len(gene_rows))
@@ -182,13 +177,13 @@ def generate_llm_report_task(self, output_data_id: int) -> dict:
 
         logger.error("[LLM Task] All retries exhausted for OutputData ID=%s", output_data_id)
         report.summary_text = f"Clinical report generation failed after retries: {exc}"
-        report.status = "failed"  # تحديث الحالة هنا
+        report.status = "failed" 
         report.save(update_fields=["summary_text", "status"])
         raise exc
 
     report.summary_text = markdown_result
     report.detected_disease = "Structural Chromatin Alteration Detected"
-    report.status = "completed"  # التقرير أصبح جاهزاً
+    report.status = "completed" 
     report.save(update_fields=["summary_text", "detected_disease", "status"])
 
     

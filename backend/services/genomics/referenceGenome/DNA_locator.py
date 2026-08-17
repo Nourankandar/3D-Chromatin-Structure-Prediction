@@ -48,17 +48,10 @@ SEED_LENGTH = 25          # طول كل seed (25bp نادراً ما يتكرر 
 SEED_STRIDE = 200         # المسافة بين كل seed والتالي على طول تسلسل المريض
 MIN_SEEDS_REQUIRED = 1    # أقل عدد seeds لازم تتفق على نفس الموقع المرشح
 MIN_IDENTITY = 0.80       # أقل نسبة تطابق مقبولة بعد التحقق (verify)
-
-# كشف الـ ambiguity: لو في أكتر من موقع مرشح بنفس قوة التطابق تقريباً
-# (زي مناطق التيلومير/السنترومير المتكررة)، ما بنقدر نثق بموقع واحد محدد
 AMBIGUITY_IDENTITY_MARGIN = 0.02   # الفرق الأدنى المطلوب بين أفضل مرشح والثاني
 MAX_RAW_SEED_HITS_BEFORE_WARNING = 50  # عدد مواقع seed matches اللي لو تعداه، فالمنطقة غالباً متكررة (low-complexity)
 
-# سقف أداء: لو seed واحد تكرر أكتر من هيك عدد مرات بالكروموسوم، منوقف البحث
-# عنه فوراً (بدل ما نكمل .find() آلاف/ملايين المرات لنفس الـ seed) — هيدا
-# seed من منطقة متكررة أصلاً (زي Alu repeats) وما بيفيد بتحديد الموقع بدقة،
-# فلا داعي نضيّع وقت حساب عليه. القيمة معقولة: أعلى بكتير من التكرار
-# الطبيعي بمناطق فريدة، بس واطية كفاية توقف الانفجار بالمناطق المتكررة.
+
 MAX_HITS_PER_SEED = 100
 
 _COMPLEMENT = str.maketrans("ACGTNacgtn", "TGCANtgcan")
@@ -131,9 +124,7 @@ def _seed_and_extend(patient_seq: str, chrom_seq: str, kmer_index: dict) -> dict
     chrom_len = len(chrom_seq)
 
     if patient_len < SEED_LENGTH:
-        # تسلسل قصير جداً حتى ياخذ seed واحد كامل — نحاول مطابقة مباشرة
-        # (ما فينا نقيّم ambiguity هون بشكل موثوق لأنه seed واحد بس،
-        # فمنعتبرها دايماً قابلة للشك لو طلع أكتر من موقع)
+        
         first_pos = chrom_seq.find(patient_seq)
         if first_pos == -1:
             return None
@@ -146,20 +137,13 @@ def _seed_and_extend(patient_seq: str, chrom_seq: str, kmer_index: dict) -> dict
             "raw_seed_hit_count": 2 if second_pos != -1 else 1,
         }
 
-    # 1) نحدد مواقع الـ seeds على طول تسلسل المريض.
-    #    لو التسلسل قصير (أقل من SEED_STRIDE)، بيطلع seed واحد بس بالمنطق
-    #    الافتراضي — وهاد خطير: لو صدف طفرة/خطأ داخل هاد الـ seed اليتيم
-    #    (بحث exact match)، كل الخوارزمية بتفشل فوراً بدون أي بديل.
-    #    لذلك: لو عدد الـ seeds المتوقع أقل من 3، نكثّف الـ seeds بتراكب
-    #    (overlapping) بدل الاعتماد على seed وحيد.
+   
     if patient_len - SEED_LENGTH + 1 <= SEED_STRIDE:
-        # نغطي التسلسل بعدة seeds متراكبة (كل 8bp مثلاً) بدل seed واحد
         dense_stride = max(5, (patient_len - SEED_LENGTH) // 4) or 1
         seed_offsets = range(0, patient_len - SEED_LENGTH + 1, dense_stride)
     else:
         seed_offsets = range(0, patient_len - SEED_LENGTH + 1, SEED_STRIDE)
 
-    # 2) نجمع مواقع البداية المرشحة من كل seed
     candidate_votes: Counter = Counter()
     raw_seed_hit_count = 0        # مجموع كل الـ hits المقبولة (المستخدمة فعلياً بالتصويت)
     skipped_repetitive_seeds = 0  # عدد الـ seeds يلي رفضناها لأنها ضربت السقف (تشخيصي بس)
@@ -169,10 +153,7 @@ def _seed_and_extend(patient_seq: str, chrom_seq: str, kmer_index: dict) -> dict
         if "N" in seed:
             continue  # seed فيه قواعد غير معروفة — نتخطاه لأنه غير موثوق
 
-        # بدل chrom_seq.find() المتكرر (O(chrom_len) لكل seed)، الفهرس
-        # بيرجع كل المواقع دفعة وحدة تقريباً O(1) — نفس النتيجة بالضبط،
-        # بس محسوبة مسبقاً مرة وحدة لكل الكروموسوم بدل إعادة حسابها
-        # لكل seed ولكل مريض جديد.
+        
         seed_positions = kmer_index.get(seed)
         if not seed_positions:
             continue  # ما في أي تطابق تام لهاد الـ seed بالكروموسوم إطلاقاً
