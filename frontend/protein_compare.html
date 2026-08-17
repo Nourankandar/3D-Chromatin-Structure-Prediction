@@ -525,6 +525,15 @@
     padding-bottom: 12px;
     direction: ltr;
   }
+  .ge-scroll-wrap {
+  width: 100%;
+  overflow-x: scroll !important;
+  display: block;
+}
+.ge-tracks {
+  width: max-content !important;
+  min-width: 100%;
+}
 
   .ge-scroll-wrap::-webkit-scrollbar { height: 6px; }
   .ge-scroll-wrap::-webkit-scrollbar-track { background: color-mix(in srgb, var(--fg) 4%, transparent); border-radius: 4px; }
@@ -780,17 +789,48 @@ function renderPane(side, label){
     </div>`;
 }
 
+// كاش محلي لنتائج ESMFold — بمجرد ما ينجح تسلسل مرة وحدة، بيصير محفوظ بالمتصفح
+// وما بيحتاج يتواصل مع أي سيرفر خارجي تاني لنفس التسلسل بالضبط 
+function esmCacheKey(seq){ return 'esmfold_cache_' + seq.length + '_' + seq.slice(0,20) + '_' + seq.slice(-20); }
+function esmCacheGet(seq){
+  try{
+    const raw = localStorage.getItem(esmCacheKey(seq));
+    if(!raw) return null;
+    const obj = JSON.parse(raw);
+    return obj && obj.seq === seq ? obj.pdb : null;
+  }catch(e){ return null; }
+}
+function esmCacheSet(seq, pdb){
+  try{ localStorage.setItem(esmCacheKey(seq), JSON.stringify({seq, pdb})); }catch(e){}
+}
+
 async function foldWithESMFold(sequence){
   const clean = String(sequence||'').replace(/[^A-Za-z]/g,'').toUpperCase();
   if(!clean || clean.length < 3) throw new Error('تسلسل فارغ أو قصير جداً');
   if(clean.length > 768) throw new Error('التسلسل أطول من الحد المسموح (768 حمض أميني) لهذه الخدمة');
-  const res = await fetch('https://api.esmatlas.com/foldSequence/v1/pdb/', {
-    method:'POST', body:clean, signal:AbortSignal.timeout(30000)
-  });
-  if(!res.ok) throw new Error('HTTP '+res.status);
-  const text = await res.text();
-  if(!/^ATOM\s|\nATOM\s/.test(text)) throw new Error('رد غير صالح من الخدمة');
-  return text;
+
+  // 1) لو محفوظة بالكاش من محاولة ناجحة سابقة — نستخدمها فورًا، بدون أي طلب شبكة
+  const cached = esmCacheGet(clean);
+  if(cached) return cached;
+
+  // 2) إعادة محاولة تلقائية (3 محاولات) قبل ما نستسلم — لمقاومة الأعطال المؤقتة بالخدمة
+  let lastErr = null;
+  for(let attempt = 1; attempt <= 3; attempt++){
+    try{
+      const res = await fetch('https://api.esmatlas.com/foldSequence/v1/pdb/', {
+        method:'POST', body:clean, signal:AbortSignal.timeout(60000)
+      });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const text = await res.text();
+      if(!/^ATOM\s|\nATOM\s/.test(text)) throw new Error('رد غير صالح من الخدمة');
+      esmCacheSet(clean, text); // ننجح؟ نحفظ فورًا لأي مرة جاية
+      return text;
+    }catch(err){
+      lastErr = err;
+      if(attempt < 3) await new Promise(r => setTimeout(r, 1500 * attempt)); // فاصل متزايد قبل إعادة المحاولة
+    }
+  }
+  throw lastErr;
 }
 
 // نجيب حدود "ببتيد الإشارة" الموثّقة من UniProt لهالبروتين (لو موجودة)
@@ -885,11 +925,14 @@ async function loadPaneStructure(side, label, sequence, fallbackResolved, protei
   if(side==='control'){
     ok = await showReference();
     if(!ok) ok = await showESMFold();
+    if(!ok) bodyEl.innerHTML = `<div class="empty-state">تعذّر الحصول على بنية ثلاثية الأبعاد لهذا البروتين من أي مصدر.</div>`;
   } else {
+    // ═══ جهة المريض: ESMFold فقط — بدون أي رجوع لـ AlphaFold (بنية غير متحوّرة) ═══
     ok = await showESMFold();
-    if(!ok) ok = await showReference();
+    if(!ok){
+      bodyEl.innerHTML = `<div class="empty-state">تعذّر التنبؤ بالبنية المتحوّرة للمريض (يتجاوز الحد المسموح للخدمة السريعة أو تعطل السيرفر). يتم عرض الطفرة والتسلسل في شريط التعبير الجيني أدناه.</div>`;
+    }
   }
-  if(!ok) bodyEl.innerHTML = `<div class="empty-state">تعذّر الحصول على بنية ثلاثية الأبعاد لهذا البروتين من أي مصدر.</div>`;
 }
 
 async function boot(){
