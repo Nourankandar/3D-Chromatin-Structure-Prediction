@@ -1,5 +1,5 @@
 """
-services/llm_service/report_generator.py
+ai_engine/models/LLM_Report/report_generator.py
 ====================================================================
 توليد التقرير الطبي عبر LLM مفتوح المصدر من Hugging Face فقط.
 حساب واحد، مكتبة واحدة (huggingface_hub) — بدون Groq/Together.

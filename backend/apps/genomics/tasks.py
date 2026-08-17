@@ -32,7 +32,7 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
     except SoftTimeLimitExceeded:
         logger.error("[Task] Pipeline TIMEOUT (>5min) for InputData id=%s — marking as failed", input_data_id)
         input_data.status = "failed"
-        input_data.save(update_fields=["status"])
+        input_data.save(update_fields=["status", "updated_at"])  
         return {"status": "failed", "reason": "timeout_exceeded"}
     except PipelineCancelledError:
         logger.info("[Task] Pipeline cancelled by user. Cleaning up InputData ID=%s", input_data_id)
@@ -51,7 +51,7 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
 
         logger.exception("[Task] Pipeline FAILED for InputData id=%s", input_data_id)
         input_data.status = "failed"
-        input_data.save(update_fields=["status"])
+        input_data.save(update_fields=["status", "updated_at"])   
         raise self.retry(exc=exc)
 
     output_data = None
@@ -120,7 +120,7 @@ def run_genomic_pipeline_task(self, input_data_id: int) -> dict:
             InputData.objects.filter(pk=input_data_id).update(status="completed")
     except Exception:
         input_data.status = "failed"
-        input_data.save(update_fields=["status"])
+        input_data.save(update_fields=["status", "updated_at"])
         raise
 
     logger.info("[Task] Pipeline completed → OutputData id=%s (%d genes saved)", output_data.id, len(gene_rows))

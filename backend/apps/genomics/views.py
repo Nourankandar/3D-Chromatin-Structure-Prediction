@@ -126,12 +126,12 @@ class InputDataViewSet(viewsets.ModelViewSet):
 
         def rollback_status():
             input_data.status = old_status
-            input_data.save(update_fields=["status"])
+            input_data.save(update_fields=["status", "updated_at"])
 
         try:
             with atomic_with_cleanup(cleanup_fn=rollback_status, log_prefix="StopAnalysis"):
                 input_data.status = "cancelled"
-                input_data.save(update_fields=["status"])
+                input_data.save(update_fields=["status", "updated_at"])
         except Exception as exc:
             return Response(
                 {"error": f"Failed to stop analysis: {exc}"},
