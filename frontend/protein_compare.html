@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ChromoGen · مقارنة البروتين</title>
+<link rel="shortcut icon" href="/media/favicon.png?v=50" type="image/png">
+<link rel="icon" href="/media/favicon.png?v=50" type="image/png">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=Cairo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -997,6 +999,8 @@ function buildGeneExpressionTrack(controlDna, patientDna, controlAA, patientAA, 
   let patDnaItems = '';
   let refAaItems = '';
   let patAaItems = '';
+let refMrnaItems = '';
+let patMrnaItems = '';
 
   for (let i = 0; i < totalCodons; i++) {
     const codonNum = i + 1;
@@ -1029,6 +1033,17 @@ function buildGeneExpressionTrack(controlDna, patientDna, controlAA, patientAA, 
     ).join('');
     patDnaItems += `<div class="ge-codon-group">${patBoxes}</div>`;
 
+    // mRNA السليم (Ref)
+    const refMrnaTriplet = refTriplet.map(ch => ch === 'T' ? 'U' : ch);
+    const refMrnaBoxes = refMrnaTriplet.map(ch => `<div class="ge-base-box">${ch}</div>`).join('');
+    refMrnaItems += `<div class="ge-codon-group">${refMrnaBoxes}</div>`;
+
+    // mRNA المريض (Pat) - مع نفس تمييز القواعد الطافرة
+    const patMrnaTriplet = patTriplet.map(ch => ch === 'T' ? 'U' : ch);
+    const patMrnaBoxes = patMrnaTriplet.map((ch, b) =>
+      `<div class="ge-base-box ${baseDiff[b] ? 'is-mut' : ''}">${ch}</div>`
+    ).join('');
+    patMrnaItems += `<div class="ge-codon-group">${patMrnaBoxes}</div>`;
     // 4. مستطيل الحمض الأميني السليم (AA Ref)
     refAaItems += `<div class="ge-aa-pill">${esc(refAA)}</div>`;
 
@@ -1037,40 +1052,46 @@ function buildGeneExpressionTrack(controlDna, patientDna, controlAA, patientAA, 
   }
 
   return `
-    <div class="ge-tracks">
-      <!-- 1. Ruler / Index Track -->
-      <div class="ge-track-row" style="background:transparent;">
-        <div class="ge-track-lbl" style="background:transparent; border:none; font-family:var(--font-mono); font-size:11px;">INDEX</div>
-        <div class="ge-track-content">${rulerItems}</div>
-      </div>
-
-      <!-- 2. DNA (Ref) -->
-      <div class="ge-track-row">
-        <div class="ge-track-lbl">DNA (Ref)</div>
-        <div class="ge-track-content">${refDnaItems}</div>
-      </div>
-
-      <!-- 3. DNA (Pat) -->
-      <div class="ge-track-row">
-        <div class="ge-track-lbl strong">DNA (Pat)<span class="pat-dot"></span></div>
-        <div class="ge-track-content">${patDnaItems}</div>
-      </div>
-
-      <div style="height:4px;"></div>
-
-      <!-- 4. AA (Ref) -->
-      <div class="ge-track-row alt">
-        <div class="ge-track-lbl">AA (Ref)</div>
-        <div class="ge-track-content">${refAaItems}</div>
-      </div>
-
-      <!-- 5. AA (Pat) -->
-      <div class="ge-track-row alt">
-        <div class="ge-track-lbl strong">AA (Pat)</div>
-        <div class="ge-track-content">${patAaItems}</div>
-      </div>
+  <div class="ge-tracks">
+    <!-- ===== قسم العينة السليمة (Control) ===== -->
+    <div class="ge-track-row" style="background:transparent;">
+      <div class="ge-track-lbl" style="background:transparent; border:none;">INDEX</div>
+      <div class="ge-track-content">${rulerItems}</div>
     </div>
-  `;
+    <div class="ge-track-row">
+      <div class="ge-track-lbl">DNA (Ref)</div>
+      <div class="ge-track-content">${refDnaItems}</div>
+    </div>
+    <div class="ge-track-row">
+      <div class="ge-track-lbl">mRNA (Ref)</div>
+      <div class="ge-track-content">${refMrnaItems}</div>
+    </div>
+    <div class="ge-track-row alt">
+      <div class="ge-track-lbl">AA (Ref)</div>
+      <div class="ge-track-content">${refAaItems}</div>
+    </div>
+
+    <div style="height:12px;"></div>
+
+    <!-- ===== قسم عينة المريض (Patient) ===== -->
+    <div class="ge-track-row" style="background:transparent;">
+      <div class="ge-track-lbl" style="background:transparent; border:none;">INDEX</div>
+      <div class="ge-track-content">${rulerItems}</div>
+    </div>
+    <div class="ge-track-row">
+      <div class="ge-track-lbl strong">DNA (Pat)<span class="pat-dot"></span></div>
+      <div class="ge-track-content">${patDnaItems}</div>
+    </div>
+    <div class="ge-track-row">
+      <div class="ge-track-lbl strong">mRNA (Pat)</div>
+      <div class="ge-track-content">${patMrnaItems}</div>
+    </div>
+    <div class="ge-track-row alt">
+      <div class="ge-track-lbl strong">AA (Pat)</div>
+      <div class="ge-track-content">${patAaItems}</div>
+    </div>
+  </div>
+`;
 }
 
 
