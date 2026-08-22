@@ -67,7 +67,7 @@ project_root/
 ├── .env                      # environment variables (HF_TOKEN, DB, etc.)
 └── backend/
     ├── manage.py
-    ├── .env/                 # Python virtual environment (not "venv")
+    ├── .env/                 # Python virtual environment 
     ├── core/                 # Django project settings, celery.py, urls.py
     ├── apps/
     │   ├── patients/
