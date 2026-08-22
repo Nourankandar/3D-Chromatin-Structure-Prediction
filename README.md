@@ -74,7 +74,7 @@ project_root/
     │   ├── genomics/         # InputData/OutputData/GeneProteinResult, pipeline trigger views, tasks
     │   └── reports/          # AnalysisReport, PDF export
     ├── services/genomics/    # pipeline_manager.py + all pipeline step modules
-    └── ai_engine/models/     # Basset weights, ChromoGen Hi-C model, LLM report generator
+└── ai_engine/models/     # Basset weights, ChromoGen Hi-C model, LLM report generator
 ```
 
 ## 📖 Getting Started (Windows)
